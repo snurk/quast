@@ -33,7 +33,7 @@ from libs import qconfig
 from libs import fastaparser
 from libs.html_saver import json_saver
 
-RELEASE_MODE=False
+RELEASE_MODE=True
 
 def print_version(stream=sys.stdout):
     version_filename = os.path.join(__location__, 'VERSION')
