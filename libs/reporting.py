@@ -61,15 +61,22 @@ class Fields:
     # Aligned
     LARGALIGN = 'Largest alignment'
     NA50 = 'NA50'
-    NGA50 = 'NGA50'
     NA75 = 'NA75'
+#NRA - NA with respect to not total length but aligned length; usefull for metagenomics scripts
+    NRA50 = 'NRA50'
+    NRA75 = 'NRA75'
+    NGA50 = 'NGA50'
     NGA75 = 'NGA75'
     LA50 = 'LA50'
     LGA50 = 'LGA50'
     LA75 = 'LA75'
     LGA75 = 'LGA75'
 
-    # Genes and operons
+    MAXALIGNEDCONTIG = 'Max aligned part length'
+    ALIGNEDCONTIGSNUMBER = '# aligned contigs'
+    ALIGNEDLENGTH = 'Aligned length'
+   # Genes and operons
+
     MAPPEDGENOME = 'Genome fraction (%)'
     DUPLICATION_RATIO = 'Duplication ratio'
     GENES = '# genes'
@@ -90,7 +97,7 @@ class Fields:
              MISASSEMBL, MISLOCAL,
              UNALIGNED, UNALIGNEDBASES, MAPPEDGENOME, DUPLICATION_RATIO,
              UNCALLED_PERCENT, SUBSERROR, INDELSERROR, GENES, OPERONS, GENEMARKUNIQUE, GENEMARK,
-             LARGALIGN, NA50, NGA50, NA75, NGA75]
+             LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75, NRA50, NRA75,  MAXALIGNEDCONTIG, ALIGNEDCONTIGSNUMBER, ALIGNEDLENGTH]
 
     MIS_ALL_EXTENSIVE = '# misassemblies'
     MIS_RELOCATION = '    # relocations'

@@ -33,15 +33,26 @@ def get_lengths_from_coordfile(nucmer_filename): # TODO: re-use Mappings from pl
     # 2302703  2302974  |        1      272  |      272      272  |  98.1618  | gi|48994873|gb|U00096.2|	NODE_681_length_272_
     # 2302477  2302748  |        1      272  |      272      272  |  96.6912  | gi|48994873|gb|U00096.2|	NODE_681_length_272_
 
-    aligned_lengths = []
 
+    aligned_lengths = []
+    sum_len = 0;
+    count = 1;
+    max_aligned = 0;
     for line in coordfile:
         splitted = line.split('|')
         len2 = int(splitted[2].split()[1])
+        len1 = int(splitted[2].split()[0])
         aligned_lengths.append(len2)
+        sum_len += len2;
+        if len2 > max_aligned:
+                max_aligned = len2
+        count += 1;
     coordfile.close()
-
+    aligned_lengths.append(sum_len)
+    aligned_lengths.append(count)
+    aligned_lengths.append(max_aligned)
     return aligned_lengths
+
 
 ######## MAIN ############
 def do(reference, filenames, nucmer_dir, output_dir, all_pdf, draw_plots, json_output_dir, results_dir):
@@ -80,7 +91,10 @@ def do(reference, filenames, nucmer_dir, output_dir, all_pdf, draw_plots, json_o
 
     import N50
     for id, (filename, lens, assembly_len) in enumerate(itertools.izip(filenames, lists_of_lengths, assembly_lengths)):
-        na50 = N50.NG50(lens, assembly_len)
+        max_aligned = lens.pop()
+        aligned_count = lens.pop()
+        real_len = lens.pop()     
+	na50 = N50.NG50(lens, assembly_len)
         nga50 = N50.NG50(lens, reference_length)
         na75 = N50.NG50(lens, assembly_len, 75)
         nga75 = N50.NG50(lens, reference_length, 75)
@@ -97,6 +111,15 @@ def do(reference, filenames, nucmer_dir, output_dir, all_pdf, draw_plots, json_o
         report = reporting.get(filename)
         report.add_field(reporting.Fields.LARGALIGN, max(lens))
         report.add_field(reporting.Fields.NA50, na50)
+        nra50 = N50.NG50(lens, real_len)
+        nra75 = N50.NG50(lens, real_len, 75)
+        print ' ', id_to_str(id), os.path.basename(filename), \
+            ', NA50 =', na50, \
+            ', NGA50 =', nga50, \
+            ', LA50 =', la50,\
+            ', LGA50 =', lga50
+        report = reporting.get(filename)
+        report.add_field(reporting.Fields.NA50, na50)        
         report.add_field(reporting.Fields.NGA50, nga50)
         report.add_field(reporting.Fields.NA75, na75)
         report.add_field(reporting.Fields.NGA75, nga75)
@@ -104,6 +127,11 @@ def do(reference, filenames, nucmer_dir, output_dir, all_pdf, draw_plots, json_o
         report.add_field(reporting.Fields.LGA50, lga50)
         report.add_field(reporting.Fields.LA75, la75)
         report.add_field(reporting.Fields.LGA75, lga75)
+        report.add_field(reporting.Fields.NRA50, nra50)        
+        report.add_field(reporting.Fields.NRA75, nra75)        
+        report.add_field(reporting.Fields.MAXALIGNEDCONTIG, max_aligned)
+        report.add_field(reporting.Fields.ALIGNEDCONTIGSNUMBER, aligned_count)
+        report.add_field(reporting.Fields.ALIGNEDLENGTH, real_len)
 
     ########################################################################
 
