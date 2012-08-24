@@ -7,9 +7,14 @@ import re
 import getopt
 import subprocess
 import quast
+import matplotlib.pyplot as plt
 
+if len(sys.argv) != 3:
+    print("Usage: " + sys.argv[0] + "  <.ini file> <output dir>")
+    print("identical contigs names outputs to repeated_contigs_names.txt file")
+    sys.exit()
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-iniFileName = 'comparison.ini'
+iniFileName = sys.argv[1]
 iniFile = open(iniFileName, 'r')
 line = iniFile.readline()
 #print(line.split()[0])
@@ -17,10 +22,33 @@ assert(line.split()[0] == 'collections')
 collection_num = int(line.split()[1])
 line = iniFile.readline()
 line = iniFile.readline()
+assert (line.strip() == 'collection_names')
+collection_names = []
+for i in range(collection_num):
+    line = iniFile.readline().strip()
+    collection_names.append(line)
+
+
+
+
+line = iniFile.readline()
+line = iniFile.readline()
 assert(line.split()[0] == 'datasets')
 datasets_num = int(line.split()[1])
+colors = ["red", "blue", "green", "yellow", "black", "grey"]
+assert(collection_num <= colors.__len__())
 
 assemblies = []
+
+line = iniFile.readline()
+line = iniFile.readline()
+assert (line.strip() == 'dataset_names')
+dataset_names = []
+for i in range(datasets_num):
+    line = iniFile.readline().strip()
+    dataset_names.append(line)
+
+
 
 for i in range(collection_num):
     line = iniFile.readline()
@@ -57,6 +85,12 @@ for i in range (creatures_num):
 for i in range(datasets_num):
     assert(creatures_index[i] in range ( creatures_num ))
 
+
+line = iniFile.readline()
+line = iniFile.readline()
+assert(line.split()[0] == 'min_contig_length')
+min_len = int(line.split()[1])
+
 line = iniFile.readline()
 line = iniFile.readline()
 assert(line.split()[0] == 'reference')
@@ -67,9 +101,109 @@ for i in range (reference_num):
     line = iniFile.readline()
     references.append(line.strip());
 
+
+line = iniFile.readline()
+line = iniFile.readline()
+assert(line.split()[0] == 'genes')
+genes_num = int(line.split()[1])
+assert(genes_num == creatures_num or genes_num == 0)
+genes = []
+for i in range (genes_num):
+    line = iniFile.readline()
+    genes.append(line.strip());
+
+
+line = iniFile.readline()
+line = iniFile.readline()
+assert(line.split()[0] == 'operons')
+operons_num = int(line.split()[1])
+assert(operons_num == creatures_num or operons_num == 0)
+operons = []
+for i in range (operons_num):
+    line = iniFile.readline()
+    operons.append(line.strip());
+
+line = iniFile.readline()
+line = iniFile.readline()
+assert(line.split()[0] == 'metrics')
+metrics_num = int(line.split()[1])
+
+metrics = []
+for i in range (metrics_num):
+    line = iniFile.readline()
+    metrics.append(line.strip());
+
+
+
+folders = []
 for i in range (datasets_num):
-    quast_line = './quast.py -R ' + references[creatures_index[i]] + ' -o tmp_res' + str(i)
+    folders.append('tmp_res'+str(i))
+    shutil.rmtree(folders[i], True)
+    quast_line = './quast.py -R ' + references[creatures_index[i]] + ' -M ' + str(min_len) + ' -o ' + folders[i]
+    if (operons_num != 0):
+        quast_line += ' -O ' + operons[creatures_index[i]]
+    if (genes_num != 0):
+        quast_line += ' -G ' + genes[creatures_index[i]]
+
     for j in range (collection_num):
         quast_line += (' ' + assemblies[j][i])
     print(quast_line)
     os.system(quast_line)
+
+output_dir = sys.argv[2];
+os.system('mkdir -p ' + output_dir)
+for metric in metrics:
+    results = []
+    for i in range (datasets_num):
+        resultsFileName = folders[i]+ "/transposed_report.tsv"
+        resultsFile = open(resultsFileName, 'r')
+        columns = map(lambda s: s.strip(), resultsFile.readline().split('\t'))
+        #    print (i)
+        #    print(columns)
+        results.append([])
+        for j in range(collection_num):
+            values = map(lambda s: s.strip(), resultsFile.readline().split('\t'))
+            #        print(values)
+            metr_res = float(values[columns.index(metric)].split()[0])
+            results[i].append(metr_res);
+    fig = plt.figure()
+    ax  = fig.add_subplot(111)
+    #ax = fig.add_subplot(1,1,1, aspect='equal')
+    plt.xticks(range(1, datasets_num + 1) , dataset_names,  size='small')
+    title = metric
+    #for j in range(collection_num):
+    #    title += colors[j] + "  for " + str(j) + " \n"
+    plt.title(title)
+
+    #ax.set_xticks(range(1,datasets_num + 1))
+    #ax.set_xticklabels(assemblies[0])
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width*0.8, box.height*1.0])
+
+    for j in range(collection_num):
+        to_plot = []
+        for i in range(datasets_num):
+            to_plot.append(results[i][j])
+
+        ax.plot( range(1, datasets_num + 1), to_plot, 'ro', color=colors[j])
+    plt.xlim([0,datasets_num + 1])
+    #    ax.plot(range(1, datasets_num + 1), to_plot, 'ro', color=colors[j])
+    legend = []
+    for j in range(collection_num):
+        legend.append(collection_names[j])
+
+
+
+    ax.legend(legend, loc = 'center left', bbox_to_anchor = (1.0, 0.5))
+    #plt.legend(legend, font='small', loc=(1.1,0.5))
+
+
+    F = plt.gcf()
+
+
+    DPI = F.get_dpi()
+#    print "DPI:", DPI
+    DefaultSize = F.get_size_inches()
+    F.set_size_inches(2*DefaultSize)
+    plt.savefig(output_dir +'/' + metric+'.jpg')
+
