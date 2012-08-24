@@ -3,10 +3,7 @@
 import sys
 import os
 import shutil
-import re
-import getopt
-import subprocess
-import quast
+import math
 import matplotlib.pyplot as plt
 
 if len(sys.argv) != 3:
@@ -52,7 +49,7 @@ for i in range(datasets_num):
 for i in range(collection_num):
     line = iniFile.readline()
     line = iniFile.readline()
-    print(line)
+#    print(line)
     assert(line.split()[0] == 'collection')
     assert(int(line.split()[1]) == i + 1)
     assemblies.append([])
@@ -60,11 +57,11 @@ for i in range(collection_num):
         line = iniFile.readline().strip();
         assemblies[i].append(line);
 
-print(collection_num, datasets_num)
-for i in range(collection_num):
-    for j in range (datasets_num):
-        print(assemblies[i][j])
-    print('\n')
+#print(collection_num, datasets_num)
+#for i in range(collection_num):
+#    for j in range (datasets_num):
+#        print(assemblies[i][j])
+#    print('\n')
 
 line = iniFile.readline()
 line = iniFile.readline()
@@ -154,7 +151,8 @@ output_dir = sys.argv[2];
 os.system('mkdir -p ' + output_dir)
 for metric in metrics:
     results = []
-    print metric
+    print 'drawing... '  + metric
+    ymax = 0;
     for i in range (datasets_num):
         #    print (i)
         #    print(columns)
@@ -170,6 +168,7 @@ for metric in metrics:
                 metr_res = 0
             else:
                 metr_res = float(values[columns.index(metric)].split()[0])
+            ymax = max(ymax, metr_res)
             results[i].append(metr_res);
     fig = plt.figure()
     ax  = fig.add_subplot(111)
@@ -193,6 +192,7 @@ for metric in metrics:
             arr[i] += 0.07 *  (j - (collection_num-1) * 0.5)
         ax.plot( arr, to_plot, 'ro', color=colors[j])
     plt.xlim([0,datasets_num + 1])
+    plt.ylim([0, math.ceil(ymax *  1.05)])
     #    ax.plot(range(1, datasets_num + 1), to_plot, 'ro', color=colors[j])
     legend = []
     for j in range(collection_num):
