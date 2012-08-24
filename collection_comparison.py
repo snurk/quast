@@ -187,10 +187,11 @@ for metric in metrics:
 
     for j in range(collection_num):
         to_plot = []
+        arr = range(1, datasets_num + 1)
         for i in range(datasets_num):
             to_plot.append(results[i][j])
-
-        ax.plot( range(1, datasets_num + 1), to_plot, 'ro', color=colors[j])
+            arr[i] += 0.07 *  (j - (collection_num-1) * 0.5)
+        ax.plot( arr, to_plot, 'ro', color=colors[j])
     plt.xlim([0,datasets_num + 1])
     #    ax.plot(range(1, datasets_num + 1), to_plot, 'ro', color=colors[j])
     legend = []
