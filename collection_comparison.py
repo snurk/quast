@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 
 if len(sys.argv) != 3:
     print("Usage: " + sys.argv[0] + "  <.ini file> <output dir>")
-    print("identical contigs names outputs to repeated_contigs_names.txt file")
     sys.exit()
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 iniFileName = sys.argv[1]
@@ -138,33 +137,39 @@ for i in range (metrics_num):
 folders = []
 for i in range (datasets_num):
     folders.append('tmp_res'+str(i))
-    shutil.rmtree(folders[i], True)
-    quast_line = './quast.py -R ' + references[creatures_index[i]] + ' -M ' + str(min_len) + ' -o ' + folders[i]
+
+    quast_line = './quast.py -R ' + references[creatures_index[i]] + ' -M ' + str(min_len)
     if (operons_num != 0):
         quast_line += ' -O ' + operons[creatures_index[i]]
     if (genes_num != 0):
         quast_line += ' -G ' + genes[creatures_index[i]]
 
     for j in range (collection_num):
-        quast_line += (' ' + assemblies[j][i])
-    print(quast_line)
-    os.system(quast_line)
+        shutil.rmtree(folders[i] + '_' + str(j), True)
+        run_line = quast_line + ' -o ' + folders[i] + '_' + str(j) + (' ' + assemblies[j][i])
+        print(quast_line)
+        os.system(run_line)
 
 output_dir = sys.argv[2];
 os.system('mkdir -p ' + output_dir)
 for metric in metrics:
     results = []
+    print metric
     for i in range (datasets_num):
-        resultsFileName = folders[i]+ "/transposed_report.tsv"
-        resultsFile = open(resultsFileName, 'r')
-        columns = map(lambda s: s.strip(), resultsFile.readline().split('\t'))
         #    print (i)
         #    print(columns)
         results.append([])
         for j in range(collection_num):
+            resultsFileName = folders[i] + '_' + str(j) + "/transposed_report.tsv"
+            resultsFile = open(resultsFileName, 'r')
+            columns = map(lambda s: s.strip(), resultsFile.readline().split('\t'))
             values = map(lambda s: s.strip(), resultsFile.readline().split('\t'))
             #        print(values)
-            metr_res = float(values[columns.index(metric)].split()[0])
+#            print (values)
+            if values[columns.index(metric)].split()[0] == 'None' :
+                metr_res = 0
+            else:
+                metr_res = float(values[columns.index(metric)].split()[0])
             results[i].append(metr_res);
     fig = plt.figure()
     ax  = fig.add_subplot(111)
