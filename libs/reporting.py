@@ -91,6 +91,8 @@ class Fields:
     REFGC = 'Reference GC (%)'
     AVGIDY = 'Average %IDY'
 
+    MULTIPARTIAL = 'partially genomic contigs'
+    MULTIPARTIALBASES = 'partially genomic contig bases'
     # order as printed in report:
     order = [NAME, CONTIGS, TOTALLENS, NUMCONTIGS, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
              N50, NG50, N75, NG75,
