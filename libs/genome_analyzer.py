@@ -153,7 +153,7 @@ def do(reference, filenames, nucmer_dir, output_dir, genes_filename, operons_fil
     # for histograms
     genome_mapped = []
 
-    # process all contig files  
+    # process all contig files
     for id, filename in enumerate(filenames):
         log.info('  ' + id_to_str(id) + os.path.basename(filename))
 
@@ -267,7 +267,7 @@ def do(reference, filenames, nucmer_dir, output_dir, genes_filename, operons_fil
 
             if not feature_container.region_list:
                 res_file.write(' %-10s| %-10s|' % ('None', 'None'))
-                continue    
+                continue
 
             total_full = 0
             total_partial = 0
@@ -349,20 +349,48 @@ def do(reference, filenames, nucmer_dir, output_dir, genes_filename, operons_fil
     if draw_plots:
         # cumulative plots:
         import plotter
+
         if genes_container.region_list:
+            plot_fname = 'genes'
+            plot_name = 'genes'
+            if qconfig.meta:
+                plot_fname += '_in_' + reference.name
+                plot_name += ' in ' + reference.readable_name
+
             plotter.genes_operons_plot(len(genes_container.region_list), filenames, files_genes_in_contigs,
-                output_dir + '/genes_cumulative_plot', 'genes', all_pdf)
-            plotter.histogram(filenames, genes_container.full_found, output_dir + '/complete_genes_histogram',
-                '# complete genes', all_pdf)
+                                       os.path.join(output_dir, plot_fname), plot_name,
+                                       reference.readable_name, all_pdf)
+            if not qconfig.meta:
+                plotter.histogram(filenames, genes_container.full_found,
+                                  os.path.join(output_dir, 'complete_genes_histogram'),
+                                  '# complete genes', all_pdf)
+
         if operons_container.region_list:
+            plot_fname = 'operons'
+            plot_name = 'operons'
+            if qconfig.meta:
+                plot_fname += '_in_' + reference.name
+                plot_name += ' in ' + reference.readable_name
+
             plotter.genes_operons_plot(len(operons_container.region_list), filenames, files_operons_in_contigs,
-                output_dir + '/operons_cumulative_plot', 'operons', all_pdf)
-            plotter.histogram(filenames, operons_container.full_found, output_dir + '/complete_operons_histogram',
-                '# complete operons', all_pdf)
-        plotter.histogram(filenames, genome_mapped, output_dir + '/genome_fraction_histogram', 'Genome fraction, %',
-            all_pdf, top_value=100)
+                                       os.path.join(output_dir, plot_fname), reference.readable_name,
+                                       plot_name, all_pdf)
+            if not qconfig.meta:
+                plotter.histogram(filenames, operons_container.full_found,
+                                  os.path.join(output_dir + 'complete_operons_histogram'),
+                                  '# complete operons', all_pdf)
+
+        plot_fname = 'genome_fraction'
+        plot_name = 'Genome fraction, %'
+        if qconfig.meta:
+            plot_fname += '_of_' + reference.name
+            plot_name = reference.readable_name + ' fraction, %'
+
+        plotter.histogram(filenames, genome_mapped, os.path.join(output_dir, plot_fname), plot_name,
+                          all_pdf, top_value=100)
 
     log.info('Done.')
+
 
 class AlignedBlock():
     def __init__(self, seqname=None, start=None, end=None):

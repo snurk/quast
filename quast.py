@@ -28,14 +28,12 @@ RELEASE_MODE=False
 
 
 class Reference:
-    fpath = ''
-    name = ''
-    is_broken = False
-    chr_fnames = []
-
-    def __init__(self, fpath, name=''):
+    def __init__(self, fpath, name='', readable_name=''):
         self.fpath = fpath
         self.name = name
+        self.readable_name = readable_name or name
+        self.is_broken = False
+        self.chr_fnames = []
 
     def __str__(self):
         return self.name
@@ -249,6 +247,8 @@ def main(args):
 
         elif opt in ('-R', "--reference"):
             qconfig.references_fpaths = [assert_file_exists(fpath, 'reference') for fpath in arg.split(',')]
+            if len(qconfig.references_fpaths) > 1:
+                qconfig.meta = True
 
         elif opt in ('-t', "--contig-thresholds"):
             qconfig.contig_thresholds = arg
@@ -457,12 +457,13 @@ def main(args):
 
             reference.fpath = new_ref_fpath
             reference.name = os.path.basename(new_ref_fpath)
+            reference.readable_name = reference.name
 
-        # Multireference
-        if len(references) > 1:
+        # All references combined to make a big multireference
+        if qconfig.meta:
             fpath = os.path.join(corrected_dirpath, 'multireference.fasta')
-            multi_reference = Reference(fpath, name='All_references_combined')
-
+            multi_reference = Reference(fpath, name='all_references_combined',
+                                        readable_name='all references combined')
             with open(fpath, 'a') as multi_ref_f:
                 for reference in references:
                     with open(reference.fpath) as ref_f:

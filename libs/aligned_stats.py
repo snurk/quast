@@ -81,17 +81,18 @@ def do(reference, filenames, aligned_lengths_lists, nucmer_dir, output_dir, all_
     if draw_plots:
         # Drawing cumulative plot (aligned contigs)...
         import plotter
-        plot_fname = output_dir + '/cumulative_plot_of_aligned_to_' + reference.name
+        plot_fname = os.path.join(output_dir, 'cumulative_length_of blocks_aligned_to_' + reference.name)
         plotter.cumulative_plot(reference, filenames, aligned_lengths_lists, plot_fname,
-                                'Cumulative length of contigs aligned to ' + reference.name, all_pdf)
+                                'Cumulative length of blocks aligned to ' + reference.readable_name, all_pdf)
 
         # Drawing NAx and NGAx plots...
-        plot_fname = output_dir + '/NAx_plot_' + reference.name
+        plot_fname = os.path.join(output_dir, 'NAx_of_blocks_aligned_to_' + reference.name)
         plotter.Nx_plot(filenames, aligned_lengths_lists, plot_fname,
-                        'NAx using contigs aligned to ' + reference.name, assembly_lengths, all_pdf)
-        plot_fname = output_dir + '/NGAx_plot_' + reference.name
+                        'NAx of blocks aligned to ' + reference.readable_name, assembly_lengths, all_pdf)
+
+        plot_fname = os.path.join(output_dir, 'NGAx_of_blocks_aligned_to_' + reference.name)
         plotter.Nx_plot(filenames, aligned_lengths_lists, plot_fname,
-                        'NGAx using contigs aligned to ' + reference.name,
+                        'NGAx of blocks aligned to ' + reference.readable_name,
                         [reference_length for i in range(len(filenames))], all_pdf)
 
     log.info('  Done.')

@@ -13,7 +13,8 @@ plots_format = '.pdf'
 
 # Feel free to add more colors
 #colors = ['#E41A1C', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#A65628', '#F781BF', '#FFFF33']  ## 8-color palette
-colors = ['#E31A1C', '#1F78B4', '#33A02C', '#6A3D9A', '#FF7F00', '#FB9A99', '#A6CEE3', '#B2DF8A','#CAB2D6', '#FDBF6F'] # 10-color palette
+colors = ['#E31A1C', '#1F78B4', '#33A02C', '#6A3D9A', '#FF7F00',
+          '#FB9A99', '#A6CEE3', '#B2DF8A', '#CAB2D6', '#FDBF6F']  # 10-color palette
 
 # Font of plot captions, axes labels and ticks
 font = {'family': 'sans-serif',
@@ -23,18 +24,18 @@ font = {'family': 'sans-serif',
 
 # Line params
 line_width = 2.0
-primary_line_style = 'solid' # 'solid', 'dashed', 'dashdot', or 'dotted'
-secondary_line_style = 'dashed' # used only if --scaffolds option is set
+primary_line_style = 'solid'  # 'solid', 'dashed', 'dashdot', or 'dotted'
+secondary_line_style = 'dashed'  # used only if --scaffolds option is set
 
 # Legend params
 n_columns = 4  # number of columns
 with_grid = True
 with_title = True
-axes_fontsize = 'large' # fontsize of axes labels and ticks
+axes_fontsize = 'large'  # fontsize of axes labels and ticks
 
 # Special case: reference line params
 reference_color = '#000000'
-reference_ls = 'dashed' # ls = line style
+reference_line_style = 'dotted'
 
 ####################################################################################
 ########################  END OF CONFIGURABLE PARAMETERS  ##########################
@@ -62,9 +63,9 @@ except:
 ####################################################################################
 
 
-def get_color_and_ls(color_id, filename):
+def get_color__and_line_style__and_next_color_id(color_id, filename):
     """
-    Returns tuple: color, line style
+    Returns tuple: color, line style, next color id
     """
     ls = primary_line_style
 
@@ -138,13 +139,13 @@ def cumulative_plot(reference, filenames, lists_of_lengths, plot_filename, title
             max_x = max(vals_contig_index[-1], max_x)
             max_y = max(max_y, vals_length[-1])
 
-        color, ls, color_id = get_color_and_ls(color_id, filename)
+        color, ls, color_id = get_color__and_line_style__and_next_color_id(color_id, filename)
         matplotlib.pyplot.plot(vals_contig_index, vals_length, color=color, lw=line_width, ls=ls)
 
     if reference:
         reference_length = sum(fastaparser.get_lengths_from_fastafile(reference.fpath))
         matplotlib.pyplot.plot([0, max_x], [reference_length, reference_length],
-                               color=reference_color, lw=line_width, ls=reference_ls)
+                               color=reference_color, lw=line_width, ls=reference_line_style)
         max_y = max(max_y, reference_length)
 
     if with_title:
@@ -159,7 +160,7 @@ def cumulative_plot(reference, filenames, lists_of_lengths, plot_filename, title
     if qconfig.legend_names and len(filenames) == len(qconfig.legend_names):
         legend_list = qconfig.legend_names[:]
     if reference:
-        legend_list += ['Reference']
+        legend_list += [reference.readable_name]
     # Put a legend below current axis
     try: # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
@@ -228,7 +229,7 @@ def Nx_plot(filenames, lists_of_lengths, plot_filename, title='Nx', reference_le
         vals_l.append(0.0)
         max_y = max(max_y, max(vals_l))
 
-        color, ls, color_id = get_color_and_ls(color_id, filename)
+        color, ls, color_id = get_color__and_line_style__and_next_color_id(color_id, filename)
         matplotlib.pyplot.plot(vals_Nx, vals_l, color=color, lw=line_width, ls=ls)
 
     if with_title:
@@ -297,13 +298,17 @@ def GC_content_plot(references, filenames, list_of_GC_distributions, plot_filena
             if v == 0:
                 GC_distribution_y[id2] = 0.1
 
-        # add to plot
-        if references and i >= len(filenames):
-            ls = reference_ls
-            if len(references) == 1:
-                color = reference_color
+        if i == len(filenames):  # single reference or combined multireference
+            ls = reference_line_style
+            color = reference_color
+
+        elif i > len(filenames):
+            ls = reference_line_style
+            color, _, color_id = get_color__and_line_style__and_next_color_id(color_id, allfilenames[i])
+
+        # case of assembly
         else:
-            color, ls, color_id = get_color_and_ls(color_id, allfilenames[i])
+            color, ls, color_id = get_color__and_line_style__and_next_color_id(color_id, allfilenames[i])
 
         matplotlib.pyplot.plot(GC_distribution_x, GC_distribution_y, color=color, lw=line_width, ls=ls)
 
@@ -323,7 +328,7 @@ def GC_content_plot(references, filenames, list_of_GC_distributions, plot_filena
         legend_list = map(os.path.basename, allfilenames)
 
     if references:
-        legend_list += ['Reference ' + ref.name for ref in references]
+        legend_list += [ref.readable_name for ref in references]
 
     # Put a legend below current axis
     try:  # for matplotlib <= 2009-12-09
@@ -358,7 +363,7 @@ def GC_content_plot(references, filenames, list_of_GC_distributions, plot_filena
 
 
 # common routine for genes and operons cumulative plots
-def genes_operons_plot(reference_value, filenames, files_feature_in_contigs, plot_filename, title, all_pdf=None):
+def genes_operons_plot(reference_value, filenames, files_feature_in_contigs, plot_filename, title, reference_name, all_pdf=None):
     if matplotlib_error:
         return
 
@@ -388,12 +393,12 @@ def genes_operons_plot(reference_value, filenames, files_feature_in_contigs, plo
             max_x = max(x_vals[-1], max_x)
             max_y = max(y_vals[-1], max_y)
 
-        color, ls, color_id = get_color_and_ls(color_id, filename)
+        color, ls, color_id = get_color__and_line_style__and_next_color_id(color_id, filename)
         matplotlib.pyplot.plot(x_vals, y_vals, color=color, lw=line_width, ls=ls)
 
     if reference_value:
         matplotlib.pyplot.plot([0, max_x], [reference_value, reference_value],
-            color=reference_color, lw=line_width, ls=reference_ls)
+                               color=reference_color, lw=line_width, ls=reference_line_style)
         max_y = max(reference_value, max_y)
 
     matplotlib.pyplot.xlabel('Contig index', fontsize=axes_fontsize)
@@ -410,7 +415,8 @@ def genes_operons_plot(reference_value, filenames, files_feature_in_contigs, plo
     if qconfig.legend_names and len(filenames) == len(qconfig.legend_names):
         legend_list = qconfig.legend_names[:]
     if reference_value:
-        legend_list += ['Reference']
+        legend_list += [reference_name]
+
     # Put a legend below current axis
     try: # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
@@ -473,7 +479,7 @@ def histogram(filenames, values, plot_filename, title='', all_pdf=None, yaxis_ti
 
     color_id = 0
     for id, (filename, val) in enumerate(itertools.izip(filenames, values)):
-        color, ls, color_id = get_color_and_ls(color_id, filename)
+        color, ls, color_id = get_color__and_line_style__and_next_color_id(color_id, filename)
         if ls == primary_line_style:
             hatch = ''
         else:

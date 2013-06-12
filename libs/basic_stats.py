@@ -13,6 +13,7 @@ from libs import qconfig
 from qutils import id_to_str, print_timestamp
 import reporting
 
+
 def GC_content(filename):  
     """
        Returns percent of GC for assembly and GC distribution: (list of GC%, list of # windows)
@@ -20,12 +21,12 @@ def GC_content(filename):
     total_GC_amount = 0
     total_contig_length = 0
     GC_bin_num = int(100 / qconfig.GC_bin_size) + 1
-    GC_distribution_x = [i * qconfig.GC_bin_size for i in range(0, GC_bin_num)] # list of X-coordinates, i.e. GC %
-    GC_distribution_y = [0] * GC_bin_num # list of Y-coordinates, i.e. # windows with GC % = x
+    GC_distribution_x = [i * qconfig.GC_bin_size for i in range(0, GC_bin_num)]  # list of X-coordinates, i.e. GC %
+    GC_distribution_y = [0] * GC_bin_num  # list of Y-coordinates, i.e. # windows with GC % = x
     for name, seq_full in fastaparser.read_fasta(filename): # in tuples: (name, seq)
         total_GC_amount += seq_full.count("G") + seq_full.count("C")
         total_contig_length += len(seq_full) - seq_full.count("N")
-        n = 100 # blocks of length 100
+        n = 100  # blocks of length 100
         # non-overlapping windows
         for seq in [seq_full[i:i+n] for i in range(0, len(seq_full), n)]:
             # skip block if it has less than half of ACGT letters (it also helps with "ends of contigs")
@@ -188,17 +189,25 @@ def do(references, filenames, output_dir, all_pdf, draw_plots, results_dir):
         for i, ref in enumerate(references):
             list_of_GC_distributions_with_ref.append(references_GC_distributions[i])
 
-        plotter.GC_content_plot(references, filenames, list_of_GC_distributions_with_ref, output_dir + '/GC_content_plot', all_pdf)
+        # for reference in references:
+        #     plot_fname = 'GC_content_plot'
+        #     if qconfig.meta:
+        #         plot_fname = 'GC_content_plot_' + reference.name
+
+        plotter.GC_content_plot(references, filenames, list_of_GC_distributions_with_ref,
+                                os.path.join(output_dir, 'GC_content_plot'), all_pdf)
 
         ########################################################################
         # Drawing Nx and NGx plots...
-        plotter.Nx_plot(filenames, lists_of_lengths, output_dir + '/Nx_plot', 'Nx', [], all_pdf)
-        if len(references) == 1:
-            plotter.Nx_plot(filenames, lists_of_lengths, output_dir + '/NGx_plot', 'NGx',
+        plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'Nx_plot'), 'Nx', [], all_pdf)
+
+        if not qconfig.meta:
+            plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'NGx_plot'), 'NGx',
                             [reference_length for i in range(len(filenames))], all_pdf)
-        if len(references) > 1:
+        if qconfig.meta:
             for i, reference in enumerate(references):
-                plotter.Nx_plot(filenames, lists_of_lengths, output_dir + '/NGx_plot_' + reference.name, 'NGx ' + reference.name,
+                plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'NGx_plot_' + reference.name),
+                                'NGx ' + reference.readable_name,
                                 [references_lengths[i] for i in range(len(filenames))], all_pdf)
 
     log.info('Done.')
