@@ -205,7 +205,7 @@ def do(references, filenames, output_dir, all_pdf, draw_plots, results_dir):
         if qconfig.meta:
             ngx_plot_name += ' for references combined'
 
-        plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'NGx_plot'), 'NGx',
-                        [total_ref_len for _ in references], all_pdf)
+        plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, ngx_plot_name), 'NGx',
+                        [total_ref_len for _ in filenames], all_pdf)
 
     log.info('Done.')
