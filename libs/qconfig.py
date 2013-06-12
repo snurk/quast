@@ -36,7 +36,8 @@ short_options = "o:G:O:R:t:M:S:J:jehdsa:T:c:ufnm"
 contig_thresholds = "0,1000"
 min_contig = 500
 genes_lengths = "0,300,1500,3000"
-reference = ''
+# reference = ''
+references_fpaths = []
 genes = ''
 operons = ''
 with_gage = False
@@ -52,6 +53,7 @@ scaffolds = False
 draw_plots = True
 html_report = True
 save_json = False
+json_dirpath = ''
 meta = False
 debug = False
 

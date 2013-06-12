@@ -6,6 +6,7 @@
 # See file LICENSE for details.
 ############################################################################
 
+from __future__ import with_statement
 import logging
 log = logging.getLogger('quast')
 import sys
@@ -14,15 +15,30 @@ import shutil
 import re
 import getopt
 from site import addsitedir
-from libs import qconfig, qutils
-from libs.qutils import notice, warning, error, assert_file_exists
-from libs.qutils import print_timestamp, print_system_info, print_version, uncompress
+from libs import qconfig
+from libs.qutils import notice, warning, error, info, \
+    assert_file_exists, print_timestamp, print_system_info, print_version, \
+    uncompress, correct_name, remove_reports
 from libs import fastaparser
-from libs.html_saver import json_saver
+from libs.html_saver import json_saver, html_saver
 
 addsitedir(os.path.join(qconfig.LIBS_LOCATION, 'site_packages'))
 
 RELEASE_MODE=False
+
+
+class Reference:
+    fpath = ''
+    name = ''
+    is_broken = False
+    chr_fnames = []
+
+    def __init__(self, fpath, name=''):
+        self.fpath = fpath
+        self.name = name
+
+    def __str__(self):
+        return self.name
 
 
 def usage():
@@ -70,7 +86,8 @@ def usage():
         print >> sys.stderr, "                                  By default, QUAST breaks contigs only by extensive misassemblies (not local ones)"
         print >> sys.stderr, ""
         print >> sys.stderr, "-m  --meta                        Metagenomic assembly. Uses MetaGeneMark for gene prediction. "
-        print >> sys.stderr, "                                  Accepts multiple reference files (comma-separated list of filenames after -R option)"
+        print >> sys.stderr, "                                  Accepts multiple reference files (comma-separated list of filenames after -R option)."
+        print >> sys.stderr, "                                  If multiple references are found, --meta option is set automatically."
         print >> sys.stderr, ""
         print >> sys.stderr, "-h  --help                        Prints this message"
 
@@ -108,7 +125,7 @@ def corrected_fname_for_nucmer(fpath):
     dirpath = os.path.dirname(fpath)
     fname = os.path.basename(fpath)
 
-    corr_fname = qutils.correct_name(fname)
+    corr_fname = correct_name(fname)
 
     if corr_fname != fname:
         if os.path.isfile(os.path.join(dirpath, corr_fname)):
@@ -125,50 +142,69 @@ def corrected_fname_for_nucmer(fpath):
     return os.path.join(dirpath, corr_fname)
 
 
-def correct_fasta(original_fpath, corrected_fpath, is_reference=False):
+def correct_reference(reference, corrected_fpath, seq_len_threshold):
+    modified_fasta_entries = correct_fasta(reference.fpath, corrected_fpath, 0)
+
+    if modified_fasta_entries:
+        ref_len = sum(len(chr_seq) for (chr_name, chr_seq) in modified_fasta_entries)
+
+        if ref_len > seq_len_threshold:
+            info('Splitting reference into chromosomes:', indent='  ')
+
+            chr_fpaths = []
+            for i, (chr_name, chr_seq) in enumerate(modified_fasta_entries):
+                info('Chr. ' + str(i + 1) + ': ' + chr_name, indent='    ')
+
+                if len(chr_seq) > seq_len_threshold:
+                    warning('Skipping chr. ' + str(i + 1) + ' because it is longer than ' +
+                            str(seq_len_threshold) + ' (Nucmer\'s constraint)', indent='      ')
+                else:
+                    chr_fpaths.append(corrected_fpath + "_chr_" + str(i + 1))
+                    fastaparser.write_fasta(chr_fpaths[-1], [(chr_name, chr_seq)])
+
+            if len(chr_fpaths) == 0:
+                warning("Skipping reference %s because all its chromosomes exceed Nucmer's constraint of %d bp."
+                        % (os.path.basename(corrected_fpath), seq_len_threshold))
+                reference.fpath = ''
+
+            reference.is_broken = True
+            reference.chr_fpaths = chr_fpaths
+
+        else:
+            reference.fpath = corrected_fpath
+    else:
+        reference.fpath = ''
+
+
+def correct_fasta(original_fpath, corrected_fpath, seq_len_threshold):
     modified_fasta_entries = []
+
     for first_line, seq in fastaparser.read_fasta(original_fpath):
-        if (len(seq) >= qconfig.min_contig) or is_reference:
-            corr_name = qutils.correct_name(first_line)
+        if len(seq) >= seq_len_threshold:
+            name_corrected = correct_name(first_line)
 
             # seq to uppercase, because we later looking only uppercase letters
-            corr_seq = seq.upper()
+            seq_corrected = seq.upper()
 
             # removing \r (Nucmer fails on such sequences)
-            corr_seq = corr_seq.strip('\r')
+            seq_corrected = seq_corrected.strip('\r')
 
             # correcting alternatives (gage can't work with alternatives)
             # dic = {'M': 'A', 'K': 'G', 'R': 'A', 'Y': 'C', 'W': 'A', 'S': 'C', 'V': 'A', 'B': 'C', 'H': 'A', 'D': 'A'}
-            dic = {'M': 'N', 'K': 'N', 'R': 'N', 'Y': 'N', 'W': 'N', 'S': 'N', 'V': 'N', 'B': 'N', 'H': 'N', 'D': 'N'}
-            pat = "(%s)" % "|".join(map(re.escape, dic.keys()))
-            corr_seq = re.sub(pat, lambda m: dic[m.group()], corr_seq)
+            alternatives = {'M': 'N', 'K': 'N', 'R': 'N', 'Y': 'N', 'W': 'N', 'S': 'N', 'V': 'N', 'B': 'N', 'H': 'N', 'D': 'N'}
+            regexp_pattern = "(%s)" % "|".join(map(re.escape, alternatives.keys()))
+            seq_corrected = re.sub(regexp_pattern, lambda m: alternatives[m.group()], seq_corrected)
 
             # make sure that only A, C, G, T or N are in the sequence
-            if re.compile(r'[^ACGTN]').search(corr_seq):
+            if re.compile(r'[^ACGTN]').search(seq_corrected):
                 warning('Skipping ' + original_fpath + ' because it contains non-ACGTN characters.',
                         indent='    ')
-                return False
+                return None
 
-            modified_fasta_entries.append((corr_name, corr_seq))
+            modified_fasta_entries.append((name_corrected, seq_corrected))
 
     fastaparser.write_fasta(corrected_fpath, modified_fasta_entries)
-
-    if is_reference:
-        ref_len = sum(len(chr_seq) for (chr_name, chr_seq) in modified_fasta_entries)
-        if ref_len > qconfig.MAX_REFERENCE_LENGTH:
-            dir_for_splitted_ref = os.path.join(os.path.dirname(corrected_fpath), 'splitted_ref')
-            os.makedirs(dir_for_splitted_ref)
-            for id, (chr_name, chr_seq) in enumerate(modified_fasta_entries):
-                if len(chr_seq) > qconfig.MAX_REFERENCE_LENGTH:
-                    warning("Skipping chromosome " + chr_name + " because it length is greater than " +
-                            str(qconfig.MAX_REFERENCE_LENGTH) + " (Nucmer's constraint).")
-                    continue
-                qconfig.splitted_ref.append(os.path.join(dir_for_splitted_ref, "chr_" + str(id + 1)))
-                fastaparser.write_fasta(qconfig.splitted_ref[-1], [(chr_name, chr_seq)])
-            if len(qconfig.splitted_ref) == 0:
-                warning("Skipping reference because all of its chromosomes exceeded Nucmer's constraint.")
-                return False
-    return True
+    return modified_fasta_entries
 
 
 def main(args):
@@ -197,7 +233,6 @@ def main(args):
         usage()
         sys.exit(2)
 
-    json_outputpath = None
     output_dirpath = None
 
     for opt, arg in options:
@@ -213,7 +248,7 @@ def main(args):
             qconfig.operons = assert_file_exists(arg, 'operons')
 
         elif opt in ('-R', "--reference"):
-            qconfig.reference = assert_file_exists(arg, 'reference')
+            qconfig.references_fpaths = [assert_file_exists(fpath, 'reference') for fpath in arg.split(',')]
 
         elif opt in ('-t', "--contig-thresholds"):
             qconfig.contig_thresholds = arg
@@ -241,7 +276,7 @@ def main(args):
         elif opt in ('-J', '--save-json-to'):
             qconfig.save_json = True
             qconfig.make_latest_symlink = False
-            json_outputpath = arg
+            qconfig.json_dirpath = arg
 
         elif opt in ('-s', "--scaffolds"):
             qconfig.scaffolds = True
@@ -311,6 +346,9 @@ def main(args):
     if not os.path.isdir(output_dirpath):
         os.makedirs(output_dirpath)
 
+    if qconfig.html_report:
+        html_saver.output_dirpath = output_dirpath
+
     # duplicating output to a log file
     logfile = os.path.join(output_dirpath, qconfig.logfile)
     log.setLevel(logging.DEBUG)
@@ -341,7 +379,7 @@ def main(args):
 
     if existing_alignments:
         notice("Output directory already exists. Existing Nucmer alignments can be used.")
-        qutils.remove_reports(output_dirpath)
+        remove_reports(output_dirpath)
 
     qconfig.contig_thresholds = map(int, qconfig.contig_thresholds.split(","))
     qconfig.genes_lengths = map(int, qconfig.genes_lengths.split(","))
@@ -368,13 +406,13 @@ def main(args):
 
     # Json directory
     if qconfig.save_json:
-        if json_outputpath:
-            if not os.path.isdir(json_outputpath):
-                os.makedirs(json_outputpath)
+        if qconfig.json_dirpath:
+            json_saver.output_dirpath = qconfig.json_dirpath
         else:
-            json_outputpath = os.path.join(output_dirpath, qconfig.default_json_dirname)
-            if not os.path.isdir(json_outputpath):
-                os.makedirs(json_outputpath)
+            json_saver.output_dirpath = os.path.join(output_dirpath, qconfig.default_json_dirname)
+
+        if not os.path.isdir(json_saver.output_dirpath):
+            os.makedirs(json_saver.output_dirpath)
 
     # Where corrected contigs will be saved
     corrected_dirpath = os.path.join(output_dirpath, qconfig.corrected_dirname)
@@ -384,37 +422,75 @@ def main(args):
     all_pdf = None
 
     ########################################################################
-
-    from libs import reporting
-    reload(reporting)
-
     message = "Processing contig files"
-    if qconfig.reference:
+    if qconfig.references_fpaths:
         message += " and reference"
+    if len(qconfig.references_fpaths) > 1:
+        message += 's'
     message += "..."
-    log.info(message)
+    info(message)
 
     if os.path.isdir(corrected_dirpath):
         shutil.rmtree(corrected_dirpath)
     os.mkdir(corrected_dirpath)
 
-    # Processing reference
-    if qconfig.reference:
-        ref_basename, ref_extension = os.path.splitext(qconfig.reference)
-        corrected_and_unziped_reference_fname = os.path.join(corrected_dirpath, os.path.basename(ref_basename))
-        corrected_and_unziped_reference_fname = corrected_fname_for_nucmer(corrected_and_unziped_reference_fname)
 
-        # unzipping (if needed)
-        if uncompress(qconfig.reference, corrected_and_unziped_reference_fname):
-            qconfig.reference = corrected_and_unziped_reference_fname
+    ########################################################
+    ### Processing references
+    ########################################################
+    references = []
 
-        # correcting
-        if not correct_fasta(qconfig.reference, corrected_and_unziped_reference_fname, True):
-            qconfig.reference = ""
-        else:
-            qconfig.reference = corrected_and_unziped_reference_fname
+    if qconfig.references_fpaths:
+        references = [Reference(fpath) for fpath in qconfig.references_fpaths]
 
-    # Processing contigs
+        for reference in references:
+            ref_fname = os.path.basename(reference.fpath)
+            ref_basename, ref_extension = os.path.splitext(ref_fname)
+
+            # new reference fpath - for a correted and uncompressed one
+            new_ref_fpath = corrected_fname_for_nucmer(os.path.join(corrected_dirpath, ref_basename))
+
+            # uncompress(reference.fpath, new_ref_fpath)
+
+            # correcting fasta and splitting big references to multiple chromosomes
+            correct_reference(reference, new_ref_fpath, qconfig.MAX_REFERENCE_LENGTH)
+
+            reference.fpath = new_ref_fpath
+            reference.name = os.path.basename(new_ref_fpath)
+
+        # Multireference
+        if len(references) > 1:
+            fpath = os.path.join(corrected_dirpath, 'multireference.fasta')
+            multi_reference = Reference(fpath, name='All_references_combined')
+
+            with open(fpath, 'a') as multi_ref_f:
+                for reference in references:
+                    with open(reference.fpath) as ref_f:
+                        multi_ref_f.write(ref_f.read())
+
+            correct_reference(multi_reference, fpath, qconfig.MAX_REFERENCE_LENGTH)
+            references = [multi_reference] + references
+
+
+    ########################################################################
+    ### Initializing reporting and plotting
+    ########################################################################
+    from libs import reporting
+    reload(reporting)
+    reporting.references = references
+
+    if qconfig.draw_plots:
+        from libs import plotter  # Do not remove this line! It would lead to a warning in matplotlib.
+        try:
+            from matplotlib.backends.backend_pdf import PdfPages
+            all_pdf = PdfPages(all_pdf_filename)
+        except:
+            all_pdf = None
+
+
+    ########################################################
+    ### Processing contigs
+    ########################################################
     def handle_fasta(contigs_fpath, corr_fpath):
         lengths = fastaparser.get_lengths_from_fastafile(contigs_fpath)
         if not sum(l for l in lengths if l >= qconfig.min_contig):
@@ -422,7 +498,7 @@ def main(args):
             return False
 
         # correcting
-        if not correct_fasta(contigs_fpath, corr_fpath):
+        if not correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig):
             return False
 
         ## filling column "Assembly" with names of assemblies
@@ -436,7 +512,7 @@ def main(args):
     ## 1) Some embedded tools can fail on some strings with "...", "+", "-", etc
     ## 2) Nucmer fails on names like "contig 1_bla_bla", "contig 2_bla_bla" (it interprets as a contig's name only the first word of caption and gets ambiguous contigs names)
     new_contigs_fpaths = []
-    for id, contigs_fpath in enumerate(contigs_fpaths):
+    for i, contigs_fpath in enumerate(contigs_fpaths):
         corr_fname = corrected_fname_for_nucmer(os.path.basename(contigs_fpath))
         corr_fpath = os.path.splitext(os.path.join(corrected_dirpath, corr_fname))[0]
         if os.path.isfile(corr_fpath):  # in case of files with the same names
@@ -455,7 +531,7 @@ def main(args):
 
             broken_scaffolds_fasta = []
             contigs_counter = 0
-            for id, (name, seq) in enumerate(fastaparser.read_fasta(contigs_fpath)):
+            for i, (name, seq) in enumerate(fastaparser.read_fasta(contigs_fpath)):
                 i = 0
                 cur_contig_number = 1
                 cur_contig_start = 0
@@ -476,7 +552,7 @@ def main(args):
 
             fastaparser.write_fasta(broken_scaffolds_path, broken_scaffolds_fasta)
             log.info("      %d scaffolds (%s) were broken into %d contigs (%s)"\
-                  % (id + 1, os.path.basename(corr_fpath), contigs_counter, os.path.basename(broken_scaffolds_path)))
+                  % (i + 1, os.path.basename(corr_fpath), contigs_counter, os.path.basename(broken_scaffolds_path)))
             if handle_fasta(broken_scaffolds_path, broken_scaffolds_path):
                 new_contigs_fpaths.append(broken_scaffolds_path)
                 qconfig.list_of_broken_scaffolds.append(os.path.basename(broken_scaffolds_path))
@@ -494,62 +570,61 @@ def main(args):
               "Please, provide different files or decrease --min-contig threshold.",
               exit_with_code=4)
 
-    # End of processing
     log.info('Done.')
 
+
+    ########################################################################
+    ### GAGE
+    ########################################################################
     if qconfig.with_gage:
-        ########################################################################
-        ### GAGE
-        ########################################################################
-        if not qconfig.reference:
+        if not references:
             warning("GAGE can't be run without a reference and will be skipped.")
         else:
             from libs import gage
-            gage.do(qconfig.reference, contigs_fpaths, output_dirpath)
+            # warning("GAGE can only work with a single reference, choosing the first one, %s" % references[0].fpath)
+            for reference in references:
+                gage.do(reference, contigs_fpaths, output_dirpath)
 
-    if qconfig.draw_plots:
-        from libs import plotter  # Do not remove this line! It would lead to a warning in matplotlib.
-        try:
-            from matplotlib.backends.backend_pdf import PdfPages
-            all_pdf = PdfPages(all_pdf_filename)
-        except:
-            all_pdf = None
 
     ########################################################################
     ### Stats and plots
     ########################################################################
     from libs import basic_stats
-    basic_stats.do(qconfig.reference, contigs_fpaths, output_dirpath + '/basic_stats', all_pdf, qconfig.draw_plots,
-                   json_outputpath, output_dirpath)
+    basic_stats.do(references, contigs_fpaths, output_dirpath + '/basic_stats', all_pdf,
+                   qconfig.draw_plots, output_dirpath)
 
-    aligned_fpaths = []
-    aligned_lengths_lists = []
-    if qconfig.reference:
+    for reference in references:
+        aligned_fpaths = []
+        aligned_lengths_lists = []
+
         ########################################################################
         ### former PLANTAKOLYA, PLANTAGORA
         ########################################################################
         from libs import contigs_analyzer
-        nucmer_statuses, aligned_lengths_per_fpath = contigs_analyzer.do(qconfig.reference, contigs_fpaths, qconfig.prokaryote, output_dirpath + '/contigs_reports')
+        nucmer_statuses, aligned_lengths_per_fpath = contigs_analyzer.do(
+            reference, contigs_fpaths, qconfig.prokaryote, output_dirpath + '/contigs_reports')
+
         for contigs_fpath in contigs_fpaths:
             if nucmer_statuses[contigs_fpath] == contigs_analyzer.NucmerStatus.OK:
                 aligned_fpaths.append(contigs_fpath)
                 aligned_lengths_lists.append(aligned_lengths_per_fpath[contigs_fpath])
 
-    # Before continue evaluating, check if nucmer didn't skip all of the contigs files.
-    if len(aligned_fpaths) and qconfig.reference:
-        ########################################################################
-        ### NA and NGA ("aligned N and NG")
-        ########################################################################
-        from libs import aligned_stats
-        aligned_stats.do(qconfig.reference, aligned_fpaths, aligned_lengths_lists, output_dirpath + '/contigs_reports',
-                         output_dirpath + '/aligned_stats', all_pdf, qconfig.draw_plots, json_outputpath, output_dirpath)
+        # Before continue evaluating, check if nucmer didn't skip all of the contigs files.
+        if aligned_fpaths:
+            ########################################################################
+            ### NA and NGA ("aligned N and NG")
+            ########################################################################
+            from libs import aligned_stats
+            aligned_stats.do(reference, aligned_fpaths, aligned_lengths_lists, output_dirpath + '/contigs_reports',
+                             output_dirpath + '/aligned_stats', all_pdf, qconfig.draw_plots, output_dirpath)
 
-        ########################################################################
-        ### GENOME_ANALYZER
-        ########################################################################
-        from libs import genome_analyzer
-        genome_analyzer.do(qconfig.reference, aligned_fpaths, output_dirpath + '/contigs_reports',
-                           output_dirpath + '/genome_stats', qconfig.genes, qconfig.operons, all_pdf, qconfig.draw_plots, json_outputpath, output_dirpath)
+            ########################################################################
+            ### GENOME_ANALYZER
+            ########################################################################
+            from libs import genome_analyzer
+            genome_analyzer.do(reference, aligned_fpaths, output_dirpath + '/contigs_reports',
+                               output_dirpath + '/genome_stats', qconfig.genes, qconfig.operons,
+                               all_pdf, qconfig.draw_plots, output_dirpath)
 
     # def add_empty_predicted_genes_fields():
     #     # TODO: make it in a more appropriate way (don't output predicted genes if annotations are provided)
@@ -582,18 +657,14 @@ def main(args):
 
     # changing names of assemblies to more human-readable versions if provided
     if qconfig.legend_names and len(contigs_fpaths) == len(qconfig.legend_names):
-        for id, contigs_fpath in enumerate(contigs_fpaths):
+        for i, contigs_fpath in enumerate(contigs_fpaths):
             report = reporting.get(contigs_fpath)
-            report.add_field(reporting.Fields.NAME, qconfig.legend_names[id])
+            report.add_field(reporting.Fields.NAME, qconfig.legend_names[i])
 
     reporting.save_total(output_dirpath)
 
-    if json_outputpath:
-        json_saver.save_total_report(json_outputpath, qconfig.min_contig)
-
-    if qconfig.html_report:
-        from libs.html_saver import html_saver
-        html_saver.save_total_report(output_dirpath, qconfig.min_contig)
+    json_saver.save_total_report(qconfig.min_contig)
+    html_saver.save_total_report(qconfig.min_contig)
 
     if qconfig.draw_plots and all_pdf:
         log.info('  All pdf files are merged to ' + all_pdf_filename)

@@ -8,6 +8,10 @@ import datetime
 import os
 from libs.qutils import warning
 
+
+output_dirpath = None
+
+
 simplejson_error = False
 try:
     import json
@@ -43,18 +47,21 @@ def save(fpath, what):
     return fpath
 
 
-def save_total_report(output_dir, min_contig):
-    from libs import reporting
-    assemblies_names = reporting.assemblies_order
-    report = reporting.table(reporting.Fields.grouped_order)
-    t = datetime.datetime.now()
+def save_total_report(min_contig, output_dirpath=output_dirpath):
+    if output_dirpath:
+        from libs import reporting
+        assemblies_names = reporting.assemblies_order
+        report = reporting.get_table(reporting.Fields.grouped_order)
+        t = datetime.datetime.now()
 
-    return save(output_dir + total_report_fn, {
-        'date': t.strftime('%d %B %Y, %A, %H:%M:%S'),
-        'assembliesNames': assemblies_names,
-        'report': report,
-        'minContig': min_contig,
-    })
+        return save(output_dirpath + total_report_fn, {
+            'date': t.strftime('%d %B %Y, %A, %H:%M:%S'),
+            'assembliesNames': assemblies_names,
+            'report': report,
+            'minContig': min_contig,
+        })
+    else:
+        return None
 
 #def save_old_total_report(output_dir, min_contig):
 #    from libs import reporting
@@ -87,49 +94,67 @@ def save_total_report(output_dir, min_contig):
 #        'min_contig' : min_contig,
 #        })
 
-def save_contigs_lengths(output_dir, filenames, lists_of_lengths):
-    lists_of_lengths = [sorted(list, reverse=True) for list in lists_of_lengths]
+def save_contigs_lengths(filenames, lists_of_lengths, output_dirpath=output_dirpath):
+    if output_dirpath:
+        lists_of_lengths = [sorted(list, reverse=True) for list in lists_of_lengths]
 
-    return save(output_dir + contigs_lengths_fn, {
-        'filenames': map(os.path.basename, filenames),
-        'lists_of_lengths': lists_of_lengths
-    })
-
-
-def save_reference_length(output_dir, reference_length):
-    return save(output_dir + ref_length_fn, { 'reflen': reference_length })
-
-
-def save_aligned_contigs_lengths(output_dir, filenames, lists_of_lengths):
-    lists_of_lengths = [sorted(list, reverse=True) for list in lists_of_lengths]
-
-    return save(output_dir + aligned_contigs_fn, {
-        'filenames': map(os.path.basename, filenames),
-        'lists_of_lengths': lists_of_lengths
-    })
-
-
-def save_assembly_lengths(output_dir, filenames, assemblies_lengths):
-    return save(output_dir + assemblies_lengths_fn, {
-        'filenames': map(os.path.basename, filenames),
-        'assemblies_lengths': assemblies_lengths
-    })
-
-
-def save_features_in_contigs(output_dir, filenames, feature_name, features_in_contigs, ref_features_num):
-    return save(output_dir + prefix_fn + feature_name + in_contigs_suffix_fn, {
-        'filenames': map(os.path.basename, filenames),
-        feature_name + '_in_contigs': dict((os.path.basename(fn), feature_amounts) for (fn, feature_amounts) in features_in_contigs.items()),
-        'ref_' + feature_name + '_number': ref_features_num,
+        return save(output_dirpath + contigs_lengths_fn, {
+            'filenames': map(os.path.basename, filenames),
+            'lists_of_lengths': lists_of_lengths
         })
+    else:
+        return None
 
 
-def save_GC_info(output_dir, filenames, list_of_GC_distributions):
-    return save(output_dir + gc_fn, {
-        'filenames': map(os.path.basename, filenames),
-        'list_of_GC_distributions': list_of_GC_distributions,
-        'lists_of_gc_info': None,
+def save_reference_length(reference_length, output_dirpath=output_dirpath):
+    if output_dirpath:
+        return save(output_dirpath + ref_length_fn, {'reflen': reference_length })
+    else:
+        return None
+
+
+def save_aligned_contigs_lengths(filenames, lists_of_lengths, output_dirpath=output_dirpath):
+    if output_dirpath:
+        lists_of_lengths = [sorted(list, reverse=True) for list in lists_of_lengths]
+
+        return save(output_dirpath + aligned_contigs_fn, {
+            'filenames': map(os.path.basename, filenames),
+            'lists_of_lengths': lists_of_lengths
         })
+    else:
+        return None
+
+
+def save_assembly_lengths(filenames, assemblies_lengths, output_dirpath=output_dirpath):
+    if output_dirpath:
+        return save(output_dirpath + assemblies_lengths_fn, {
+            'filenames': map(os.path.basename, filenames),
+            'assemblies_lengths': assemblies_lengths
+        })
+    else:
+        return None
+
+
+def save_features_in_contigs(filenames, feature_name, features_in_contigs, ref_features_num, output_dirpath=output_dirpath):
+    if output_dirpath:
+        return save(output_dirpath + prefix_fn + feature_name + in_contigs_suffix_fn, {
+            'filenames': map(os.path.basename, filenames),
+            feature_name + '_in_contigs': dict((os.path.basename(fn), feature_amounts) for (fn, feature_amounts) in features_in_contigs.items()),
+            'ref_' + feature_name + '_number': ref_features_num,
+            })
+    else:
+        return None
+
+
+def save_GC_info( filenames, list_of_GC_distributions, output_dirpath=output_dirpath):
+    if output_dirpath:
+        return save(output_dirpath + gc_fn, {
+            'filenames': map(os.path.basename, filenames),
+            'list_of_GC_distributions': list_of_GC_distributions,
+            'lists_of_gc_info': None,
+            })
+    else:
+        return None
 
 
 

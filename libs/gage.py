@@ -25,7 +25,7 @@ def run_gage(id, filename, gage_results_path, gage_tool_path, reference, tmp_dir
     logfile_err = open(logfilename_err, 'w')
 
     return_code = subprocess.call(
-        ['sh', gage_tool_path, reference, filename, tmp_dir, str(qconfig.min_contig)],
+        ['sh', gage_tool_path, reference.fpath, filename, tmp_dir, str(qconfig.min_contig)],
         stdout=logfile_out, stderr=logfile_err)
 
     logfile_out.close()
@@ -91,10 +91,12 @@ def do(reference, contigs, output_dirpath):
             cur_metric_id = 0
             for line in logfile_out:
                 if metrics[cur_metric_id] in line:
-                    if (metrics[cur_metric_id].startswith('N50')):
-                        report.add_field(metrics_in_reporting[cur_metric_id], line.split(metrics[cur_metric_id] + ':')[1].strip())
+                    if metrics[cur_metric_id].startswith('N50'):
+                        report.add_field(metrics_in_reporting[cur_metric_id], line.split(metrics[cur_metric_id] + ':')[1].strip(),
+                                         reference)
                     else:
-                        report.add_field(metrics_in_reporting[cur_metric_id], line.split(':')[1].strip())
+                        report.add_field(metrics_in_reporting[cur_metric_id], line.split(':')[1].strip(),
+                                         reference)
                     cur_metric_id += 1
                     if cur_metric_id == len(metrics):
                         break

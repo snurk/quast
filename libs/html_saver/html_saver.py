@@ -13,6 +13,9 @@ from libs import qconfig
 from libs.html_saver import json_saver
 
 
+output_dirpath = None
+
+
 def get_real_path(relpath_in_html_saver):
     return os.path.join(qconfig.LIBS_LOCATION, 'html_saver', relpath_in_html_saver)
 
@@ -50,9 +53,10 @@ aux_files = [
     'common.css',
 ]
 
-def init(results_dirpath):
+
+def __init():
 #    shutil.copy(template_fpath,     os.path.join(results_dirpath, report_fname))
-    aux_dirpath = os.path.join(results_dirpath, aux_dirname)
+    aux_dirpath = os.path.join(output_dirpath, aux_dirname)
     os.mkdir(aux_dirpath)
     os.mkdir(aux_dirpath + '/flot')
     os.mkdir(aux_dirpath + '/scripts')
@@ -69,7 +73,7 @@ def init(results_dirpath):
         html = html.replace("/" + static_dirname, aux_dirname)
         html = html.replace('{{ glossary }}', open(get_real_path('glossary.json')).read())
 
-        html_fpath = os.path.join(results_dirpath, report_fname)
+        html_fpath = os.path.join(output_dirpath, report_fname)
         if os.path.exists(html_fpath):
             os.remove(html_fpath)
         with open(html_fpath, 'w') as f_html:
@@ -107,11 +111,11 @@ def init(results_dirpath):
 #            f_html.write(html)
 
 
-def append(results_dirpath, json_fpath, keyword):
-    html_fpath = os.path.join(results_dirpath, report_fname)
+def __append(json_fpath, keyword):
+    html_fpath = os.path.join(output_dirpath, report_fname)
 
     if not os.path.isfile(html_fpath):
-        init(results_dirpath)
+        __init()
 
     # reading JSON file
     with open(json_fpath) as f_json:
@@ -130,45 +134,46 @@ def append(results_dirpath, json_fpath, keyword):
         f_html.write(html_text)
 
 
-def save_total_report(results_dirpath, min_contig):
-    json_fpath = json_saver.save_total_report(results_dirpath, min_contig)
+def save_total_report(min_contig):
+    json_fpath = json_saver.save_total_report(min_contig, output_dirpath)
     if json_fpath:
-        append(results_dirpath, json_fpath, 'totalReport')
+        __append(json_fpath, 'totalReport')
         log = logging.getLogger('quast')
-        log.info('  HTML version saved to ' + os.path.join(results_dirpath, report_fname))
+        log.info('  HTML version saved to ' + os.path.join(output_dirpath, report_fname))
 
 
-def save_contigs_lengths(results_dirpath, filenames, lists_of_lengths):
-    json_fpath = json_saver.save_contigs_lengths(results_dirpath, filenames, lists_of_lengths)
+def save_contigs_lengths(filenames, lists_of_lengths):
+    json_fpath = json_saver.save_contigs_lengths(filenames, lists_of_lengths, output_dirpath)
     if json_fpath:
-        append(results_dirpath, json_fpath, 'contigsLenghts')
+        __append(json_fpath, 'contigsLenghts')
 
 
-def save_reference_length(results_dirpath, reference_length):
-    json_fpath = json_saver.save_reference_length(results_dirpath, reference_length)
+def save_reference_length(reference_length):
+    json_fpath = json_saver.save_reference_length(reference_length, output_dirpath)
     if json_fpath:
-        append(results_dirpath, json_fpath, 'referenceLength')
+        __append(json_fpath, 'referenceLength')
 
 
-def save_aligned_contigs_lengths(results_dirpath, filenames, lists_of_lengths):
-    json_fpath = json_saver.save_aligned_contigs_lengths(results_dirpath, filenames, lists_of_lengths)
+def save_aligned_contigs_lengths(filenames, lists_of_lengths):
+    json_fpath = json_saver.save_aligned_contigs_lengths(filenames, lists_of_lengths, output_dirpath)
     if json_fpath:
-        append(results_dirpath, json_fpath, 'alignedContigsLengths')
+        __append(json_fpath, 'alignedContigsLengths')
 
 
-def save_assembly_lengths(results_dirpath, filenames, assemblies_lengths):
-    json_fpath = json_saver.save_assembly_lengths(results_dirpath, filenames, assemblies_lengths)
+def save_assembly_lengths(filenames, assemblies_lengths):
+    json_fpath = json_saver.save_assembly_lengths(filenames, assemblies_lengths, output_dirpath)
     if json_fpath:
-        append(results_dirpath, json_fpath, 'assembliesLengths')
+        __append(json_fpath, 'assembliesLengths')
 
 
-def save_features_in_contigs(results_dirpath, filenames, feature_name, feature_in_contigs, ref_feature_num):
-    json_fpath = json_saver.save_features_in_contigs(results_dirpath, filenames, feature_name, feature_in_contigs, ref_feature_num)
+def save_features_in_contigs(filenames, feature_name, feature_in_contigs, ref_feature_num):
+    json_fpath = json_saver.save_features_in_contigs(
+        filenames, feature_name, feature_in_contigs, ref_feature_num, output_dirpath)
     if json_fpath:
-        append(results_dirpath, json_fpath, feature_name + 'InContigs')
+        __append(json_fpath, feature_name + 'InContigs')
 
 
-def save_GC_info(results_dirpath, filenames, list_of_GC_distributions):
-    json_fpath = json_saver.save_GC_info(results_dirpath, filenames, list_of_GC_distributions)
+def save_GC_info(filenames, list_of_GC_distributions):
+    json_fpath = json_saver.save_GC_info(filenames, list_of_GC_distributions, output_dirpath)
     if json_fpath:
-        append(results_dirpath, json_fpath, 'gcInfos')
+        __append(json_fpath, 'gcInfos')

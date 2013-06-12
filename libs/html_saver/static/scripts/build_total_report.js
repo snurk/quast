@@ -32,125 +32,132 @@ function buildTotalReport(assembliesNames, report, date, minContig, glossary, qu
     var table = '';
     table += '<table cellspacing="0" class="report-table draggable">';
 
-    for (var group_n = 0; group_n < report.length; group_n++) {
-        var group = report[group_n];
-        var groupName = group[0];
-        var metrics = group[1];
-        var width = assembliesNames.length + 1;
+    var global_group_n = 0;
+    for (var ref_n = 0; ref_n < report.length; ref_n++) {
+        var ref = report[ref_n];
+        var refName = ref[0];
+        var groups = ref[1];
 
-        if (groupName == 'Reference statistics') {
-            var stats = {};
-            for (var metric_n = 0; metric_n < metrics.length; metric_n++) {
-                var metric = metrics[metric_n];
-                var metricName = metric.metricName;
-                var value = metric.values[0];
-                stats[metricName] = value;
+        for (var group_n = 0; group_n < groups.length; group_n++, global_group_n++) {
+            var group = groups[group_n];
+            var groupName = group[0];
+            var metrics = group[1];
+            var width = assembliesNames.length + 1;
+
+            if (groupName == 'Reference statistics') {
+                var stats = {};
+                for (var metric_n = 0; metric_n < metrics.length; metric_n++) {
+                    var metric = metrics[metric_n];
+                    var metricName = metric.metricName;
+                    var value = metric.values[0];
+                    stats[metricName] = value;
+                }
+                var refLen = stats['Reference length'];
+                var refGC = stats['Reference GC (%)'];
+                var refGenes = stats['Reference genes'];
+                var refOperons = stats['Reference operons'];
+
+                if (refLen) {
+                    $('#dataset_name_p').append('<br>' + toPrettyString(refLen, 'bp'));
+                }
+                if (refGC)
+                    $('#dataset_name_p').append('<br>' + toPrettyString(refGC) + ' % GC');
+
+                if (refGenes)
+                    $('#dataset_name_p').append('<br>' + toPrettyString(refGenes) + ' genes');
+
+                if (refOperons)
+                    $('#dataset_name_p').append('<br>' + toPrettyString(refOperons) + ' operons');
+
+                continue;
             }
-            var refLen = stats['Reference length'];
-            var refGC = stats['Reference GC (%)'];
-            var refGenes = stats['Reference genes'];
-            var refOperons = stats['Reference operons'];
 
-            if (refLen) {
-                $('#dataset_name_p').append('<br>' + toPrettyString(refLen, 'bp'));
-            }
-            if (refGC)
-                $('#dataset_name_p').append('<br>' + toPrettyString(refGC) + ' % GC');
+            if (global_group_n == 0) {
+                table += '<tr class="header-tr"><td id="first_td">' + groupName + '</td>';
 
-            if (refGenes)
-                $('#dataset_name_p').append('<br>' + toPrettyString(refGenes) + ' genes');
+                for (var assembly_n = 0; assembly_n < assembliesNames.length; assembly_n++) {
+                    var assemblyName = assembliesNames[assembly_n];
+                    if (assemblyName.length > 30) {
+                        assemblyName =
+                            '<span class="tooltip-link" rel="tooltip" title="' + assemblyName + '">' +
+                                assemblyName.trunc(30) +
+                                '</span>'
+                    }
 
-            if (refOperons)
-                $('#dataset_name_p').append('<br>' + toPrettyString(refOperons) + ' operons');
-
-            continue;
-        }
-
-        if (group_n == 0) {
-            table += '<tr class="header-tr"><td id="first_td">' + groupName + '</td>';
-
-            for (var assembly_n = 0; assembly_n < assembliesNames.length; assembly_n++) {
-                var assemblyName = assembliesNames[assembly_n];
-                if (assemblyName.length > 30) {
-                    assemblyName =
-                        '<span class="tooltip-link" rel="tooltip" title="' + assemblyName + '">' +
-                            assemblyName.trunc(30) +
-                            '</span>'
+                    table += '<td>' + assemblyName + '</td>';
                 }
 
-                table += '<td>' + assemblyName + '</td>';
-            }
-
-        } else {
-            table +=
-                '<tr class="subheader-tr row_hidden group_empty" id="group_' + group_n + '">' +
-                    '<td>' + groupName + '</td>'; //colspan="' + width + '"
-            for (var i = 0; i < width - 1; i++) {
-                table += '<td></td>';
-            }
-            table += '</tr>';
-        }
-
-        for (var metric_n = 0; metric_n < metrics.length; metric_n++) {
-            (function(group_n) {
-                var id_group = '#group_' + group_n;
-                $(function() {
-                    $(id_group).removeClass('group_empty');
-                });
-            })(group_n);
-
-            var metric = metrics[metric_n];
-            var metricName = metric.metricName;
-            var quality = metric.quality;
-            var values = metric.values;
-
-            var trClass = 'content-row';
-            if (metric.isMain || $.inArray(metricName, mainMetrics) > -1) {
-                (function(group_n) {
-                    var id_group = '#group_' + group_n;
-                    $(function() {
-                        $(id_group).removeClass('row_hidden');
-                    });
-                })(group_n);
             } else {
-                trClass = 'content-row row_hidden';
+                table +=
+                    '<tr class="subheader-tr row_hidden group_empty" id="group_' + global_group_n + '">' +
+                        '<td>' + groupName + '</td>'; //colspan="' + width + '"
+                for (var i = 0; i < width - 1; i++) {
+                    table += '<td></td>';
+                }
+                table += '</tr>';
             }
 
-            table +=
-                '<tr class="' + trClass + '" quality="' + quality + '">' +
-                    '<td><span class="metric-name">' +
-                        nbsp(addTooltipIfDefinitionExists(glossary, metricName), metricName) +
-                    '</span>' +
-                '</td>';
+            for (var metric_n = 0; metric_n < metrics.length; metric_n++) {
+                (function(global_group_n) {
+                    var id_group = '#group_' + global_group_n;
+                    $(function() {
+                        $(id_group).removeClass('group_empty');
+                    });
+                })(global_group_n);
 
-            for (var value_n = 0; value_n < values.length; value_n++) {
-                var value = values[value_n];
+                var metric = metrics[metric_n];
+                var metricName = metric.metricName;
+                var quality = metric.quality;
+                var values = metric.values;
 
-                if (value === null || value === '') {
-                    table += '<td><span>-</span></td>';
+                var trClass = 'content-row';
+                if (metric.isMain || $.inArray(metricName, mainMetrics) > -1) {
+                    (function(global_group_n) {
+                        var id_group = '#group_' + global_group_n;
+                        $(function() {
+                            $(id_group).removeClass('row_hidden');
+                        });
+                    })(global_group_n);
                 } else {
-                    if (typeof value === 'number') {
-                        table +=
-                            '<td number="' + value + '"><span>'
-                                + toPrettyString(value) + '</span></td>';
+                    trClass = 'content-row row_hidden';
+                }
+
+                table +=
+                    '<tr class="' + trClass + '" quality="' + quality + '">' +
+                        '<td><span class="metric-name">' +
+                            nbsp(addTooltipIfDefinitionExists(glossary, metricName), metricName) +
+                        '</span>' +
+                    '</td>';
+
+                for (var value_n = 0; value_n < values.length; value_n++) {
+                    var value = values[value_n];
+
+                    if (value === null || value === '') {
+                        table += '<td><span>-</span></td>';
                     } else {
-                        var result = /([0-9\.]+)(.*)/.exec(value);
-                        var num = parseFloat(result[1]);
-                        var rest = result[2];
-//                        alert('value = ' + value + ' result = ' + result);
-
-//                        var num = parseFloat(value);
-
-                        if (num !== null) {
-                            table += '<td number="' + num + '"><span>' + toPrettyString(num) + rest + '</span></td>';
+                        if (typeof value === 'number') {
+                            table +=
+                                '<td number="' + value + '"><span>'
+                                    + toPrettyString(value) + '</span></td>';
                         } else {
-                            table += '<td><span>' + value + '</span></td>';
+                            var result = /([0-9\.]+)(.*)/.exec(value);
+                            var num = parseFloat(result[1]);
+                            var rest = result[2];
+    //                        alert('value = ' + value + ' result = ' + result);
+
+    //                        var num = parseFloat(value);
+
+                            if (num !== null) {
+                                table += '<td number="' + num + '"><span>' + toPrettyString(num) + rest + '</span></td>';
+                            } else {
+                                table += '<td><span>' + value + '</span></td>';
+                            }
                         }
                     }
                 }
             }
+            table += '</tr>';
         }
-        table += '</tr>';
     }
     table += '</table>';
 

@@ -8,7 +8,7 @@ import logging
 import os
 import itertools
 import fastaparser
-from libs.html_saver import json_saver
+from libs.html_saver import json_saver, html_saver
 from libs import qconfig
 from qutils import id_to_str, print_timestamp
 import reporting
@@ -70,7 +70,7 @@ def GC_content(filename):
     return total_GC, (GC_distribution_x, GC_distribution_y)
 
 
-def do(reference, filenames, output_dir, all_pdf, draw_plots, json_output_dir, results_dir):
+def do(references, filenames, output_dir, all_pdf, draw_plots, results_dir):
     log = logging.getLogger('quast')
 
     print_timestamp()
@@ -79,48 +79,52 @@ def do(reference, filenames, output_dir, all_pdf, draw_plots, json_output_dir, r
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
 
-    reference_length = None
-    if reference:
-        reference_length = sum(fastaparser.get_lengths_from_fastafile(reference))
-        reference_GC, reference_GC_distribution = GC_content(reference)
+    ###### Refereneces statistics ######
+    references_lengths = []
+    references_GCs = []
+    references_GC_distributions = []
+    for reference in references:
+        reference_length = sum(fastaparser.get_lengths_from_fastafile(reference.fpath))
+        reference_GC, reference_GC_distribution = GC_content(reference.fpath)
+
+        references_lengths.append(reference_length)
+        references_GCs.append(reference_GC)
+        references_GC_distributions.append(reference_GC_distribution)
 
         log.info('  Reference genome:')
-        log.info('    ' + os.path.basename(reference) + ', Reference length = ' + str(reference_length) + ', Reference GC % = ' + '%.2f' % reference_GC)
-    elif qconfig.estimated_reference_size:
-        reference_length = qconfig.estimated_reference_size
-        log.info('  Estimated reference length = ' + str(reference_length))
+        log.info('    ' + os.path.basename(reference.fpath) + ', Reference length = ' +
+                 str(reference_length) + ', Reference GC % = ' + '%.2f' % reference_GC)
 
-    if reference_length:
-        # Saving the reference in JSON
-        if json_output_dir:
-            json_saver.save_reference_length(json_output_dir, reference_length)
+    total_ref_len = None
+    if references:
+        total_ref_len = sum(references_lengths)
 
-        # Saving for an HTML report
-        if qconfig.html_report:
-            from libs.html_saver import html_saver
-            html_saver.save_reference_length(results_dir, reference_length)
+    est_ref_len = None
+    if not references and qconfig.estimated_reference_size:
+        est_ref_len = qconfig.estimated_reference_size
+        log.info('  Estimated reference length = ' + str(est_ref_len))
 
+    if total_ref_len or est_ref_len:
+        json_saver.save_reference_length(total_ref_len or est_ref_len)
+        html_saver.save_reference_length(total_ref_len or est_ref_len)
+
+    ###### Contigs statistics ######
     log.info('  Contigs files: ')
     lists_of_lengths = []
     numbers_of_Ns = []
-    for id, filename in enumerate(filenames):
-        log.info('    ' + id_to_str(id) + os.path.basename(filename))
+    for i, filename in enumerate(filenames):
+        log.info('    ' + id_to_str(i) + os.path.basename(filename))
         #lists_of_lengths.append(fastaparser.get_lengths_from_fastafile(filename))
         list_of_length = []
         number_of_Ns = 0
-        for (name, seq) in fastaparser.read_fasta(filename):
+        for name, seq in fastaparser.read_fasta(filename):
             list_of_length.append(len(seq))
             number_of_Ns += seq.count('N')
         lists_of_lengths.append(list_of_length)
         numbers_of_Ns.append(number_of_Ns)
 
-    # saving lengths to JSON
-    if json_output_dir:
-        json_saver.save_contigs_lengths(json_output_dir, filenames, lists_of_lengths)
-
-    if qconfig.html_report:
-        from libs.html_saver import html_saver
-        html_saver.save_contigs_lengths(results_dir, filenames, lists_of_lengths)
+    json_saver.save_contigs_lengths(filenames, lists_of_lengths)
+    html_saver.save_contigs_lengths(filenames, lists_of_lengths)
 
     ########################################################################
 
@@ -128,20 +132,29 @@ def do(reference, filenames, output_dir, all_pdf, draw_plots, json_output_dir, r
 
     list_of_GC_distributions = []
     import N50
-    for id, (filename, lengths_list, number_of_Ns) in enumerate(itertools.izip(filenames, lists_of_lengths, numbers_of_Ns)):
+    for i, (filename, lengths_list, number_of_Ns) in enumerate(itertools.izip(filenames, lists_of_lengths, numbers_of_Ns)):
         report = reporting.get(filename)
         n50, l50 = N50.N50_and_L50(lengths_list)
-        ng50, lg50 = None, None
-        if reference_length:
-            ng50, lg50 = N50.NG50_and_LG50(lengths_list, reference_length)
         n75, l75 = N50.N50_and_L50(lengths_list, 75)
-        ng75, lg75 = None, None
-        if reference_length:
-            ng75, lg75 = N50.NG50_and_LG50(lengths_list, reference_length, 75)
+
+        for i in range(len(references)):
+            ng50, lg50 = N50.NG50_and_LG50(lengths_list, references_lengths[i])
+            ng75, lg75 = N50.NG50_and_LG50(lengths_list, references_lengths[i], 75)
+            report.add_field(reporting.Fields.NG50, ng50, references[i])
+            report.add_field(reporting.Fields.LG50, lg50, references[i])
+            report.add_field(reporting.Fields.NG75, ng75, references[i])
+            report.add_field(reporting.Fields.LG75, lg75, references[i])
+
+            report.add_field(reporting.Fields.REFLEN, int(references_lengths[i]), references[i])
+            report.add_field(reporting.Fields.REFGC, '%.2f' % references_GCs[i], references[i])
+
+        if est_ref_len:
+            report.add_field(reporting.Fields.ESTREFLEN, int(est_ref_len))
+
         total_length = sum(lengths_list)
         total_GC, GC_distribution = GC_content(filename)
         list_of_GC_distributions.append(GC_distribution)
-        log.info('    ' + id_to_str(id) + os.path.basename(filename) + \
+        log.info('    ' + id_to_str(i) + os.path.basename(filename) + \
             ', N50 = ' + str(n50) + \
             ', L50 = ' + str(l50) + \
             ', Total length = ' + str(total_length) + \
@@ -150,50 +163,42 @@ def do(reference, filenames, output_dir, all_pdf, draw_plots, json_output_dir, r
 
         report.add_field(reporting.Fields.N50, n50)
         report.add_field(reporting.Fields.L50, l50)
-        if reference_length:
-            report.add_field(reporting.Fields.NG50, ng50)
-            report.add_field(reporting.Fields.LG50, lg50)
         report.add_field(reporting.Fields.N75, n75)
         report.add_field(reporting.Fields.L75, l75)
-        if reference_length:
-            report.add_field(reporting.Fields.NG75, ng75)
-            report.add_field(reporting.Fields.LG75, lg75)
+
         report.add_field(reporting.Fields.NUMCONTIGS, len(lengths_list))
         report.add_field(reporting.Fields.LARGCONTIG, max(lengths_list))
         report.add_field(reporting.Fields.TOTALLEN, total_length)
         report.add_field(reporting.Fields.GC, ('%.2f' % total_GC if total_GC else None))
         report.add_field(reporting.Fields.UNCALLED, number_of_Ns)
         report.add_field(reporting.Fields.UNCALLED_PERCENT, ('%.2f' % (float(number_of_Ns) * 100000.0 / float(total_length))))
-        if reference:
-            report.add_field(reporting.Fields.REFLEN, int(reference_length))
-            report.add_field(reporting.Fields.REFGC, '%.2f' %  reference_GC)
-        elif reference_length:
-            report.add_field(reporting.Fields.ESTREFLEN, int(reference_length))
 
-    if json_output_dir:
-        json_saver.save_GC_info(json_output_dir, filenames, list_of_GC_distributions)
+    json_saver.save_GC_info(filenames, list_of_GC_distributions)
+    html_saver.save_GC_info(filenames, list_of_GC_distributions)
 
-    if qconfig.html_report:
-        from libs.html_saver import html_saver
-        html_saver.save_GC_info(results_dir, filenames, list_of_GC_distributions)
-
-    if draw_plots:
+    if draw_plots:  # TODO: multiple references for comulative and GC plots
         import plotter
         ########################################################################import plotter
-        plotter.cumulative_plot(reference, filenames, lists_of_lengths, output_dir + '/cumulative_plot', 'Cumulative length', all_pdf)
-    
+        plotter.cumulative_plot(references[0] if references else None, filenames, lists_of_lengths,
+                                output_dir + '/cumulative_plot', 'Cumulative length', all_pdf)
+
         ########################################################################
         # Drawing GC content plot...
         list_of_GC_distributions_with_ref = list_of_GC_distributions
-        if reference:
-            list_of_GC_distributions_with_ref.append(reference_GC_distribution)
-        # Drawing cumulative plot...
-        plotter.GC_content_plot(reference, filenames, list_of_GC_distributions_with_ref, output_dir + '/GC_content_plot', all_pdf)
+        for i, ref in enumerate(references):
+            list_of_GC_distributions_with_ref.append(references_GC_distributions[i])
+
+        plotter.GC_content_plot(references, filenames, list_of_GC_distributions_with_ref, output_dir + '/GC_content_plot', all_pdf)
 
         ########################################################################
         # Drawing Nx and NGx plots...
         plotter.Nx_plot(filenames, lists_of_lengths, output_dir + '/Nx_plot', 'Nx', [], all_pdf)
-        if reference_length:
-            plotter.Nx_plot(filenames, lists_of_lengths, output_dir + '/NGx_plot', 'NGx', [reference_length for i in range(len(filenames))], all_pdf)
+        if len(references) == 1:
+            plotter.Nx_plot(filenames, lists_of_lengths, output_dir + '/NGx_plot', 'NGx',
+                            [reference_length for i in range(len(filenames))], all_pdf)
+        if len(references) > 1:
+            for i, reference in enumerate(references):
+                plotter.Nx_plot(filenames, lists_of_lengths, output_dir + '/NGx_plot_' + reference.name, 'NGx ' + reference.name,
+                                [references_lengths[i] for i in range(len(filenames))], all_pdf)
 
     log.info('Done.')

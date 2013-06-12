@@ -142,7 +142,7 @@ def cumulative_plot(reference, filenames, lists_of_lengths, plot_filename, title
         matplotlib.pyplot.plot(vals_contig_index, vals_length, color=color, lw=line_width, ls=ls)
 
     if reference:
-        reference_length = sum(fastaparser.get_lengths_from_fastafile(reference))
+        reference_length = sum(fastaparser.get_lengths_from_fastafile(reference.fpath))
         matplotlib.pyplot.plot([0, max_x], [reference_length, reference_length],
                                color=reference_color, lw=line_width, ls=reference_ls)
         max_y = max(max_y, reference_length)
@@ -272,7 +272,7 @@ def Nx_plot(filenames, lists_of_lengths, plot_filename, title='Nx', reference_le
 
 
 # routine for GC-plot    
-def GC_content_plot(reference, filenames, list_of_GC_distributions, plot_filename, all_pdf=None):
+def GC_content_plot(references, filenames, list_of_GC_distributions, plot_filename, all_pdf=None):
     if matplotlib_error:
         return
     title = 'GC content'
@@ -287,10 +287,9 @@ def GC_content_plot(reference, filenames, list_of_GC_distributions, plot_filenam
     max_y = 0
     color_id = 0
 
-    allfilenames = filenames
-    if reference:
-        allfilenames = filenames + [reference]
-    for id, (GC_distribution_x, GC_distribution_y) in enumerate(list_of_GC_distributions):
+    allfilenames = filenames + [ref.fpath for ref in references]
+
+    for i, (GC_distribution_x, GC_distribution_y) in enumerate(list_of_GC_distributions):
         max_y = max(max_y, max(GC_distribution_y))
 
         # for log scale
@@ -299,32 +298,37 @@ def GC_content_plot(reference, filenames, list_of_GC_distributions, plot_filenam
                 GC_distribution_y[id2] = 0.1
 
         # add to plot
-        if reference and (id == len(allfilenames) - 1):
-            color = reference_color
+        if references and i >= len(filenames):
             ls = reference_ls
+            if len(references) == 1:
+                color = reference_color
         else:
-            color, ls, color_id = get_color_and_ls(color_id, allfilenames[id])
+            color, ls, color_id = get_color_and_ls(color_id, allfilenames[i])
 
         matplotlib.pyplot.plot(GC_distribution_x, GC_distribution_y, color=color, lw=line_width, ls=ls)
 
     if with_title:
         matplotlib.pyplot.title(title)
     matplotlib.pyplot.grid(with_grid)
+
     ax = matplotlib.pyplot.gca()
+
     # Shink current axis's height by 20% on the bottom
     box = ax.get_position()
     ax.set_position([box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8])
-    # Put a legend below current axis
-    legend_list = map(os.path.basename, allfilenames)
+
     if qconfig.legend_names and len(filenames) == len(qconfig.legend_names):
         legend_list = qconfig.legend_names[:]
-        if reference:
-            legend_list += ['Reference']
-    elif reference:
-        legend_list[-1] = 'Reference'
-    try: # for matplotlib <= 2009-12-09
+    else:
+        legend_list = map(os.path.basename, allfilenames)
+
+    if references:
+        legend_list += ['Reference ' + ref.name for ref in references]
+
+    # Put a legend below current axis
+    try:  # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns)
+                  shadow=True, ncol=n_columns)
     except ZeroDivisionError:
         pass
 

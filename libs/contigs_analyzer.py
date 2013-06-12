@@ -28,11 +28,13 @@ from qutils import id_to_str, error, print_timestamp
 
 required_binaries = ['nucmer', 'delta-filter', 'show-coords', 'show-snps']
 
+
 class Misassembly:
     LOCAL=0
     RELOCATION=1
     TRANSLOCATION=2
     INVERSION=3
+
 
 class Mapping(object):
     def  __init__(self, s1, e1, s2, e2, len1, len2, idy, ref, contig):
@@ -84,6 +86,7 @@ def clear_files(filename, nucmerfilename):
     if os.path.isfile(filename + '.clean'):
         os.remove(filename + '.clean')
 
+
 class NucmerStatus:
     FAILED=0
     OK=1
@@ -95,7 +98,7 @@ def run_nucmer(prefix, reference, assembly, log_out, log_err, myenv):
     err = open(log_err, 'a')
     # additional GAGE params of Nucmer: '-l', '30', '-banded'
     subprocess.call(['nucmer', '-c', str(qconfig.mincluster), '-l', str(qconfig.mincluster),
-                     '--maxmatch', '-p', prefix, reference, assembly],
+                     '--maxmatch', '-p', prefix, reference.fpath, assembly],
                      stdout=log, stderr=err, env=myenv)
 
 
@@ -143,8 +146,8 @@ def plantakolya(cyclic, id, filename, nucmerfilename, myenv, output_dir, referen
         print >> plantafile_out, '\tRunning Nucmer...'
         log.info('  ' + id_to_str(id) + 'Running Nucmer... ')
 
-        if qconfig.splitted_ref:
-            prefixes_and_chr_files = [(nucmerfilename + "_" + os.path.basename(chr_file), chr_file) for chr_file in qconfig.splitted_ref]
+        if reference.is_broken:
+            prefixes_and_chr_files = [(nucmerfilename + "_" + os.path.basename(chr_fname), chr_fname) for chr_fname in reference.chr_fnames]
 
             # Daemonic processes are not allowed to have children, so if we are already one of parallel processes
             # (i.e. daemonic) we can't start new daemonic processes
@@ -163,10 +166,10 @@ def plantakolya(cyclic, id, filename, nucmerfilename, myenv, output_dir, referen
 
             # filling common delta file
             delta_file = open(delta_filename, 'w')
-            delta_file.write(reference + " " + filename + "\n")
+            delta_file.write(reference.fpath + " " + filename + "\n")
             delta_file.write("NUCMER\n")
 
-            for (prefix, chr_file) in prefixes_and_chr_files:
+            for (prefix, chr_fname) in prefixes_and_chr_files:
                 chr_delta_filename = prefix + '.delta'
                 if os.path.isfile(chr_delta_filename):
                     chr_delta_file = open(chr_delta_filename)
@@ -372,12 +375,12 @@ def plantakolya(cyclic, id, filename, nucmerfilename, myenv, output_dir, referen
 
     # Loading the reference sequences
     print >> plantafile_out, 'Loading reference...'  # TODO: move up
-    references = {}
+    ref_seq_by_name = {}
     ref_aligns = {}
     ref_features = {}
-    for name, seq in fastaparser.read_fasta(reference):
+    for name, seq in fastaparser.read_fasta(reference.fpath):
         name = name.split()[0]  # no spaces in reference header
-        references[name] = seq
+        ref_seq_by_name[name] = seq
         print >> plantafile_out, '\tLoaded [%s]' % name
 
     #Loading the SNP calls
@@ -423,7 +426,7 @@ def plantakolya(cyclic, id, filename, nucmerfilename, myenv, output_dir, referen
     print >> plantafile_out, 'Loading regions...'
     # TODO: gff
     print >> plantafile_out, '\tNo regions given, using whole reference.'
-    for name, seq in references.iteritems():
+    for name, seq in ref_seq_by_name.iteritems():
         regions.setdefault(name, []).append([1, len(seq)])
         reg_lens[name] = len(seq)
         total_regions += 1
@@ -1210,7 +1213,7 @@ def plantakolya(cyclic, id, filename, nucmerfilename, myenv, output_dir, referen
 
 
 def plantakolya_process(cyclic, nucmer_output_dir, filename, id, myenv, output_dir, reference):
-    nucmer_fname = os.path.join(nucmer_output_dir, os.path.basename(filename))
+    nucmer_fname = os.path.join(nucmer_output_dir, os.path.basename(filename) + '__' + reference.name)
     nucmer_is_ok, result, aligned_lengths = plantakolya(cyclic, id, filename, nucmer_fname, myenv, output_dir, reference)
     clear_files(filename, nucmer_fname)
     return nucmer_is_ok, result, aligned_lengths
@@ -1293,55 +1296,55 @@ def do(reference, filenames, cyclic, output_dir):
         partially_unaligned_with_misassembly = result['partially_unaligned_with_misassembly']
         partially_unaligned_with_significant_parts = result['partially_unaligned_with_significant_parts']
 
-        report.add_field(reporting.Fields.AVGIDY, '%.3f' % avg_idy)
-        report.add_field(reporting.Fields.MISLOCAL, region_misassemblies.count(Misassembly.LOCAL))
-        report.add_field(reporting.Fields.MISASSEMBL, len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL))
-        report.add_field(reporting.Fields.MISCONTIGS, len(misassembled_contigs))
-        report.add_field(reporting.Fields.MISCONTIGSBASES, misassembled_bases)
-        report.add_field(reporting.Fields.MISINTERNALOVERLAP, misassembly_internal_overlap)
-        report.add_field(reporting.Fields.UNALIGNED, '%d + %d part' % (unaligned, partially_unaligned))
-        report.add_field(reporting.Fields.UNALIGNEDBASES, (fully_unaligned_bases + partially_unaligned_bases))
-        report.add_field(reporting.Fields.AMBIGUOUS, ambiguous_contigs)
-        report.add_field(reporting.Fields.AMBIGUOUSEXTRABASES, ambiguous_contigs_extra_bases)
-        report.add_field(reporting.Fields.MISMATCHES, SNPs)
+        report.add_field(reporting.Fields.AVGIDY, '%.3f' % avg_idy, reference)
+        report.add_field(reporting.Fields.MISLOCAL, region_misassemblies.count(Misassembly.LOCAL), reference)
+        report.add_field(reporting.Fields.MISASSEMBL, len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL), reference)
+        report.add_field(reporting.Fields.MISCONTIGS, len(misassembled_contigs), reference)
+        report.add_field(reporting.Fields.MISCONTIGSBASES, misassembled_bases, reference)
+        report.add_field(reporting.Fields.MISINTERNALOVERLAP, misassembly_internal_overlap, reference)
+        report.add_field(reporting.Fields.UNALIGNED, '%d + %d part' % (unaligned, partially_unaligned), reference)
+        report.add_field(reporting.Fields.UNALIGNEDBASES, (fully_unaligned_bases + partially_unaligned_bases), reference)
+        report.add_field(reporting.Fields.AMBIGUOUS, ambiguous_contigs, reference)
+        report.add_field(reporting.Fields.AMBIGUOUSEXTRABASES, ambiguous_contigs_extra_bases, reference)
+        report.add_field(reporting.Fields.MISMATCHES, SNPs, reference)
         # different types of indels:
-        report.add_field(reporting.Fields.INDELS, len(indels_list))
-        report.add_field(reporting.Fields.INDELSBASES, sum(indels_list))
-        report.add_field(reporting.Fields.MIS_SHORT_INDELS, len([i for i in indels_list if i <= qconfig.SHORT_INDEL_THRESHOLD]))
-        report.add_field(reporting.Fields.MIS_LONG_INDELS, len([i for i in indels_list if i > qconfig.SHORT_INDEL_THRESHOLD]))
+        report.add_field(reporting.Fields.INDELS, len(indels_list), reference)
+        report.add_field(reporting.Fields.INDELSBASES, sum(indels_list), reference)
+        report.add_field(reporting.Fields.MIS_SHORT_INDELS, len([i for i in indels_list if i <= qconfig.SHORT_INDEL_THRESHOLD]), reference)
+        report.add_field(reporting.Fields.MIS_LONG_INDELS, len([i for i in indels_list if i > qconfig.SHORT_INDEL_THRESHOLD]), reference)
 
         if total_aligned_bases:
-            report.add_field(reporting.Fields.SUBSERROR, "%.2f" % (float(SNPs) * 100000.0 / float(total_aligned_bases)))
-            report.add_field(reporting.Fields.INDELSERROR, "%.2f" % (float(report.get_field(reporting.Fields.INDELS))
-                                                                     * 100000.0 / float(total_aligned_bases)))
+            report.add_field(reporting.Fields.SUBSERROR, "%.2f" % (float(SNPs) * 100000.0 / float(total_aligned_bases)), reference)
+            report.add_field(reporting.Fields.INDELSERROR, "%.2f" % (float(report.get_field(reporting.Fields.INDELS, reference))
+                                                                     * 100000.0 / float(total_aligned_bases)), reference)
 
         # for misassemblies report:
-        report.add_field(reporting.Fields.MIS_ALL_EXTENSIVE, len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL))
-        report.add_field(reporting.Fields.MIS_RELOCATION, region_misassemblies.count(Misassembly.RELOCATION))
-        report.add_field(reporting.Fields.MIS_TRANSLOCATION, region_misassemblies.count(Misassembly.TRANSLOCATION))
-        report.add_field(reporting.Fields.MIS_INVERTION, region_misassemblies.count(Misassembly.INVERSION))
-        report.add_field(reporting.Fields.MIS_EXTENSIVE_CONTIGS, len(misassembled_contigs))
-        report.add_field(reporting.Fields.MIS_EXTENSIVE_BASES, misassembled_bases)
-        report.add_field(reporting.Fields.MIS_LOCAL, region_misassemblies.count(Misassembly.LOCAL))
+        report.add_field(reporting.Fields.MIS_ALL_EXTENSIVE, len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL), reference)
+        report.add_field(reporting.Fields.MIS_RELOCATION, region_misassemblies.count(Misassembly.RELOCATION), reference)
+        report.add_field(reporting.Fields.MIS_TRANSLOCATION, region_misassemblies.count(Misassembly.TRANSLOCATION), reference)
+        report.add_field(reporting.Fields.MIS_INVERTION, region_misassemblies.count(Misassembly.INVERSION), reference)
+        report.add_field(reporting.Fields.MIS_EXTENSIVE_CONTIGS, len(misassembled_contigs), reference)
+        report.add_field(reporting.Fields.MIS_EXTENSIVE_BASES, misassembled_bases, reference)
+        report.add_field(reporting.Fields.MIS_LOCAL, region_misassemblies.count(Misassembly.LOCAL), reference)
 
         # for unaligned report:
-        report.add_field(reporting.Fields.UNALIGNED_FULL_CNTGS, unaligned)
-        report.add_field(reporting.Fields.UNALIGNED_FULL_LENGTH, fully_unaligned_bases)
-        report.add_field(reporting.Fields.UNALIGNED_PART_CNTGS, partially_unaligned)
-        report.add_field(reporting.Fields.UNALIGNED_PART_WITH_MISASSEMBLY, partially_unaligned_with_misassembly)
-        report.add_field(reporting.Fields.UNALIGNED_PART_SIGNIFICANT_PARTS, partially_unaligned_with_significant_parts)
-        report.add_field(reporting.Fields.UNALIGNED_PART_LENGTH, partially_unaligned_bases)
+        report.add_field(reporting.Fields.UNALIGNED_FULL_CNTGS, unaligned, reference)
+        report.add_field(reporting.Fields.UNALIGNED_FULL_LENGTH, fully_unaligned_bases, reference)
+        report.add_field(reporting.Fields.UNALIGNED_PART_CNTGS, partially_unaligned, reference)
+        report.add_field(reporting.Fields.UNALIGNED_PART_WITH_MISASSEMBLY, partially_unaligned_with_misassembly, reference)
+        report.add_field(reporting.Fields.UNALIGNED_PART_SIGNIFICANT_PARTS, partially_unaligned_with_significant_parts, reference)
+        report.add_field(reporting.Fields.UNALIGNED_PART_LENGTH, partially_unaligned_bases, reference)
 
     def save_result_for_unaligned(result):
         report = reporting.get(fname)
 
         unaligned_ctgs = report.get_field(reporting.Fields.NUMCONTIGS)
         unaligned_length = report.get_field(reporting.Fields.TOTALLEN)
-        report.add_field(reporting.Fields.UNALIGNED, '%d + %d part' % (unaligned_ctgs, 0))
-        report.add_field(reporting.Fields.UNALIGNEDBASES, unaligned_length)
+        report.add_field(reporting.Fields.UNALIGNED, '%d + %d part' % (unaligned_ctgs, 0), reference)
+        report.add_field(reporting.Fields.UNALIGNEDBASES, unaligned_length, reference)
 
-        report.add_field(reporting.Fields.UNALIGNED_FULL_CNTGS, unaligned_ctgs)
-        report.add_field(reporting.Fields.UNALIGNED_FULL_LENGTH, unaligned_length)
+        report.add_field(reporting.Fields.UNALIGNED_FULL_CNTGS, unaligned_ctgs, reference)
+        report.add_field(reporting.Fields.UNALIGNED_FULL_LENGTH, unaligned_length, reference)
 
     for id, fname in enumerate(filenames):
         if statuses[id] == NucmerStatus.OK:
@@ -1371,7 +1374,7 @@ def do(reference, filenames, cyclic, output_dir):
     if oks == all:
         log.info('Done.')
     if oks < all and problems < all:
-        log.info('Done for ' + str(all - problems) + 'out of ' + str(all) + '. For the rest, only basic stats are going to be evaluated.')
+        log.info('Done for ' + str(all - problems) + ' out of ' + str(all) + '. For the rest, only basic stats are going to be evaluated.')
     if problems == all:
         log.info('Failed aligning the contigs for all the assemblies. Only basic stats are going to be evaluated.')
 

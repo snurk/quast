@@ -19,6 +19,10 @@ import qconfig
 import datetime
 
 
+def info(message='', indent=''):
+    log.info(indent + str(message))
+
+
 def notice(message='', indent=''):
     log.info(indent + "NOTICE: " + str(message))
 
