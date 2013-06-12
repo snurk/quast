@@ -192,7 +192,7 @@ def cumulative_plot(reference, filenames, lists_of_lengths, plot_filename, title
 
 
 # common routine for Nx-plot and NGx-plot (and probably for others Nyx-plots in the future)
-def Nx_plot(filenames, lists_of_lengths, plot_filename, title='Nx', reference_lengths=[], all_pdf=None):
+def Nx_plot(filenames, lists_of_lengths, plot_filename, title='Nx', total_lengths=[], all_pdf=None):
     if matplotlib_error:
         return
 
@@ -206,16 +206,19 @@ def Nx_plot(filenames, lists_of_lengths, plot_filename, title='Nx', reference_le
     max_y = 0
     color_id = 0
 
-    for id, (filename, lengths) in enumerate(itertools.izip(filenames, lists_of_lengths)):
+    for i, (filename, lengths) in enumerate(itertools.izip(filenames, lists_of_lengths)):
         lengths.sort(reverse=True)
         # calculate values for the plot
         vals_Nx = [0.0]
         vals_l = [lengths[0]]
         lcur = 0
+
         # if Nx-plot then we just use sum of contigs lengths, else use reference_length
-        lsum = sum(lengths)
-        if reference_lengths:
-            lsum = reference_lengths[id]
+        if total_lengths:
+            lsum = total_lengths[i]
+        else:
+            lsum = sum(lengths)
+
         for l in lengths:
             lcur += l
             x = lcur * 100.0 / lsum

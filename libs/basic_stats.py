@@ -181,7 +181,7 @@ def do(references, filenames, output_dir, all_pdf, draw_plots, results_dir):
         import plotter
         ########################################################################import plotter
         plotter.cumulative_plot(references[0] if references else None, filenames, lists_of_lengths,
-                                output_dir + '/cumulative_plot', 'Cumulative length', all_pdf)
+                                os.path.join(output_dir, 'cumulative_plot'), 'Cumulative length', all_pdf)
 
         ########################################################################
         # Drawing GC content plot...
@@ -201,13 +201,11 @@ def do(references, filenames, output_dir, all_pdf, draw_plots, results_dir):
         # Drawing Nx and NGx plots...
         plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'Nx_plot'), 'Nx', [], all_pdf)
 
-        if not qconfig.meta:
-            plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'NGx_plot'), 'NGx',
-                            [reference_length for i in range(len(filenames))], all_pdf)
+        ngx_plot_name = 'NGx'
         if qconfig.meta:
-            for i, reference in enumerate(references):
-                plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'NGx_plot_' + reference.name),
-                                'NGx ' + reference.readable_name,
-                                [references_lengths[i] for i in range(len(filenames))], all_pdf)
+            ngx_plot_name += ' for references combined'
+
+        plotter.Nx_plot(filenames, lists_of_lengths, os.path.join(output_dir, 'NGx_plot'), 'NGx',
+                        [total_ref_len for _ in references], all_pdf)
 
     log.info('Done.')
