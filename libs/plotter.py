@@ -63,6 +63,11 @@ except:
 ####################################################################################
 
 
+def get_color__for_reference(color_id):
+    color = colors[color_id % len(colors)]
+    return color, color_id + 1
+
+
 def get_color__and_line_style__and_next_color_id(color_id, filename):
     """
     Returns tuple: color, line style, next color id
@@ -291,8 +296,6 @@ def GC_content_plot(references, filenames, list_of_GC_distributions, plot_filena
     max_y = 0
     color_id = 0
 
-    allfilenames = filenames + [ref.fpath for ref in references]
-
     for i, (GC_distribution_x, GC_distribution_y) in enumerate(list_of_GC_distributions):
         max_y = max(max_y, max(GC_distribution_y))
 
@@ -307,11 +310,11 @@ def GC_content_plot(references, filenames, list_of_GC_distributions, plot_filena
 
         elif i > len(filenames):
             ls = reference_line_style
-            color, _, color_id = get_color__and_line_style__and_next_color_id(color_id, allfilenames[i])
+            color, color_id = get_color__for_reference(color_id)
 
         # case of assembly
         else:
-            color, ls, color_id = get_color__and_line_style__and_next_color_id(color_id, allfilenames[i])
+            color, ls, color_id = get_color__and_line_style__and_next_color_id(color_id, filenames[i])
 
         matplotlib.pyplot.plot(GC_distribution_x, GC_distribution_y, color=color, lw=line_width, ls=ls)
 
@@ -328,7 +331,7 @@ def GC_content_plot(references, filenames, list_of_GC_distributions, plot_filena
     if qconfig.legend_names and len(filenames) == len(qconfig.legend_names):
         legend_list = qconfig.legend_names[:]
     else:
-        legend_list = map(os.path.basename, allfilenames)
+        legend_list = map(os.path.basename, filenames)
 
     if references:
         legend_list += [ref.readable_name for ref in references]
