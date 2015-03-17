@@ -379,6 +379,7 @@ def main(args):
             qconfig.usage(opt == "--help-hidden")
             sys.exit(0)
 
+
     if not contigs_fpaths:
         logger.error("You should specify at least one file with contigs!\n")
         qconfig.usage()
@@ -393,6 +394,7 @@ def main(args):
     ref_fpath = ''
     genes_fpaths = []
     operons_fpaths = []
+    reads_fpaths = []
 
     # Yes, this is a code duplicating. But OptionParser is deprecated since version 2.7.
     for opt, arg in options:
@@ -408,6 +410,10 @@ def main(args):
 
         elif opt in ('-R', "--reference"):
             ref_fpath = assert_file_exists(arg, 'reference')
+
+        elif opt in ('-r', '--reads'):
+            reads_fpaths.append(arg)
+            qconfig.reads = True
 
         elif opt in ('-t', "--contig-thresholds"):
             qconfig.contig_thresholds = arg
@@ -479,6 +485,9 @@ def main(args):
     for contigs_fpath in contigs_fpaths:
         assert_file_exists(contigs_fpath, 'contigs')
 
+    for reads_fpath in reads_fpaths:
+        assert_file_exists(reads_fpath, 'reads')
+
     labels = process_labels(contigs_fpaths, labels, all_labels_from_dirs)
 
     output_dirpath, json_output_dirpath, existing_alignments = \
@@ -530,8 +539,13 @@ def main(args):
         logger.info()
         logger.info('Reference:')
         ref_fpath = _correct_reference(ref_fpath, corrected_dirpath)
+
     else:
         ref_fpath = ''
+
+    if qconfig.reads:
+        from libs import reads_analyzer
+        reads_analyzer.do(ref_fpath, reads_fpaths, output_dirpath)
 
     # PROCESSING CONTIGS
     logger.info()
@@ -661,6 +675,7 @@ def main(args):
         except KeyboardInterrupt:
             logger.info('..step skipped!')
             os.remove(all_pdf_fpath)
+
 
     ########################################################################
     ### TOTAL REPORT

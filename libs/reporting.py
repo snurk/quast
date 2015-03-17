@@ -37,6 +37,13 @@ class Fields:
     L75 = 'L75'
     GC = 'GC (%)'
 
+    # Read statistics
+    TOTALREADS = '# reads'
+    MAPPED_READS = ('# mapped reads', tuple(qconfig.contig_thresholds))
+    LEFT_READS= '# left reads'
+    RIGHT_READS = '# right reads'
+    PROPERLYPAIR_READS = '# properly paired reads'
+
     # Misassemblies
     MISASSEMBL = '# misassemblies'
     MISCONTIGS = '# misassembled contigs'
@@ -108,10 +115,13 @@ class Fields:
     REF_OPERONS = 'Reference operons'
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):
-    order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS, CONTIGS,CHAFFCONTIG_PERCENT, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
+    order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS, TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS,
+             CONTIGS,CHAFFCONTIG_PERCENT, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
              N50, NG50, N75, NG75, L50, LG50, L75, LG75, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISLOCAL, UNALIGNED, UNALIGNEDBASES, MAPPEDGENOME, DUPLICATION_RATIO,
              UNCALLED_PERCENT, SUBSERROR, INDELSERROR, GENES, OPERONS, PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
              LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75, ]
+
+    # read_order = [TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS, ]
 
     # content and order of metrics in DETAILED MISASSEMBLIES REPORT (<quast_output_dir>/contigs_reports/misassemblies_report.txt, .tex, .tsv)
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
@@ -160,6 +170,8 @@ class Fields:
     grouped_order = [
         ('Statistics without reference', [CONTIGS, CONTIGS__FOR_THRESHOLDS, LARGCONTIG, TOTALLEN, CHAFFCONTIG_PERCENT, TOTALLENS__FOR_THRESHOLDS,
                                           N50, N75, L50, L75, GC,]),
+
+        ('Reads', [TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS]),
 
         ('Misassemblies', [MIS_ALL_EXTENSIVE,
                            MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
