@@ -30,11 +30,11 @@ MAX_REFERENCE_LENGTH = 536870908  # Nucmer's max length of a reference file
 splitted_ref = []
 
 # available options
-long_options = "output-dir= save-json-to= genes= operons= reference= reads= contig-thresholds= min-contig= "\
+long_options = "output-dir= save-json-to= genes= operons= reference= reads1= reads2= contig-thresholds= min-contig= "\
                "gene-thresholds= save-json gage eukaryote no-plots no-html help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
                "strict-NA meta labels= test help-hidden".split()
-short_options = "o:G:O:R:r:t:M:S:J:jehdsa:T:c:ufnml:L"
+short_options = "o:G:O:R:1:2:t:M:S:J:jehdsa:T:c:ufnml:L"
 
 # default values for options
 contig_thresholds = "0,1000"
@@ -141,7 +141,8 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "-R                <filename>  Reference genomes (accepts multiple fasta files with multiple sequences each)"
     else:
         print >> sys.stderr, "-R                <filename>  Reference genome file"
-    print >> sys.stderr, "-r  --use-reads                    Use reads for quality assessment"
+    print >> sys.stderr, "-1  --reads1                    File with forward reads"
+    print >> sys.stderr, "-2  --reads2                    File with reverse reads"
     print >> sys.stderr, "-G  --genes       <filename>  File with gene coordinates in the reference"
     print >> sys.stderr, "-O  --operons     <filename>  File with operon coordinates in the reference"
     print >> sys.stderr, "-M  --min-contig  <int>       Lower threshold for contig length [default: %s]" % min_contig

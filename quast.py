@@ -411,7 +411,11 @@ def main(args):
         elif opt in ('-R', "--reference"):
             ref_fpath = assert_file_exists(arg, 'reference')
 
-        elif opt in ('-r', '--reads'):
+        elif opt in ('-1', '--reads1'):
+            reads_fpaths.append(arg)
+            qconfig.reads = True
+
+        elif opt in ('-2', '--reads2'):
             reads_fpaths.append(arg)
             qconfig.reads = True
 

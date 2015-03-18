@@ -39,7 +39,7 @@ class Fields:
 
     # Read statistics
     TOTALREADS = '# reads'
-    MAPPED_READS = ('# mapped reads', tuple(qconfig.contig_thresholds))
+    MAPPED_READS = '# mapped reads'
     LEFT_READS= '# left reads'
     RIGHT_READS = '# right reads'
     PROPERLYPAIR_READS = '# properly paired reads'
@@ -115,13 +115,14 @@ class Fields:
     REF_OPERONS = 'Reference operons'
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):
-    order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS, TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS,
+    order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS,
              CONTIGS,CHAFFCONTIG_PERCENT, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
              N50, NG50, N75, NG75, L50, LG50, L75, LG75, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISLOCAL, UNALIGNED, UNALIGNEDBASES, MAPPEDGENOME, DUPLICATION_RATIO,
              UNCALLED_PERCENT, SUBSERROR, INDELSERROR, GENES, OPERONS, PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
-             LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75, ]
+             LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75,
+             TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS,]
 
-    # read_order = [TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS, ]
+    read_order = [TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS, ]
 
     # content and order of metrics in DETAILED MISASSEMBLIES REPORT (<quast_output_dir>/contigs_reports/misassemblies_report.txt, .tex, .tsv)
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
@@ -198,7 +199,8 @@ class Fields:
                     MIS_ALL_EXTENSIVE, MIS_EXTENSIVE_BASES,
                     SUBSERROR, INDELSERROR, UNCALLED_PERCENT,
                     MAPPEDGENOME, DUPLICATION_RATIO, GENES, OPERONS, NGA50,
-                    PREDICTED_GENES_UNIQUE, PREDICTED_GENES,]
+                    PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
+                    TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS]
 
 ####################################################################################
 ########################  END OF CONFIGURABLE PARAMETERS  ##########################
@@ -212,7 +214,8 @@ class Fields:
     quality_dict = {
         Quality.MORE_IS_BETTER:
             [LARGCONTIG, TOTALLEN, TOTALLENS__FOR_THRESHOLDS, N50, NG50, N75, NG75, NA50, NGA50, NA75, NGA75, LARGALIGN,
-             MAPPEDGENOME, GENES, OPERONS, PREDICTED_GENES_UNIQUE, PREDICTED_GENES, AVGIDY],
+             MAPPEDGENOME, GENES, OPERONS, PREDICTED_GENES_UNIQUE, PREDICTED_GENES, AVGIDY,
+             MAPPED_READS, PROPERLYPAIR_READS],
         Quality.LESS_IS_BETTER:
             [CONTIGS, CONTIGS__FOR_THRESHOLDS, L50, LG50, L75, LG75,
              MISLOCAL, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISINTERNALOVERLAP,
@@ -221,7 +224,7 @@ class Fields:
              LA50, LGA50, LA75, LGA75, DUPLICATION_RATIO, INDELS, INDELSERROR, MISMATCHES, SUBSERROR,
              MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES],
         Quality.EQUAL:
-            [REFLEN, ESTREFLEN, GC, REFGC],
+            [REFLEN, ESTREFLEN, GC, REFGC, LEFT_READS, RIGHT_READS, TOTALREADS],
         }
 
     #for name, metrics in filter(lambda (name, metrics): name in ['Misassemblies', 'Unaligned', 'Ambiguous'], grouped_order):
@@ -251,7 +254,7 @@ logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
 reports = {}  # basefilename -> Report
 assembly_fpaths = []  # for printing in appropriate order
-
+reads_path=""
 #################################################
 
 def get_main_metrics():
@@ -307,6 +310,8 @@ def get(assembly_fpath):
         assembly_fpaths.append(assembly_fpath)
     return reports.setdefault(assembly_fpath, Report(qutils.label_from_fpath(assembly_fpath)))
 
+def getReads():
+    return reports.setdefault("reads", Report("reads"))
 
 def delete(assembly_fpath):
     if assembly_fpath in assembly_fpaths:
@@ -322,18 +327,28 @@ def table(order=Fields.order):
 
     table = []
 
-    def append_line(rows, field, are_multiple_tresholds=False, pattern=None, feature=None, i=None):
+    def append_line(rows, field, are_multiple_tresholds=False, pattern=None, feature=None, i=None, reads=False):
         quality = get_quality(field)
         values = []
 
-        for assembly_fpath in assembly_fpaths:
-            report = get(assembly_fpath)
+        if reads:
+            report = getReads()
             value = report.get_field(field)
 
             if are_multiple_tresholds:
                 values.append(value[i] if (value and i < len(value)) else None)
             else:
                 values.append(value)
+
+        else:
+            for assembly_fpath in assembly_fpaths:
+                report = get(assembly_fpath)
+                value = report.get_field(field)
+
+                if are_multiple_tresholds:
+                    values.append(value[i] if (value and i < len(value)) else None)
+                else:
+                    values.append(value)
 
         if filter(lambda v: v is not None, values):
             metric_name = field if (feature is None) else pattern % feature
@@ -350,11 +365,12 @@ def table(order=Fields.order):
         table.append((group_name, rows))
 
         for field in metrics:
+            reads=field in Fields.read_order
             if isinstance(field, tuple):  # TODO: rewrite it nicer
                 for i, feature in enumerate(field[1]):
-                    append_line(rows, field, True, field[0], feature, i)
+                    append_line(rows, field, True, field[0], feature, i,reads=reads)
             else:
-                append_line(rows, field)
+                append_line(rows, field, reads=reads)
 
     if not isinstance(order[0], tuple):  # is not a groupped metrics order
         group_name, rows = table[0]
@@ -385,7 +401,7 @@ def val_to_str(val):
         return str(val)
 
 
-def save_txt(fpath, table):
+def save_txt(fpath, table, reads=False):
     all_rows = get_all_rows_out_of_table(table)
 
     # determine width of columns for nice spaces
@@ -397,7 +413,7 @@ def save_txt(fpath, table):
 
     txt_file = open(fpath, 'w')
 
-    if qconfig.min_contig:
+    if qconfig.min_contig and not reads:
         print >>txt_file, 'All statistics are based on contigs of size >= %d bp, unless otherwise noted ' % qconfig.min_contig + \
                           '(e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
         print >>txt_file
@@ -526,7 +542,7 @@ def save_tex(fpath, table, is_transposed=False):
         pass
 
 
-def save_pdf(report_name, table):
+def save_pdf(report_name, table, reads=False):
     if not qconfig.draw_plots:
         return
 
@@ -537,7 +553,7 @@ def save_pdf(report_name, table):
         for i, cell in enumerate([row['metricName']] + map(val_to_str, row['values'])):
             column_widths[i] = max(column_widths[i], len(cell))
 
-    if qconfig.min_contig:
+    if qconfig.min_contig and not reads:
         extra_info = 'All statistics are based on contigs of size >= %d bp, unless otherwise noted ' % qconfig.min_contig +\
                      '\n(e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
     else:
@@ -547,10 +563,14 @@ def save_pdf(report_name, table):
         table_to_draw.append(['%s' % cell for cell
             in [row['metricName']] + map(val_to_str, row['values'])])
     from libs import plotter
-    plotter.draw_report_table(report_name, extra_info, table_to_draw, column_widths)
+    if report_name==qconfig.report_prefix:
+        read_index=min([x for x, y in enumerate(table_to_draw) if 'reads' in y[0]])
+        plotter.draw_report_table(report_name, extra_info, table_to_draw[:read_index],column_widths)
+    else:
+        plotter.draw_report_table(report_name, extra_info, table_to_draw, column_widths)
 
 
-def save(output_dirpath, report_name, transposed_report_name, order, silent=False):
+def save(output_dirpath, report_name, transposed_report_name, order, silent=False, reads=False):
     # Where total report will be saved
     tab = table(order)
 
@@ -559,10 +579,10 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
     report_txt_fpath = os.path.join(output_dirpath, report_name) + '.txt'
     report_tsv_fpath = os.path.join(output_dirpath, report_name) + '.tsv'
     report_tex_fpath = os.path.join(output_dirpath, report_name) + '.tex'
-    save_txt(report_txt_fpath, tab)
+    save_txt(report_txt_fpath, tab, reads)
     save_tsv(report_tsv_fpath, tab)
     save_tex(report_tex_fpath, tab)
-    save_pdf(report_name, tab)
+    save_pdf(report_name, tab, reads)
     reports_fpaths = report_txt_fpath + ', ' + os.path.basename(report_tsv_fpath) + ', and ' + \
                      os.path.basename(report_tex_fpath)
     transposed_reports_fpaths = None
@@ -583,8 +603,9 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
             for i in range(len(all_rows[0]['values'])):
                 values = []
                 for j in range(1, len(all_rows)):
-                    values.append(all_rows[j]['values'][i])
-                transposed_table.append({'metricName': all_rows[0]['values'][i], # name of assembly, assuming the first line is assemblies names
+                    if j<len(all_rows[j]):
+                        values.append(all_rows[j]['values'][i])
+                    transposed_table.append({'metricName': all_rows[0]['values'][i], # name of assembly, assuming the first line is assemblies names
                                          'values': values,})
 
             report_txt_fpath = os.path.join(output_dirpath, transposed_report_name) + '.txt'
@@ -618,3 +639,6 @@ def save_misassemblies(output_dirpath):
 
 def save_unaligned(output_dirpath):
     save(output_dirpath, "unaligned_report", "", Fields.unaligned_order)
+
+def save_reads(output_dirpath):
+    save(output_dirpath, "reads_report", "", Fields.read_order, reads=True)
