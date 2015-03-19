@@ -368,7 +368,7 @@ def table(order=Fields.order):
             is_reads = field in Fields.read_order
             if isinstance(field, tuple):  # TODO: rewrite it nicer
                 for i, feature in enumerate(field[1]):
-                    append_line(rows, field, True, field[0], feature, i,is_reads=is_reads)
+                    append_line(rows, field, True, field[0], feature, i, is_reads=is_reads)
             else:
                 append_line(rows, field, is_reads=is_reads)
 
@@ -415,7 +415,7 @@ def save_txt(fpath, table, is_reads=False):
 
     if qconfig.min_contig and not is_reads:
         print >>txt_file, 'All statistics are based on contigs of size >= %d bp, unless otherwise noted ' % qconfig.min_contig + \
-                          '(e.g., '# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
+                          '(e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
         print >>txt_file
     for row in all_rows:
         print >>txt_file, '  '.join('%-*s' % (colwidth, cell) for colwidth, cell
