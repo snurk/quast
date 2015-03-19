@@ -327,11 +327,11 @@ def table(order=Fields.order):
 
     table = []
 
-    def append_line(rows, field, are_multiple_tresholds=False, pattern=None, feature=None, i=None, reads=False):
+    def append_line(rows, field, are_multiple_tresholds=False, pattern=None, feature=None, i=None, is_reads=False):
         quality = get_quality(field)
         values = []
 
-        if reads:
+        if is_reads:
             report = getReads()
             value = report.get_field(field)
 
@@ -365,12 +365,12 @@ def table(order=Fields.order):
         table.append((group_name, rows))
 
         for field in metrics:
-            reads=field in Fields.read_order
+            is_reads = field in Fields.read_order
             if isinstance(field, tuple):  # TODO: rewrite it nicer
                 for i, feature in enumerate(field[1]):
-                    append_line(rows, field, True, field[0], feature, i,reads=reads)
+                    append_line(rows, field, True, field[0], feature, i,is_reads=is_reads)
             else:
-                append_line(rows, field, reads=reads)
+                append_line(rows, field, is_reads=is_reads)
 
     if not isinstance(order[0], tuple):  # is not a groupped metrics order
         group_name, rows = table[0]
@@ -401,7 +401,7 @@ def val_to_str(val):
         return str(val)
 
 
-def save_txt(fpath, table, reads=False):
+def save_txt(fpath, table, is_reads=False):
     all_rows = get_all_rows_out_of_table(table)
 
     # determine width of columns for nice spaces
@@ -413,7 +413,7 @@ def save_txt(fpath, table, reads=False):
 
     txt_file = open(fpath, 'w')
 
-    if qconfig.min_contig and not reads:
+    if qconfig.min_contig and not is_reads:
         print >>txt_file, 'All statistics are based on contigs of size >= %d bp, unless otherwise noted ' % qconfig.min_contig + \
                           '(e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
         print >>txt_file
@@ -542,7 +542,7 @@ def save_tex(fpath, table, is_transposed=False):
         pass
 
 
-def save_pdf(report_name, table, reads=False):
+def save_pdf(report_name, table, is_reads=False):
     if not qconfig.draw_plots:
         return
 
@@ -551,26 +551,28 @@ def save_pdf(report_name, table, reads=False):
     column_widths = [0] * (len(all_rows[0]['values']) + 1)
     for row in all_rows:
         for i, cell in enumerate([row['metricName']] + map(val_to_str, row['values'])):
-            column_widths[i] = max(column_widths[i], len(cell))
+            column_widths[i] = max(column_widths[i], len(cell), 10)
 
-    if qconfig.min_contig and not reads:
+    if qconfig.min_contig and not is_reads:
         extra_info = 'All statistics are based on contigs of size >= %d bp, unless otherwise noted ' % qconfig.min_contig +\
                      '\n(e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
     else:
         extra_info = ''
     table_to_draw = []
+    if is_reads:
+        table_to_draw.append(['Assembly', 'reads'])
     for row in all_rows:
         table_to_draw.append(['%s' % cell for cell
             in [row['metricName']] + map(val_to_str, row['values'])])
     from libs import plotter
     if report_name==qconfig.report_prefix:
-        read_index=min([x for x, y in enumerate(table_to_draw) if 'reads' in y[0]])
-        plotter.draw_report_table(report_name, extra_info, table_to_draw[:read_index],column_widths)
+        rows_without_reads=[y for x, y in enumerate(table_to_draw) if 'reads' not in y[0]]
+        plotter.draw_report_table(report_name, extra_info, rows_without_reads,column_widths)
     else:
         plotter.draw_report_table(report_name, extra_info, table_to_draw, column_widths)
 
 
-def save(output_dirpath, report_name, transposed_report_name, order, silent=False, reads=False):
+def save(output_dirpath, report_name, transposed_report_name, order, silent=False, is_reads=False):
     # Where total report will be saved
     tab = table(order)
 
@@ -579,10 +581,10 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
     report_txt_fpath = os.path.join(output_dirpath, report_name) + '.txt'
     report_tsv_fpath = os.path.join(output_dirpath, report_name) + '.tsv'
     report_tex_fpath = os.path.join(output_dirpath, report_name) + '.tex'
-    save_txt(report_txt_fpath, tab, reads)
+    save_txt(report_txt_fpath, tab, is_reads)
     save_tsv(report_tsv_fpath, tab)
     save_tex(report_tex_fpath, tab)
-    save_pdf(report_name, tab, reads)
+    save_pdf(report_name, tab, is_reads)
     reports_fpaths = report_txt_fpath + ', ' + os.path.basename(report_tsv_fpath) + ', and ' + \
                      os.path.basename(report_tex_fpath)
     transposed_reports_fpaths = None
@@ -641,4 +643,4 @@ def save_unaligned(output_dirpath):
     save(output_dirpath, "unaligned_report", "", Fields.unaligned_order)
 
 def save_reads(output_dirpath):
-    save(output_dirpath, "reads_report", "", Fields.read_order, reads=True)
+    save(output_dirpath, "reads_report", "", Fields.read_order, is_reads=True)

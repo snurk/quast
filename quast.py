@@ -549,7 +549,7 @@ def main(args):
 
     if qconfig.reads:
         from libs import reads_analyzer
-        reads_analyzer.do(ref_fpath, reads_fpaths, output_dirpath)
+        reads_analyzer.do(ref_fpath, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
 
     # PROCESSING CONTIGS
     logger.info()
