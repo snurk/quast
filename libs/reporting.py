@@ -190,7 +190,7 @@ class Fields:
                                NG50, NG75, NA50, NA75, NGA50, NGA75, LG50, LG75, LA50, LA75, LGA50, LGA75,]),
 
         ('Predicted genes', [PREDICTED_GENES_UNIQUE, PREDICTED_GENES,]),
-        
+
         ('Reference statistics', [REFLEN, ESTREFLEN, REFGC, REF_GENES, REF_OPERONS,])
     ]
 
@@ -310,8 +310,8 @@ def get(assembly_fpath):
         assembly_fpaths.append(assembly_fpath)
     return reports.setdefault(assembly_fpath, Report(qutils.label_from_fpath(assembly_fpath)))
 
-def getReads():
-    return reports.setdefault("reads", Report("reads"))
+def get_reads():
+    return reports.setdefault('reads', Report('reads'))
 
 def delete(assembly_fpath):
     if assembly_fpath in assembly_fpaths:
@@ -332,7 +332,7 @@ def table(order=Fields.order):
         values = []
 
         if is_reads:
-            report = getReads()
+            report = get_reads()
             value = report.get_field(field)
 
             if are_multiple_tresholds:
