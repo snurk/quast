@@ -367,6 +367,8 @@ def main(args):
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
                         ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
+                        ('-1', 'test_data/reads1.fastq.gz'),
+                        ('-2', 'test_data/reads2.fastq.gz'),
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''), # for compiling GAGE Java classes
@@ -547,14 +549,14 @@ def main(args):
     else:
         ref_fpath = ''
 
+    contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
     if qconfig.reads:
         from libs import reads_analyzer
-        reads_analyzer.do(ref_fpath, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
+        reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
 
     # PROCESSING CONTIGS
     logger.info()
     logger.info('Contigs:')
-    contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
     for contigs_fpath in contigs_fpaths:
         report = reporting.get(contigs_fpath)
         report.add_field(reporting.Fields.NAME, qutils.label_from_fpath(contigs_fpath))

@@ -27,7 +27,7 @@ class Fields:
     # Basic statistics
     CONTIGS = '# contigs'
     CONTIGS__FOR_THRESHOLDS = ('# contigs (>= %d bp)', tuple(qconfig.contig_thresholds))
-    CHAFFCONTIG_PERCENT= '% chaff contig size'
+    CHAFFCONTIG_PERCENT = '% chaff contig size'
     LARGCONTIG = 'Largest contig'
     TOTALLEN = 'Total length'
     TOTALLENS__FOR_THRESHOLDS = ('Total length (>= %d bp)', tuple(qconfig.contig_thresholds))
@@ -39,10 +39,12 @@ class Fields:
 
     # Read statistics
     TOTALREADS = '# reads'
-    MAPPED_READS = '# mapped reads'
     LEFT_READS= '# left reads'
     RIGHT_READS = '# right reads'
+    MAPPED_READS = '# mapped reads'
     PROPERLYPAIR_READS = '# properly paired reads'
+    SINGLETONS = '# singletons'
+    READS_DIFFCHROM = '# mates mapped to a different chr'
 
     # Misassemblies
     MISASSEMBL = '# misassemblies'
@@ -113,16 +115,22 @@ class Fields:
     REFGC = 'Reference GC (%)'
     REF_GENES = 'Reference genes'
     REF_OPERONS = 'Reference operons'
+    REFMAPPED_READS = '# reference mapped reads'
+    REFPROPERLYPAIR_READS = '# reference properly paired reads'
+    REFSINGLETONS = '# reference singletons'
+    REFREADS_DIFFCHROM = '# reference mate mapped to a different chr'
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):
     order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS,
-             CONTIGS,CHAFFCONTIG_PERCENT, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
+             CONTIGS, CHAFFCONTIG_PERCENT, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
              N50, NG50, N75, NG75, L50, LG50, L75, LG75, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISLOCAL, UNALIGNED, UNALIGNEDBASES, MAPPEDGENOME, DUPLICATION_RATIO,
              UNCALLED_PERCENT, SUBSERROR, INDELSERROR, GENES, OPERONS, PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
              LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75,
-             TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS,]
+             TOTALREADS, LEFT_READS, RIGHT_READS, MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM,
+             REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM]
 
-    read_order = [TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS, ]
+    read_order = [NAME, TOTALREADS, LEFT_READS, RIGHT_READS, MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM,
+                  REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM]
 
     # content and order of metrics in DETAILED MISASSEMBLIES REPORT (<quast_output_dir>/contigs_reports/misassemblies_report.txt, .tex, .tsv)
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
@@ -172,7 +180,7 @@ class Fields:
         ('Statistics without reference', [CONTIGS, CONTIGS__FOR_THRESHOLDS, LARGCONTIG, TOTALLEN, CHAFFCONTIG_PERCENT, TOTALLENS__FOR_THRESHOLDS,
                                           N50, N75, L50, L75, GC,]),
 
-        ('Reads', [TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS]),
+        ('Reads', [TOTALREADS, LEFT_READS, RIGHT_READS, MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM]),
 
         ('Misassemblies', [MIS_ALL_EXTENSIVE,
                            MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
@@ -191,7 +199,8 @@ class Fields:
 
         ('Predicted genes', [PREDICTED_GENES_UNIQUE, PREDICTED_GENES,]),
 
-        ('Reference statistics', [REFLEN, ESTREFLEN, REFGC, REF_GENES, REF_OPERONS,])
+        ('Reference statistics', [REFLEN, ESTREFLEN, REFGC, REF_GENES, REF_OPERONS,
+                                  REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM])
     ]
 
     # for "short" version of HTML report
@@ -200,7 +209,7 @@ class Fields:
                     SUBSERROR, INDELSERROR, UNCALLED_PERCENT,
                     MAPPEDGENOME, DUPLICATION_RATIO, GENES, OPERONS, NGA50,
                     PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
-                    TOTALREADS, MAPPED_READS, LEFT_READS, RIGHT_READS,PROPERLYPAIR_READS]
+                    MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM]
 
 ####################################################################################
 ########################  END OF CONFIGURABLE PARAMETERS  ##########################
@@ -220,11 +229,12 @@ class Fields:
             [CONTIGS, CONTIGS__FOR_THRESHOLDS, L50, LG50, L75, LG75,
              MISLOCAL, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISINTERNALOVERLAP,
              UNALIGNED, UNALIGNEDBASES, AMBIGUOUS, AMBIGUOUSEXTRABASES,
-             UNCALLED, UNCALLED_PERCENT,
+             UNCALLED, UNCALLED_PERCENT, SINGLETONS, READS_DIFFCHROM,
              LA50, LGA50, LA75, LGA75, DUPLICATION_RATIO, INDELS, INDELSERROR, MISMATCHES, SUBSERROR,
              MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES],
         Quality.EQUAL:
-            [REFLEN, ESTREFLEN, GC, REFGC, LEFT_READS, RIGHT_READS, TOTALREADS],
+            [REFLEN, ESTREFLEN, GC, REFGC, TOTALREADS, REFMAPPED_READS, LEFT_READS, RIGHT_READS, REFPROPERLYPAIR_READS,
+             REFSINGLETONS, REFREADS_DIFFCHROM],
         }
 
     #for name, metrics in filter(lambda (name, metrics): name in ['Misassemblies', 'Unaligned', 'Ambiguous'], grouped_order):
@@ -310,9 +320,6 @@ def get(assembly_fpath):
         assembly_fpaths.append(assembly_fpath)
     return reports.setdefault(assembly_fpath, Report(qutils.label_from_fpath(assembly_fpath)))
 
-def get_reads():
-    return reports.setdefault('reads', Report('reads'))
-
 def delete(assembly_fpath):
     if assembly_fpath in assembly_fpaths:
         assembly_fpaths.remove(assembly_fpath)
@@ -327,28 +334,18 @@ def table(order=Fields.order):
 
     table = []
 
-    def append_line(rows, field, are_multiple_tresholds=False, pattern=None, feature=None, i=None, is_reads=False):
+    def append_line(rows, field, are_multiple_tresholds=False, pattern=None, feature=None, i=None):
         quality = get_quality(field)
         values = []
 
-        if is_reads:
-            report = get_reads()
+        for assembly_fpath in assembly_fpaths:
+            report = get(assembly_fpath)
             value = report.get_field(field)
 
             if are_multiple_tresholds:
                 values.append(value[i] if (value and i < len(value)) else None)
             else:
                 values.append(value)
-
-        else:
-            for assembly_fpath in assembly_fpaths:
-                report = get(assembly_fpath)
-                value = report.get_field(field)
-
-                if are_multiple_tresholds:
-                    values.append(value[i] if (value and i < len(value)) else None)
-                else:
-                    values.append(value)
 
         if filter(lambda v: v is not None, values):
             metric_name = field if (feature is None) else pattern % feature
@@ -365,12 +362,11 @@ def table(order=Fields.order):
         table.append((group_name, rows))
 
         for field in metrics:
-            is_reads = field in Fields.read_order
             if isinstance(field, tuple):  # TODO: rewrite it nicer
                 for i, feature in enumerate(field[1]):
-                    append_line(rows, field, True, field[0], feature, i, is_reads=is_reads)
+                    append_line(rows, field, True, field[0], feature, i)
             else:
-                append_line(rows, field, is_reads=is_reads)
+                append_line(rows, field)
 
     if not isinstance(order[0], tuple):  # is not a groupped metrics order
         group_name, rows = table[0]
@@ -401,7 +397,7 @@ def val_to_str(val):
         return str(val)
 
 
-def save_txt(fpath, table, is_reads=False):
+def save_txt(fpath, table):
     all_rows = get_all_rows_out_of_table(table)
 
     # determine width of columns for nice spaces
@@ -413,7 +409,7 @@ def save_txt(fpath, table, is_reads=False):
 
     txt_file = open(fpath, 'w')
 
-    if qconfig.min_contig and not is_reads:
+    if qconfig.min_contig:
         print >>txt_file, 'All statistics are based on contigs of size >= %d bp, unless otherwise noted ' % qconfig.min_contig + \
                           '(e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
         print >>txt_file
@@ -542,7 +538,7 @@ def save_tex(fpath, table, is_transposed=False):
         pass
 
 
-def save_pdf(report_name, table, is_reads=False):
+def save_pdf(report_name, table):
     if not qconfig.draw_plots:
         return
 
@@ -553,26 +549,20 @@ def save_pdf(report_name, table, is_reads=False):
         for i, cell in enumerate([row['metricName']] + map(val_to_str, row['values'])):
             column_widths[i] = max(column_widths[i], len(cell), 10)
 
-    if qconfig.min_contig and not is_reads:
+    if qconfig.min_contig:
         extra_info = 'All statistics are based on contigs of size >= %d bp, unless otherwise noted ' % qconfig.min_contig +\
                      '\n(e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs).'
     else:
         extra_info = ''
     table_to_draw = []
-    if is_reads:
-        table_to_draw.append(['Assembly', 'reads'])
     for row in all_rows:
         table_to_draw.append(['%s' % cell for cell
             in [row['metricName']] + map(val_to_str, row['values'])])
     from libs import plotter
-    if report_name==qconfig.report_prefix:
-        rows_without_reads=[y for x, y in enumerate(table_to_draw) if 'reads' not in y[0]]
-        plotter.draw_report_table(report_name, extra_info, rows_without_reads,column_widths)
-    else:
-        plotter.draw_report_table(report_name, extra_info, table_to_draw, column_widths)
+    plotter.draw_report_table(report_name, extra_info, table_to_draw, column_widths)
 
 
-def save(output_dirpath, report_name, transposed_report_name, order, silent=False, is_reads=False):
+def save(output_dirpath, report_name, transposed_report_name, order, silent=False):
     # Where total report will be saved
     tab = table(order)
 
@@ -581,10 +571,10 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
     report_txt_fpath = os.path.join(output_dirpath, report_name) + '.txt'
     report_tsv_fpath = os.path.join(output_dirpath, report_name) + '.tsv'
     report_tex_fpath = os.path.join(output_dirpath, report_name) + '.tex'
-    save_txt(report_txt_fpath, tab, is_reads)
+    save_txt(report_txt_fpath, tab)
     save_tsv(report_tsv_fpath, tab)
     save_tex(report_tex_fpath, tab)
-    save_pdf(report_name, tab, is_reads)
+    save_pdf(report_name, tab)
     reports_fpaths = report_txt_fpath + ', ' + os.path.basename(report_tsv_fpath) + ', and ' + \
                      os.path.basename(report_tex_fpath)
     transposed_reports_fpaths = None
@@ -643,4 +633,4 @@ def save_unaligned(output_dirpath):
     save(output_dirpath, "unaligned_report", "", Fields.unaligned_order)
 
 def save_reads(output_dirpath):
-    save(output_dirpath, "reads_report", "", Fields.read_order, is_reads=True)
+    save(output_dirpath, "reads_report", "", Fields.read_order)
