@@ -11,31 +11,38 @@ bwa_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'bwa-master')
 samtools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'samtools-1.2')
 
 
-def process_single_file(ref_fpath, reads_fpath, output_dirpath):
-    log_path = os.path.join(output_dirpath, 'bwa.log')
-    err_path = os.path.join(output_dirpath, 'bwa.log')
+def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, log_path, err_path):
+    assembly_name = qutils.name_from_fpath(ref_fpath)
+    res_dirpath = os.path.join(output_dirpath, assembly_name + '.res')
+    if os.path.isfile(res_dirpath):
+        logger.info('Using existing bwa alignments for ' + assembly_name)
+        return res_dirpath
+    bam_dirpath = os.path.join(output_dirpath, assembly_name + '.bam')
+    sam_dirpath = os.path.join(output_dirpath, assembly_name + '.sam')
+
     cmd = bin_fpath('bwa') + ' index ' + ref_fpath
     qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a+'),
                            stderr=open(err_path, 'a+'))
+    sam = open(sam_dirpath, 'w+')
+    cmd = bin_fpath('bwa') + ' mem -t' + str(bwa_threads) + ' ' + ref_fpath + ' ' + ' '.join(reads_fpath)
+    qutils.call_subprocess(shlex.split(cmd), stdout=sam, stderr=open(err_path, 'a+'))
+    sam.close()
+
     cmd = sam_fpath('samtools') + ' faidx ' + ref_fpath
     qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a+'),
                            stderr=open(err_path, 'a+'))
-    bam_dirpath = output_dirpath + '/out.bam'
-    sam_dirpath = output_dirpath + '/out.sam'
-
-    sam = open(sam_dirpath, 'w+')
-    cmd = bin_fpath('bwa') + ' mem -t' + str(qconfig.max_threads) + ' ' + ref_fpath + ' ' + ' '.join(reads_fpath)
-    qutils.call_subprocess(shlex.split(cmd), stdout=sam, stderr=open(err_path, 'a+'))
-    sam.close()
 
     cmd = sam_fpath('samtools') + ' view -bS ' + sam_dirpath
     qutils.call_subprocess(shlex.split(cmd), stdout=open(bam_dirpath, 'w+'),
                            stderr=open(err_path, 'a+'))
     cmd = sam_fpath('samtools') + ' flagstat ' + ' ' + bam_dirpath
     qutils.assert_file_exists(bam_dirpath, 'bam file')
-    results = subprocess.check_output(shlex.split(cmd), stderr=open(err_path, 'a+'))
-
-    return results
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(res_dirpath, 'w+'),
+                           stderr=open(err_path, 'a+'))
+    if not qconfig.debug:
+        os.remove(sam_dirpath)
+        os.remove(bam_dirpath)
+    return res_dirpath
 
 
 def bin_fpath(fname):
@@ -97,9 +104,28 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     if not os.path.isdir(bwa_output_dir):
         os.mkdir(bwa_output_dir)
 
-    # align reads to reference
+    proc_files = contigs_fpaths[:]
     if ref_fpath:
-        ref_results = process_single_file(ref_fpath, reads_fpaths, bwa_output_dir).split('\n')
+        chromosomes = 0
+        ref_file=open(ref_fpath)
+        for line in ref_file:
+            if line[0] == '>':
+                chromosomes += 1
+        ref_file.close()
+        proc_files.append(ref_fpath)
+    n_jobs = min(qconfig.max_threads, len(proc_files))
+    bwa_threads = qconfig.max_threads//n_jobs
+    log_path = os.path.join(bwa_output_dir, 'bwa.log')
+    err_path = os.path.join(bwa_output_dir, 'bwa.log')
+
+    from joblib import Parallel, delayed
+    res_dirpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(fpath, bwa_threads,
+        reads_fpaths, bwa_output_dir, log_path, err_path) for fpath in proc_files)
+
+    if ref_fpath:
+        assembly_name = qutils.name_from_fpath(ref_fpath)
+        ref_dirpath = os.path.join(bwa_output_dir, assembly_name + '.res')
+        ref_results = open(ref_dirpath)
         for line in ref_results:
             if 'properly paired' in line:
                 ref_paired_reads = line.split()[0]
@@ -111,12 +137,13 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 ref_diffchrom = line.split()[0]
 
     # process all contigs files
-    for contigs_fpath in contigs_fpaths:
+    for index, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
-        results = process_single_file(contigs_fpath, reads_fpaths, bwa_output_dir).split('\n')
+        results = open(res_dirpaths[index])
         for line in results:
             if 'total' in line:
                 report.add_field(reporting.Fields.TOTALREADS, line.split()[0])
+                report.add_field(reporting.Fields.REF_READS, line.split()[0])
             elif 'read1' in line:
                 report.add_field(reporting.Fields.LEFT_READS, line.split()[0])
             elif 'read2' in line:
@@ -127,13 +154,13 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 report.add_field(reporting.Fields.MAPPED_READS, line.split()[0])
             elif 'singletons' in line:
                 report.add_field(reporting.Fields.SINGLETONS, line.split()[0])
-            elif 'different' in line and 'mapQ' not in line:
+            elif 'different' in line and 'mapQ' not in line and chromosomes > 1:
                 report.add_field(reporting.Fields.READS_DIFFCHROM, line.split()[0])
         if ref_fpath:
             report.add_field(reporting.Fields.REFPROPERLYPAIR_READS, ref_paired_reads)
             report.add_field(reporting.Fields.REFREADS_DIFFCHROM, ref_diffchrom)
             report.add_field(reporting.Fields.REFSINGLETONS, ref_singletons)
             report.add_field(reporting.Fields.REFMAPPED_READS, ref_mapped_reads)
-
+            report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
     reporting.save_reads(output_dir)
     logger.info('Done.')

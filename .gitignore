@@ -6,6 +6,7 @@ quality.pyc
 show-snps.err
 libs/MUMmer3.23-linux/*.o
 libs/MUMmer3.23-osx/
+libs/samtools-1.2/
 libs/gage/*.class
 libs/*.pyc
 libs/html_saver/*.pyc

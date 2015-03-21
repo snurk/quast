@@ -44,7 +44,7 @@ class Fields:
     MAPPED_READS = '# mapped reads'
     PROPERLYPAIR_READS = '# properly paired reads'
     SINGLETONS = '# singletons'
-    READS_DIFFCHROM = '# mates mapped to a different chr'
+    READS_DIFFCHROM = '# mates mapped to a different contig'
 
     # Misassemblies
     MISASSEMBL = '# misassemblies'
@@ -115,10 +115,13 @@ class Fields:
     REFGC = 'Reference GC (%)'
     REF_GENES = 'Reference genes'
     REF_OPERONS = 'Reference operons'
-    REFMAPPED_READS = '# reference mapped reads'
-    REFPROPERLYPAIR_READS = '# reference properly paired reads'
-    REFSINGLETONS = '# reference singletons'
-    REFREADS_DIFFCHROM = '# reference mate mapped to a different chr'
+    REFCHROMOSOMES = 'Reference chromosomes'
+    REF_READS = 'Reference reads'
+    REFMAPPED_READS = 'Reference mapped reads'
+    REFPROPERLYPAIR_READS = 'Reference properly paired reads'
+    REFSINGLETONS = 'Reference singletons'
+    REFREADS_DIFFCHROM = 'Reference mate mapped to a different chr'
+
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):
     order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS,
@@ -199,8 +202,8 @@ class Fields:
 
         ('Predicted genes', [PREDICTED_GENES_UNIQUE, PREDICTED_GENES,]),
 
-        ('Reference statistics', [REFLEN, ESTREFLEN, REFGC, REF_GENES, REF_OPERONS,
-                                  REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM])
+        ('Reference statistics', [REFLEN, ESTREFLEN, REFCHROMOSOMES, REFGC, REF_GENES, REF_OPERONS,
+                                  REF_READS, REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM])
     ]
 
     # for "short" version of HTML report
@@ -264,7 +267,7 @@ logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
 reports = {}  # basefilename -> Report
 assembly_fpaths = []  # for printing in appropriate order
-reads_path=""
+
 #################################################
 
 def get_main_metrics():
