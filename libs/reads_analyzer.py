@@ -133,7 +133,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 ref_mapped_reads = line.split()[0]
             elif 'singletons' in line:
                 ref_singletons = line.split()[0]
-            elif 'different' in line and 'mapQ' not in line:
+            elif 'different' in line and 'mapQ' not in line and chromosomes > 1:
                 ref_diffchrom = line.split()[0]
 
     # process all contigs files
