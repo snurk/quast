@@ -158,7 +158,8 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 report.add_field(reporting.Fields.READS_DIFFCHROM, line.split()[0])
         if ref_fpath:
             report.add_field(reporting.Fields.REFPROPERLYPAIR_READS, ref_paired_reads)
-            report.add_field(reporting.Fields.REFREADS_DIFFCHROM, ref_diffchrom)
+            if chromosomes > 1:
+                report.add_field(reporting.Fields.REFREADS_DIFFCHROM, ref_diffchrom)
             report.add_field(reporting.Fields.REFSINGLETONS, ref_singletons)
             report.add_field(reporting.Fields.REFMAPPED_READS, ref_mapped_reads)
             report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
