@@ -1,0 +1,127 @@
+# hmmsearch :: search profile(s) against a sequence database
+# HMMER 3.1b2 (February 2015); http://hmmer.org/
+# Copyright (C) 2015 Howard Hughes Medical Institute.
+# Freely distributed under the GNU General Public License (GPLv3).
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# query HMM file:                  eukaryota/hmms/3146.hmm
+# target sequence database:        ./run_out//augustus_proteins/3146.fas.2
+# output directed to file:         temp
+# per-dom hits tabular output:     ./run_out/hmmer_output/3146.out.2
+# sequence search space set to:    41317
+# number of worker threads:        1
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Query:       3146  [M=1385]
+Scores for complete sequences (score includes all domains):
+   --- full sequence ---   --- best 1 domain ---    -#dom-
+    E-value  score  bias    E-value  score  bias    exp  N  Sequence                         Description
+    ------- ------ -----    ------- ------ -----   ---- --  --------                         -----------
+          0 1024.2   1.9   2.2e-233  778.6   0.0    2.7  2  g2[scaffold1306:1189515-1194184]  
+
+
+Domain annotation for each sequence (and alignments):
+>> g2[scaffold1306:1189515-1194184]  
+   #    score  bias  c-Evalue  i-Evalue hmmfrom  hmm to    alifrom  ali to    envfrom  env to     acc
+ ---   ------ ----- --------- --------- ------- -------    ------- -------    ------- -------    ----
+   1 !  778.6   0.0  5.2e-238  2.2e-233     204     918 ..      70     775 ..      55     803 .. 0.94
+   2 !  242.9   0.9   2.4e-76   9.9e-72    1020    1374 ..     806    1215 ..     788    1227 .. 0.80
+
+  Alignments for each domain:
+  == domain 1  score: 778.6 bits;  conditional E-value: 5.2e-238
+                              3146 204 kelekvlkkaleelnplkvlnlfkrikeediellllkseegrPedliltripvpPvcirPsvvsdlksgtnEDdltv 280
+                                       +++++ +++++  l++ ++ +++k+i++e+  +l+++++ +rP+ +++t +pvpP+++rP+v++   s+ n Ddlt 
+  g2[scaffold1306:1189515-1194184]  70 THVNEDSQEKKMALTAERAWEILKHITDEESFILGMDPKFARPDWMVVTVLPVPPLSVRPAVIMYG-SAKNQDDLTH 145
+                                       45566678888899*************************************************999.99******** PP
+
+                              3146 281 klseivllndvikkklekgakvqtimedwdflqlqvalyinselsgiplklq.skkpirglvqrlkgkqgrfrgnls 356
+                                       kl++i+  n+ + ++ + ga  + i e+   lq++va++++ +++g+p ++q s kp +++  rlkgk+gr rgnl 
+  g2[scaffold1306:1189515-1194184] 146 KLADIIKANNELIRNEQAGAAAHVISENIKMLQFHVATLVDNDMPGMPRAMQkSGKPLKAIKARLKGKEGRIRGNLM 222
+                                       ***********999*************************************9899********************** PP
+
+                              3146 357 gKRvdfsgRtvisPdpnLridevavPervAkiltypervtkanieklrklvlnGpdvhPGAnyvekkeeklkrfLky 433
+                                       gKRvdfs+Rtvi+PdpnLrid+v+vP  +A++lt+pe vt++ni+k+++lv+ G +++PGA+y+++++   +  L++
+  g2[scaffold1306:1189515-1194184] 223 GKRVDFSARTVITPDPNLRIDQVGVPRSIAQNLTFPEIVTPFNIDKMQELVRRGNSQYPGAKYIVRDN-GERIDLRF 298
+                                       ****************************************************************9765.99****** PP
+
+                              3146 434 gnrekvakeLkvGdiveRhledgdvvLFnRqPsLHklsimahrakvrphrtfrfneCvCtPynADFDGDEmnlhlPq 510
+                                          +    +L++G  veRh++dgd+v+FnRqP LHk+s+m hr+kv p+ tfr+n  + +PynADFDGDEmnlh+Pq
+  g2[scaffold1306:1189515-1194184] 299 HP-KPSDLHLQCGYRVERHIRDGDLVIFNRQPTLHKMSMMGHRVKVLPWSTFRMNLSCTSPYNADFDGDEMNLHVPQ 374
+                                       98.567889******************************************************************** PP
+
+                              3146 511 teearaealvLmgvksnlvtprnGepliaaiqDfitgaylltqkdtfldrkeatqlvasllagkdaklkidlppPai 587
+                                       + e rae  ++  + + ++tp+  +p++  +qD +t+   +t++d+f+++++++++++ l      + + ++p+P+i
+  g2[scaffold1306:1189515-1194184] 375 SMETRAEVENIHVTPRQIITPQANKPVMGIVQDTLTAVRKMTKRDVFIEKEQMMNILMFL-----PSWNGKMPQPCI 446
+                                       ********************************************************9999.....457789****** PP
+
+                              3146 588 lkPvelwtGKqvfslllrpnkeskvkvnleakgkeykkkaeelsvnDsyvvirnsellaGvldKstlGsgkkksify 664
+                                       lkP+ lwtGKq+fsl++  n ++  + + +    e     + +s+ D+ v+++  el+ G+l K+tlG ++  s+++
+  g2[scaffold1306:1189515-1194184] 447 LKPKPLWTGKQIFSLIIPGNVNMIRTHSTHPD-EEDDGPYKWISPGDTKVMVEHGELVMGILCKKTLGTSA-GSLLH 521
+                                       *****************888766544444444.3444478899*************************876.57888 PP
+
+                              3146 665 vllrdfgeeaaaeamnrlaklasrylsnrGfsiGigdvtPgekLlkekeelleegykkcdelikelkegklekqpgc 741
+                                       + + + g+e++ +   ++  + + +l  +G siGigd + + +   e ++ ++++ +++ e+i+++++ +le +pg 
+  g2[scaffold1306:1189515-1194184] 522 ICMLELGHEVCGRFYGNIQTVINNWLLLEGHSIGIGDTIADPQTYLEIQKAIRKAKEDVIEVIQKAHNMELEPTPGN 598
+                                       88889**********************************999999999***************************** PP
+
+                              3146 742 seeetleakilkelskireeagkaClkeLsksnsplimalsgskGskinisqmiacvGqqaisgkrvpdgfedrsLp 818
+                                       +  +t+e+++ ++l++ r+++g    k L+++n    m +sgskGs+inisq+iacvGqq ++gkr+p gf +r+Lp
+  g2[scaffold1306:1189515-1194184] 599 TLRQTFENQVNRILNDARDKTGGSAKKSLTEYNNLKAMVVSGSKGSNINISQVIACVGQQNVEGKRIPFGFRKRTLP 675
+                                       ***************************************************************************** PP
+
+                              3146 819 hfekksktpeakGFvensFysGLtptEflfhamsGREGLvDtAvktAetgYmqRRLvksLeDLsvqYDktvRnssgd 895
+                                       hf k+   pe++GFvens+ +GLtp+Ef+fham+GREGL+DtAvktAetgY+qRRL+k++e ++v+YD tvRns+g+
+  g2[scaffold1306:1189515-1194184] 676 HFIKDDYGPESRGFVENSYLAGLTPSEFYFHAMGGREGLIDTAVKTAETGYIQRRLIKAMESVMVHYDGTVRNSVGQ 752
+                                       ***************************************************************************** PP
+
+                              3146 896 ivqfvyGeDgldpvamEgkdkpv 918
+                                       ++q++yGeDgl   ++E ++ p+
+  g2[scaffold1306:1189515-1194184] 753 LIQLRYGEDGLCGETVEFQNLPT 775
+                                       ***********999999888654 PP
+
+  == domain 2  score: 242.9 bits;  conditional E-value: 2.4e-76
+                              3146 1020 ckekyerakvepGtavGAlaaqsiGEPgtqmtLktFhfaGvAsmnitqGvPRikEiinaskkistPiitaeLe.. 1092
+                                        ++e +   +v pG  vGAlaaqs+GEP+tqmtL tFhfaGv s n+t+GvPR+kEiin skk  +P +t+ L+  
+  g2[scaffold1306:1189515-1194184]  806 VREMMGSGEVSPGEMVGALAAQSLGEPATQMTLNTFHFAGVSSKNVTLGVPRLKEIINISKKPKAPSLTVFLTga 880 
+                                        5556667799************************************************************99722 PP
+
+                              3146 1093 eekdeeaarvvkgriektllgeiveyieevllpdeafllikldleriekl..klevtlesikeailkskklklke 1165
+                                          +d+e a+ v  r+e+t+l+ ++      + pd    +i  d e ++      + + ++i+  +l+ + l  k+
+  g2[scaffold1306:1189515-1194184]  881 AARDAEKAKNVLCRLEHTTLRKVTANTAIYYDPDPQNTVIAEDQEFVNVYyeMPDFDPNKISPWLLRIE-LDRKR 954 
+                                        57899*******************998888877777777777777666541133667777777766555.33333 PP
+
+                              3146 1166 ekvevlsesviavkvee...................................................skkkssl 1189
+                                         + + l+ + ia k+++                                                    ++++ +
+  g2[scaffold1306:1189515-1194184]  955 MTDKKLTMEQIAEKINAgfgddlncifnddnaeklvlririmnsddnkfqdseeetvdkmeddmflrcIEANMLS 1029
+                                        3333333333333443344556777777789999*****************998876665555555442222233 PP
+
+                              3146 1190 llelqklkeklpkvvvk..glpevsRaviniddkkskkekyellvegkglrevlateGvkgekttsnnilevekv 1262
+                                         ++lq + e++ kv ++   ++  +R vi+ + + +  ++  l  +g++l +vl+ + v+  +t sn+i+e+ +v
+  g2[scaffold1306:1189515-1194184] 1030 DMTLQGI-EAIGKVYMHlpQTDAKKRIVITETGEFKAIAEWLLETDGTSLMKVLSERDVDPVRTFSNDICEIFEV 1103
+                                        3333333.344444433113344466666666655556666777889**************************** PP
+
+                              3146 1263 lGieAaratiikeiekvmenhgmsidkRHvmLladvmtykgevlgitrfGlakmkesvlmlasfektadhlfdaa 1337
+                                        lGieA r+++ ke+++v++ +g+ ++ RH++Ll dvmt kg+++ itr+G+++  +  lm  sfe+t d l+daa
+  g2[scaffold1306:1189515-1194184] 1104 LGIEAVRKSVEKEMNAVLQFYGLYVNYRHLALLCDVMTAKGHLMAITRHGINRQDTGALMRCSFEETVDVLLDAA 1178
+                                        *************************************************************************** PP
+
+                              3146 1338 lagkkdeiegvseciilGiplsigtglfkllkklekk 1374
+                                         +++ d ++gvse ii+G+   igtg+f+ll + ek 
+  g2[scaffold1306:1189515-1194184] 1179 SHAEVDPMRGVSENIIMGQLPRIGTGCFDLLLDAEKC 1215
+                                        ******************************9887765 PP
+
+
+
+Internal pipeline statistics summary:
+-------------------------------------
+Query model(s):                              1  (1385 nodes)
+Target sequences:                            3  (1728 residues searched)
+Passed MSV filter:                         1  (0.333333); expected 0.1 (0.02)
+Passed bias filter:                        1  (0.333333); expected 0.1 (0.02)
+Passed Vit filter:                         1  (0.333333); expected 0.0 (0.001)
+Passed Fwd filter:                         1  (0.333333); expected 0.0 (1e-05)
+Initial search space (Z):              41317  [as set by --Z on cmdline]
+Domain search space  (domZ):               1  [number of targets reported over threshold]
+# CPU time: 0.05u 0.00s 00:00:00.05 Elapsed: 00:00:00.05
+# Mc/sec: 47.87
+//
+[ok]

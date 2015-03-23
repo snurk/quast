@@ -1,8 +1,6 @@
 from libs import reporting, qconfig, qutils
 
 from libs.log import get_logger
-import subprocess
-
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 import shlex
 import os
@@ -116,7 +114,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     n_jobs = min(qconfig.max_threads, len(proc_files))
     bwa_threads = qconfig.max_threads//n_jobs
     log_path = os.path.join(bwa_output_dir, 'bwa.log')
-    err_path = os.path.join(bwa_output_dir, 'bwa.log')
+    err_path = os.path.join(bwa_output_dir, 'bwa.err')
 
     from joblib import Parallel, delayed
     res_dirpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(fpath, bwa_threads,

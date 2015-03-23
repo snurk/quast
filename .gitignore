@@ -9,6 +9,7 @@ libs/MUMmer3.23-osx/
 libs/samtools-1.2/
 libs/gage/*.class
 libs/*.pyc
+libs/*.o
 libs/html_saver/*.pyc
 libs/.DS_Store
 .idea/*

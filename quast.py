@@ -371,10 +371,10 @@ def main(args):
                         ('-2', 'test_data/reads2.fastq.gz'),
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
+                        ('-e', "--eukaryote"),
                         ('--gage', ''), # for compiling GAGE Java classes
                         ('--gene-finding',''), ('--eukaryote','')] # for compiling GlimmerHMM
-            contigs_fpaths += ['test_data/contigs_1.fasta',
-                               'test_data/contigs_2.fasta']
+            contigs_fpaths += ['test_data/bombus.fasta',]
             qconfig.test = True
 
         if opt.startswith('--help'):
@@ -552,7 +552,7 @@ def main(args):
     contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
     if qconfig.reads:
         from libs import reads_analyzer
-        reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
+        #reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
 
     # PROCESSING CONTIGS
     logger.info()
@@ -646,8 +646,11 @@ def main(args):
             ########################################################################
             ### Glimmer
             ########################################################################
+            from libs import busco
+            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'))
             from libs import glimmer
             glimmer.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'))
+
     else:
         logger.info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
