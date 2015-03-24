@@ -49,7 +49,9 @@ def do(contigs_fpaths, out_dirpath):
         os.chdir(hmmer_dirpath)
         # making
         logger.info('Compiling hmmer (details are in ' + os.path.join(hmmer_dirpath, 'make.log') + ' and make.err)')
-        os.system('./configure')
+        qutils.call_subprocess(['./configure'],stdout=open(os.path.join(hmmer_dirpath, 'make.log'), 'w'),
+            stderr=open(os.path.join(hmmer_dirpath, 'make.err'), 'w'), )
+
         return_code = qutils.call_subprocess(
             ['make', '-C', hmmer_dirpath],
             stdout=open(os.path.join(hmmer_dirpath, 'make.log'), 'w'),

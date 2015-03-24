@@ -366,9 +366,7 @@ def main(args):
         if opt == '--test':
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
-                        ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
-                        ('-1', 'test_data/reads1.fastq.gz'),
-                        ('-2', 'test_data/reads2.fastq.gz'),
+                        ('-R', 'test_data/bim_ref.fa'),   # for compiling MUMmer
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
                         ('-e', "--eukaryote"),
@@ -550,7 +548,7 @@ def main(args):
         ref_fpath = ''
 
     contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
-    logger.print_timestamp()
+
     if qconfig.reads:
         from libs import reads_analyzer
         reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
@@ -558,7 +556,7 @@ def main(args):
     # PROCESSING CONTIGS
     logger.info()
     logger.info('Contigs:')
-    logger.print_timestamp()
+
     for contigs_fpath in contigs_fpaths:
         report = reporting.get(contigs_fpath)
         report.add_field(reporting.Fields.NAME, qutils.label_from_fpath(contigs_fpath))
@@ -635,8 +633,8 @@ def main(args):
         genome_analyzer.do(
             ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
             genes_fpaths, operons_fpaths, detailed_contigs_reports_dirpath, os.path.join(output_dirpath, 'genome_stats'))
-        
-    logger.print_timestamp()
+
+
     if qconfig.gene_finding:
         if qconfig.prokaryote or qconfig.meta:
             ########################################################################
