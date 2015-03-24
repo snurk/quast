@@ -366,13 +366,15 @@ def main(args):
         if opt == '--test':
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
-                        ('-R', 'test_data/bim_ref.fa'),   # for compiling MUMmer
+                        ('-1', 'test_data/reads1.fasta.gz'),
+                        ('-2', 'test_data/reads2.fasta.gz'),
+                        ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
-                        ('-e', "--eukaryote"),
                         ('--gage', ''), # for compiling GAGE Java classes
                         ('--gene-finding',''), ('--eukaryote','')] # for compiling GlimmerHMM
-            contigs_fpaths += ['test_data/bombus.fasta',]
+            contigs_fpaths += ['test_data/contigs_1.fasta',
+                               'test_data/contigs_2.fasta',]
             qconfig.test = True
 
         if opt.startswith('--help'):
