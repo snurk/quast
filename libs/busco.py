@@ -76,8 +76,8 @@ def do(contigs_fpaths, out_dirpath):
     for i, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
         total, complete, part  = results[i]
-        report.add_field(reporting.Fields.CORE_COMPLETE, ('%.2f' % (complete/total)))
-        report.add_field(reporting.Fields.CORE_PART, ('%.2f' % (part/total)))
+        report.add_field(reporting.Fields.CORE_COMPLETE, ('%.2f' % (float(complete)*100.0/total)))
+        report.add_field(reporting.Fields.CORE_PART, ('%.2f' % (float(part)*100.0/total)))
     logger.print_timestamp()
     logger.info('Done.')
 

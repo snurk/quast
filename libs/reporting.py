@@ -200,6 +200,7 @@ class Fields:
                         MIS_SHORT_INDELS, MIS_LONG_INDELS, UNCALLED, UNCALLED_PERCENT,]),
 
         ('Genome statistics', [MAPPEDGENOME, DUPLICATION_RATIO, GENES, OPERONS, LARGALIGN,
+                               CORE_COMPLETE, CORE_PART,
                                NG50, NG75, NA50, NA75, NGA50, NGA75, LG50, LG75, LA50, LA75, LGA50, LGA75,]),
 
         ('Predicted genes', [PREDICTED_GENES_UNIQUE, PREDICTED_GENES,]),
