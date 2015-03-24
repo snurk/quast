@@ -308,6 +308,7 @@ def do(f_args, output_dir):
     #---------------------------BLAST steps START -------------------------------------------#
 
     #Make a blast database and run tblastn
+    '''
     if mode == 'genome' or mode == 'blast' or mode == 'trans':
         print('*** Running tBlastN ***')
         cmd = blast_fpath('makeblastdb') + (' -in %s -dbtype nucl -out %s' % (args['genome'], mainout + args['abrev']))
@@ -315,7 +316,7 @@ def do(f_args, output_dir):
         cmd = blast_fpath('tblastn') + (' -num_threads %s -query %s/ancestral -db %s -out %s_tblastn -outfmt 7' % (
         cpus, os.path.join(busco_dirpath, clade), mainout + args['abrev'], mainout + args['abrev']))
         qutils.call_subprocess(shlex.split(cmd))
-
+    '''
     #Get coordinates for a genome analysis
     if mode == 'genome' or mode == 'blast':
         print('*** Getting coordinates for candidate regions! ***')
@@ -381,7 +382,7 @@ def do(f_args, output_dir):
                 out.write(
                     '%s\t%s\t%s\t%s\n' % (i, contig, max(0, coords[i][contig][0] - flank), coords[i][contig][1] + flank))
         out.close()
-
+    '''
     #Get coordinates, candidate regions and translate sequences (transcriptome analysis)
     if mode == 'transcriptome' or mode == 'trans':
         print('*** Getting coordinates for candidate transcripts! ***')
@@ -575,7 +576,7 @@ def do(f_args, output_dir):
                             line = line[:-1]
                         out.write(line)
         out.close()
-
+    '''
 
     #Run HMMer (genome mode)
     if mode == 'genome' or mode == 'hmmer':
@@ -601,7 +602,7 @@ def do(f_args, output_dir):
                 {'input_file': mainout + 'augustus_proteins/' + i, 'db_size': Z, 'cpu': cpus,
                  'group_file': os.path.join(busco_dirpath, clade) + '/hmms/' + name, 'output_file': mainout + 'hmmer_output/' + name + '.out.' + i[-1]})
                 qutils.call_subprocess(shlex.split(cmd), stderr=open(err_path, 'a+'))
-
+    '''
     #Run HMMer (transcriptome mode)
     if mode == 'trans' or mode == 'transcriptome':
         print('*** Running HMMER to confirm transcript orthology ***')
@@ -658,6 +659,7 @@ def do(f_args, output_dir):
 
 
     ###*******get list to be re-run
+    '''
     if mode == 'genome' or mode == 'hmmer':
         print('*** Parsing HMMER results ***')
         #Open the output file; if no name was specified the default name will be used
@@ -680,6 +682,7 @@ def do(f_args, output_dir):
                 dic[name] = [[i[1], i[2], i[3]]]  #scaffold,start and end
             elif name in dic:
                 dic[name].append([i[1], i[2], i[3]])
+    '''
     ###*********
 
 
@@ -981,10 +984,11 @@ def do(f_args, output_dir):
             f.write('%s\tMissing\n' % (i))
     out.close();
     f.close()
-
+    '''
     #######retraining
 
     if mode == 'genome' or mode == 'genome' or mode == 'hmmer':
+
         if os.path.exists('%sselected' % mainout) == False:
             os.system('mkdir %sselected' % mainout)
         if os.path.exists('%sgffs' % mainout) == False:
@@ -1037,15 +1041,15 @@ def do(f_args, output_dir):
             f = open('%sgffs/%s' % (mainout, entry))
             os.system(augustus_short_dirpath + '/scripts/gff2gbSmallDNA.pl %sgffs/%s %s 1000 %sgb/%s.raw.gb' % (
             mainout, entry, args['genome'], mainout, entry[:-4]))
-
+        err_path = os.path.join(mainout, 'august.err')
         print('Training augustus gene predictor')
-
+        os.chdir(augustus_short_dirpath)
         os.system(augustus_short_dirpath + '/scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s' % (
         args['abrev'], augustus_short_dirpath + '/config/'))  #create new species config file from template
         os.system('cat %sgb/*.gb > training_set_%s' % (mainout, args['abrev']))
         cmd = august_fpath('etraining') + (' --species=%s training_set_%s' % (
         args['abrev'], args['abrev']))  #train on new training set (complete single copy buscos
-        out_aug = open((mainout + 'augustus/train.log.'), 'w+')
+        out_aug = open((mainout + 'augustus/train.log'), 'w+')
         qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a+'))
 
         if args['long'] == True:
@@ -1228,7 +1232,7 @@ def do(f_args, output_dir):
 
         summary.write('\t%s\tTotal BUSCO groups searched\n' % (totalbuscos))
         summary.close()
-        summary = open(os.path.join(output_dir, args['abrev']) + '/full_table_' + args['abrev'], 'w')
+        summary = open(mainout + 'full_table_' + args['abrev'], 'w')
         summary.write('#BUSCO_group\tStatus\tScaffold\tStart\tEnd\tBitscore\tLength\n')
 
         temp = os.listdir('%shmmer_output' % mainout);
@@ -1277,7 +1281,7 @@ def do(f_args, output_dir):
                 name, dic[group][marker][0], dic[group][marker][1], dic[group][marker][2], max(score), max(length) + 1))
         summary.close()
 
-        f = open(os.path.join(output_dir, args['abrev']) + '/full_table_%s' % args['abrev'], 'r');
+        f = open(mainout + '/full_table_%s' % args['abrev'], 'r')
         lista = []
         for i in f:
             i = i.strip().split()

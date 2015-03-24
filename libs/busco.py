@@ -21,14 +21,14 @@ def do(contigs_fpaths, out_dirpath):
 
     if not all_required_binaries_exist(augustus_dirpath, 'bin/augustus'):
         # making
-        logger.info('Compiling genewise (details are in ' + os.path.join(augustus_dirpath, 'make.log') + ' and make.err)')
+        logger.info('Compiling augustus (details are in ' + os.path.join(augustus_dirpath, 'make.log') + ' and make.err)')
         return_code = qutils.call_subprocess(
             ['make', augustus_dirpath],
             stdout=open(os.path.join(augustus_dirpath, 'make.log'), 'w'),
             stderr=open(os.path.join(augustus_dirpath, 'make.err'), 'w'), )
 
         if return_code != 0 or not all_required_binaries_exist(augustus_dirpath, 'bin/augustus'):
-            logger.error('Failed to compile genewise (' + augustus_dirpath + ')! '
+            logger.error('Failed to compile augustus (' + augustus_dirpath + ')! '
                                                                    'Try to compile it manually. ' + (
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
@@ -46,13 +46,14 @@ def do(contigs_fpaths, out_dirpath):
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed aligning the reads.')
     if not all_required_binaries_exist(hmmer_dirpath, 'src/hmmsearch'):
+        os.chdir(hmmer_dirpath)
         # making
         logger.info('Compiling hmmer (details are in ' + os.path.join(hmmer_dirpath, 'make.log') + ' and make.err)')
+        os.system('./configure')
         return_code = qutils.call_subprocess(
             ['make', '-C', hmmer_dirpath],
             stdout=open(os.path.join(hmmer_dirpath, 'make.log'), 'w'),
             stderr=open(os.path.join(hmmer_dirpath, 'make.err'), 'w'), )
-
         if return_code != 0 or not all_required_binaries_exist(hmmer_dirpath, 'src/hmmsearch'):
             logger.error('Failed to compile hmmer (' + hmmer_dirpath + ')! '
                                                                    'Try to compile it manually. ' + (
@@ -77,6 +78,6 @@ def do(contigs_fpaths, out_dirpath):
         total, complete, part  = results[i]
         report.add_field(reporting.Fields.CORE_COMPLETE, ('%.2f' % (complete/total)))
         report.add_field(reporting.Fields.CORE_PART, ('%.2f' % (part/total)))
-
+    logger.print_timestamp()
     logger.info('Done.')
 
