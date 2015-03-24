@@ -382,7 +382,7 @@ def do(f_args, output_dir):
                 out.write(
                     '%s\t%s\t%s\t%s\n' % (i, contig, max(0, coords[i][contig][0] - flank), coords[i][contig][1] + flank))
         out.close()
-    '''
+
     #Get coordinates, candidate regions and translate sequences (transcriptome analysis)
     if mode == 'transcriptome' or mode == 'trans':
         print('*** Getting coordinates for candidate transcripts! ***')
@@ -576,7 +576,7 @@ def do(f_args, output_dir):
                             line = line[:-1]
                         out.write(line)
         out.close()
-    '''
+
 
     #Run HMMer (genome mode)
     if mode == 'genome' or mode == 'hmmer':
@@ -602,7 +602,7 @@ def do(f_args, output_dir):
                 {'input_file': mainout + 'augustus_proteins/' + i, 'db_size': Z, 'cpu': cpus,
                  'group_file': os.path.join(busco_dirpath, clade) + '/hmms/' + name, 'output_file': mainout + 'hmmer_output/' + name + '.out.' + i[-1]})
                 qutils.call_subprocess(shlex.split(cmd), stderr=open(err_path, 'a+'))
-    '''
+
     #Run HMMer (transcriptome mode)
     if mode == 'trans' or mode == 'transcriptome':
         print('*** Running HMMER to confirm transcript orthology ***')
@@ -659,7 +659,7 @@ def do(f_args, output_dir):
 
 
     ###*******get list to be re-run
-    '''
+
     if mode == 'genome' or mode == 'hmmer':
         print('*** Parsing HMMER results ***')
         #Open the output file; if no name was specified the default name will be used
@@ -682,7 +682,7 @@ def do(f_args, output_dir):
                 dic[name] = [[i[1], i[2], i[3]]]  #scaffold,start and end
             elif name in dic:
                 dic[name].append([i[1], i[2], i[3]])
-    '''
+
     ###*********
 
 
@@ -984,7 +984,7 @@ def do(f_args, output_dir):
             f.write('%s\tMissing\n' % (i))
     out.close();
     f.close()
-    '''
+
     #######retraining
 
     if mode == 'genome' or mode == 'genome' or mode == 'hmmer':
@@ -1295,9 +1295,9 @@ def do(f_args, output_dir):
             else:
                 out.write('%s\n' % i)
                 f.write('%s\tMissing\n' % (i))
-        out.close();
+        out.close()
         f.close()
-        out.close();
+        out.close()
         if not qconfig.debug:
             shutil.rmtree(mainout)
 
