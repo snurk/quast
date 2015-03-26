@@ -317,11 +317,13 @@ def do(f_args, output_dir):
 
     if mode == 'genome' or mode == 'blast' or mode == 'trans':
         print('*** Running tBlastN ***')
+        log_path = os.path.join(mainout, 'hmmer.log')
+        err_path = os.path.join(mainout, 'hmmer.err')
         cmd = blast_fpath('makeblastdb') + (' -in %s -dbtype nucl -out %s' % (args['genome'], mainout + args['abrev']))
-        qutils.call_subprocess(shlex.split(cmd))
+        qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
         cmd = blast_fpath('tblastn') + (' -num_threads %s -query %s/ancestral -db %s -out %s_tblastn -outfmt 7' % (
             cpus, os.path.join(busco_dirpath, clade), mainout + args['abrev'], mainout + args['abrev']))
-        qutils.call_subprocess(shlex.split(cmd))
+        qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
     #Get coordinates for a genome analysis
     if mode == 'genome' or mode == 'blast':
@@ -858,22 +860,6 @@ def do(f_args, output_dir):
 
     #summarize results, print and write to output files
     summary = open(mainout + 'short_summary_' + args['abrev'], 'w')
-    if mode == 'OGS':
-        print('Total complete BUSCOs found in assembly (<2 sigma) :  %s\t(%s duplicated).' % (
-            len(set(cc)) + len(set(mcc)), len(mcc)))
-        print('Total BUSCOs partially recovered (>2 sigma) :  %s' % (len(fcc)))
-    else:
-        print(
-        'Total complete BUSCOs found in assembly (<2 sigma) :  %s\t(%s duplicated).' % (len(set(unique)), len(mcc)))
-        print('Total BUSCOs partially recovered (>2 sigma) :  %s' % (fcc))
-    print('Total groups searched: %s' % (totalbuscos))
-    try:
-        if mode != 'OGS':
-            print('Total BUSCOs not found:  %s' % (totalbuscos - (len(set(cc)) + fcc)))
-        else:
-            print('Total BUSCOs not found:  %s' % (totalbuscos - (len(set(cc)) + len(set(mcc)) + len(fcc))))
-    except:
-        print('Total BUSCOs not found:  %s' % (totalbuscos - (len(set(cc)) + len(fcc))))
 
     summary.write(
         '#Summarized BUSCO benchmarking for file: %s\n#BUSCO was run in mode: %s\n\n' % (args['genome'], mode))
@@ -1065,14 +1051,16 @@ def do(f_args, output_dir):
             os.system(augustus_short_dirpath + '/scripts/gff2gbSmallDNA.pl %sgffs/%s %s 1000 %sgb/%s.raw.gb' % (
                 mainout, entry, args['genome'], mainout, entry[:-4]))
         err_path = os.path.join(mainout, 'august.err')
+        out_aug = open((mainout + 'augustus/train.log'), 'w')
         print('Training augustus gene predictor')
         os.chdir(augustus_short_dirpath)
-        os.system(augustus_short_dirpath + '/scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s' % (
-            args['abrev'], augustus_short_dirpath + '/config/'))  #create new species config file from template
-        os.system('cat %sgb/*.gb > training_set_%s' % (mainout, args['abrev']))
-        cmd = august_fpath('etraining') + (' --species=%s training_set_%s' % (
-            args['abrev'], args['abrev']))  #train on new training set (complete single copy buscos
-        out_aug = open((mainout + 'augustus/train.log'), 'w')
+        cmd = augustus_short_dirpath + '/scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s' % (
+            args['abrev'], augustus_short_dirpath + '/config/')  #create new species config file from template
+        qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
+        cmd = 'cat %sgb/*.gb > %straining_set_%s' % (mainout, mainout, args['abrev'])
+        qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
+        cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s' % (
+            args['abrev'], mainout, args['abrev']))  #train on new training set (complete single copy buscos
         qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
 
         if args['long'] == True:
@@ -1081,9 +1069,9 @@ def do(f_args, output_dir):
                 augustus_short_dirpath + '/scripts/optimize_augustus.pl --species=%s training_set_%s --AUGUSTUS_CONFIG_PATH=%s' % (
                     args['abrev'], args['abrev'],
                     augustus_short_dirpath + '/config/'))  #train on new training set (complete single copy buscos)
-            cmd = august_fpath('etraining') + (' --species=%s training_set_%s' % (
-                args['abrev'], args['abrev']))  #train on new training set (complete single copy buscos)
-            out_aug = open((mainout + 'augustus/train.log.'), 'w+')
+            cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s' % (
+                args['abrev'], mainout, args['abrev']))  #train on new training set (complete single copy buscos)
+            out_aug = open((mainout + 'augustus/train.log'), 'w+')
             qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
 
         print('*** Re-running failed predictions with different constraints, total number %s ***' % len(re_run))

@@ -1,14 +1,18 @@
 import os
+import platform
+from Busco import busco_v1
 from libs import reporting, qconfig, qutils
-import shlex
 from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
-from Busco import busco_v1
 
 busco_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'Busco')
-hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2')
 blast_dirpath = os.path.join(busco_dirpath, 'ncbi-blast-2.2.28+')
 augustus_dirpath = os.path.join(busco_dirpath, 'augustus-3.0.3')
+
+if platform.system() == 'Darwin':
+    hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2-mac')
+else:
+    hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2')
 
 def all_required_binaries_exist(bin_dirpath, binary):
     if not os.path.isfile(os.path.join(bin_dirpath, binary)):
@@ -77,7 +81,7 @@ def do(contigs_fpaths, out_dirpath):
     # saving results
     for i, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
-        total, complete, part  = results[i]
+        total, complete, part = results[i]
         report.add_field(reporting.Fields.CORE_COMPLETE, ('%.2f' % (float(complete)*100.0/total)))
         report.add_field(reporting.Fields.CORE_PART, ('%.2f' % (float(part)*100.0/total)))
     logger.print_timestamp()

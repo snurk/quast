@@ -20,6 +20,8 @@ operons_10k = 'operons_10k.txt'
 
 contigs_1 = 'contigs_1.fasta'
 contigs_2 = 'contigs_2.fasta'
+reads_1 = 'reads1.fastq.gz'
+reads_2 = 'reads2.fastq.gz'
 reference = 'reference.fa.gz'
 genes = 'genes.txt'
 operons = 'operons.txt'
@@ -210,7 +212,7 @@ def assert_values_equal(name, metric=None, fname='report.tsv'):
             return True
 
 
-def run_quast(name, contigs=None, params='', expected_exit_code=0):
+def run_quast(name, contigs=None, reads1=None, reads2=None, params='', expected_exit_code=0):
     results_dirpath = get_results_dirpath(name)
 
     if os.path.exists(results_dirpath):
@@ -223,6 +225,10 @@ def run_quast(name, contigs=None, params='', expected_exit_code=0):
 
     os.chdir('data')
     cmd = '../../quast.py -o ../' + results_dirpath + ' ' + ' '.join(contigs) + ' ' + params
+    if reads1:
+        cmd += ' -1 ' + reads1
+    if reads2:
+        cmd += ' -2 ' + reads2
     print cmd
     print
     exit_code = os.system(cmd) >> 8

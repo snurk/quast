@@ -366,8 +366,8 @@ def main(args):
         if opt == '--test':
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
-                        ('-1', 'test_data/reads1.fasta.gz'),
-                        ('-2', 'test_data/reads2.fasta.gz'),
+                        ('-1', 'test_data/reads1.fastq.gz'),
+                        ('-2', 'test_data/reads2.fastq.gz'),
                         ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
