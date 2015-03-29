@@ -104,8 +104,8 @@ class Fields:
     LG75 = 'LG75'
     LA75 = 'LA75'
     LGA75 = 'LGA75'
-    CORE_COMPLETE = 'Complete core genes'
-    CORE_PART = 'Partial core genes'
+    CORE_COMPLETE = 'Complete core genes (%)'
+    CORE_PART = 'Partial core genes (%)'
 
     # Predicted genes
     PREDICTED_GENES_UNIQUE = '# predicted genes (unique)'

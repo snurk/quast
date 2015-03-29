@@ -24,7 +24,7 @@ import os
 import argparse
 from collections import deque
 import time
-
+import platform
 from libs import qconfig, qutils
 from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
@@ -33,11 +33,19 @@ import shutil
 import shlex
 
 busco_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'Busco')
-hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2/src')
-blast_dirpath = os.path.join(busco_dirpath, 'ncbi-blast-2.2.28+/bin')
-augustus_dirpath = os.path.join(busco_dirpath, 'augustus-3.0.3/bin')
+
 augustus_short_dirpath = os.path.join(busco_dirpath, 'augustus-3.0.3')
 
+if platform.system() == 'Darwin':
+    sed_cmd = "sed -i '' "
+    hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2-mac/src')
+    augustus_dirpath = os.path.join(busco_dirpath, 'augustus-3.0.3/bin-mac')
+    blast_dirpath = os.path.join(busco_dirpath, 'ncbi-blast-2.2.30+/bin')
+else:
+    sed_cmd = 'sed -i '
+    hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2/src')
+    blast_dirpath = os.path.join(busco_dirpath, 'ncbi-blast-2.2.28+/bin')
+    augustus_dirpath = os.path.join(busco_dirpath, 'augustus-3.0.3/bin')
 
 def hmmer_fpath(fname):
     return os.path.join(hmmer_dirpath, fname)
@@ -317,8 +325,8 @@ def do(f_args, output_dir):
 
     if mode == 'genome' or mode == 'blast' or mode == 'trans':
         print('*** Running tBlastN ***')
-        log_path = os.path.join(mainout, 'hmmer.log')
-        err_path = os.path.join(mainout, 'hmmer.err')
+        log_path = os.path.join(mainout, 'blast.log')
+        err_path = os.path.join(mainout, 'blast.err')
         cmd = blast_fpath('makeblastdb') + (' -in %s -dbtype nucl -out %s' % (args['genome'], mainout + args['abrev']))
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
         cmd = blast_fpath('tblastn') + (' -num_threads %s -query %s/ancestral -db %s -out %s_tblastn -outfmt 7' % (
