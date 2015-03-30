@@ -85,7 +85,9 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
         logger.info(
             'Compiling samtools (details are in ' + os.path.join(samtools_dirpath, 'make.log') + ' and make.err)')
         return_code = qutils.call_subprocess(
-            ['make', '-C', samtools_dirpath])
+            ['make', '-C', samtools_dirpath],
+            stdout=open(os.path.join(samtools_dirpath, 'make.log'), 'w'),
+            stderr=open(os.path.join(samtools_dirpath, 'make.err'), 'w'), )
 
         if return_code != 0 or not all_required_binaries_exist(samtools_dirpath, 'samtools'):
             logger.error('Failed to compile samtools (' + samtools_dirpath + ')! '
@@ -150,7 +152,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 report.add_field(reporting.Fields.MAPPED_READS, line.split()[0])
             elif 'singletons' in line:
                 report.add_field(reporting.Fields.SINGLETONS, line.split()[0])
-            elif 'different' in line and 'mapQ' not in line and chromosomes > 1:
+            elif 'different' in line and 'mapQ' not in line and len(contigs_fpaths) > 1:
                 report.add_field(reporting.Fields.READS_DIFFCHROM, line.split()[0])
         if ref_fpath:
             report.add_field(reporting.Fields.REFPROPERLYPAIR_READS, ref_paired_reads)
