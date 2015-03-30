@@ -1312,7 +1312,7 @@ def do(f_args, output_dir):
         out.close()
         f.close()
         if not qconfig.debug:
-            shutil.rmtree(mainout)
+            shutil.rmtree(mainout, ignore_errors=True)
 
     if mode == 'OGS':
         return (totalbuscos, len(set(cc)) + len(set(mcc)), len(fcc))

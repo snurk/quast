@@ -36,7 +36,7 @@ def do(contigs_fpaths, out_dirpath):
                                                                    'Try to compile it manually. ' + (
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
-            logger.info('Failed aligning the reads.')
+            logger.info('Failed finding conservative genes.')
             return
 
     if not os.path.isdir(out_dirpath):
