@@ -85,9 +85,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
         logger.info(
             'Compiling samtools (details are in ' + os.path.join(samtools_dirpath, 'make.log') + ' and make.err)')
         return_code = qutils.call_subprocess(
-            ['make', '-C', samtools_dirpath],
-            stdout=open(os.path.join(samtools_dirpath, 'make.log'), 'w'),
-            stderr=open(os.path.join(samtools_dirpath, 'make.err'), 'w'), )
+            ['make', '-C', samtools_dirpath])
 
         if return_code != 0 or not all_required_binaries_exist(samtools_dirpath, 'samtools'):
             logger.error('Failed to compile samtools (' + samtools_dirpath + ')! '
