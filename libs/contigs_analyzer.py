@@ -174,7 +174,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     coords_filtered_fpath = nucmer_fpath + '.coords.filtered'
     unaligned_fpath = nucmer_fpath + '.unaligned'
     show_snps_fpath = nucmer_fpath + '.all_snps'
-    used_snps_fpath = nucmer_fpath + '.used_snps'
     vcf_temp_fpath = nucmer_fpath + '_temp.vcf'
 
     print >> planta_out_f, 'Aligning contigs to reference...'
@@ -504,8 +503,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         else:
             snps.setdefault(ref, {}).setdefault(ctg, {})[pos] = [SNP(ref=ref, ctg=ctg, ref_pos=pos, ctg_pos=loc, ref_nucl=line[1], ctg_nucl=line[2])]
         prev_line = line
-
-    used_snps_file = open(used_snps_fpath, 'w')
 
     # Loading the regions (if any)
     regions = {}
@@ -842,7 +839,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     unaligned_file.close()
 
     print >> planta_out_f, 'Analyzing coverage...'
-    print >> planta_out_f, 'Writing SNPs into', used_snps_fpath
+    print >> planta_out_f, 'Writing SNPs into', nucmer_fpath + '.vcf'
 
     region_covered = 0
     region_ambig = 0
@@ -1119,9 +1116,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                                              % (abs(contig_estimate - cur_snp.ctg_pos), contig_estimate, cur_snp.ctg_pos)
                                 continue
 
-                            print >> used_snps_file, '%s\t%s\t%d\t%s\t%s\t%d' % (ref, current.contig, cur_snp.ref_pos,
-                                                                                 cur_snp.ref_nucl, cur_snp.ctg_nucl, cur_snp.ctg_pos)
-
                             vcf_file.write_record(_Record(current.contig, cur_snp.ref_pos, cur_snp.ref_nucl, cur_snp.ctg_nucl, snp))
 
                             #If SNP is an insertion, record
@@ -1181,7 +1175,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     indels = region_insertion + region_deletion
     total_aligned_bases = region_covered
     print >> planta_out_f, 'Analysis is finished!'
-    print >> planta_out_f, 'Founded SNPs were written into', used_snps_fpath
+    print >> planta_out_f, 'Founded SNPs were written into', nucmer_fpath + '.vcf'
     print >> planta_out_f, '\nResults:'
 
     print >> planta_out_f, '\tLocal Misassemblies: %d' % region_misassemblies.count(Misassembly.LOCAL)
@@ -1294,7 +1288,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
     planta_out_f.close()
     planta_err_f.close()
-    used_snps_file.close()
     logger.info('  ' + qutils.index_to_str(index) + 'Analysis is finished.')
     logger.debug('')
     if nothing_aligned:
