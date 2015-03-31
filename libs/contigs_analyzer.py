@@ -21,8 +21,9 @@ import platform
 import datetime
 import fastaparser
 import shutil
+import vcf
 from libs import reporting, qconfig, qutils
-
+from vcf.model import _Record
 from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
@@ -174,6 +175,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     unaligned_fpath = nucmer_fpath + '.unaligned'
     show_snps_fpath = nucmer_fpath + '.all_snps'
     used_snps_fpath = nucmer_fpath + '.used_snps'
+    vcf_temp_fpath = nucmer_fpath + '_temp.vcf'
 
     print >> planta_out_f, 'Aligning contigs to reference...'
 
@@ -502,6 +504,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         else:
             snps.setdefault(ref, {}).setdefault(ctg, {})[pos] = [SNP(ref=ref, ctg=ctg, ref_pos=pos, ctg_pos=loc, ref_nucl=line[1], ctg_nucl=line[2])]
         prev_line = line
+
     used_snps_file = open(used_snps_fpath, 'w')
 
     # Loading the regions (if any)
@@ -859,7 +862,18 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
     nothing_aligned = True
     #Go through each header in reference file
-    for ref, value in regions.iteritems():
+
+    for index, (ref, value) in enumerate(regions.iteritems()):
+        vcf_snps_fpath = nucmer_fpath + '_%s.vcf' % index
+        vcf_snps_file = open(vcf_snps_fpath, 'w')
+        vcf_template = open(vcf_temp_fpath, 'w')
+        print >> vcf_template, '##fileformat=VCFv4.0'
+        print >> vcf_template, '##filedate=%s' % datetime.datetime.now().strftime('%Y/%m/%d')
+        print >> vcf_template, '##reference=%s' % ref
+        print >> vcf_template, '#CHROM        POS     REF ALT'
+        vcf_template.close()
+        vcf_temp = vcf.Reader(open(vcf_temp_fpath))
+        vcf_file = vcf.Writer(vcf_snps_file, vcf_temp)
         #Check to make sure this reference ID contains aligns.
         if ref not in ref_aligns:
             print >> planta_out_f, 'ERROR: Reference [$ref] does not have any alignments!  Check that this is the same file used for alignment.'
@@ -1067,6 +1081,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     else:
                         pos_strand = False
 
+
                     #If there is a misassembly, increment count and contig length
                     #if (exists $ref_features{$ref}[$i] && $ref_features{$ref}[$i] eq "M") {
                     #	$region_misassemblies++;
@@ -1107,6 +1122,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                             print >> used_snps_file, '%s\t%s\t%d\t%s\t%s\t%d' % (ref, current.contig, cur_snp.ref_pos,
                                                                                  cur_snp.ref_nucl, cur_snp.ctg_nucl, cur_snp.ctg_pos)
 
+                            vcf_file.write_record(_Record(current.contig, cur_snp.ref_pos, cur_snp.ref_nucl, cur_snp.ctg_nucl, snp))
+
                             #If SNP is an insertion, record
                             if snp == 'I':
                                 region_insertion += 1
@@ -1136,6 +1153,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     if pos_strand: contig_estimate += 1
                     else: contig_estimate -= 1
 
+
                 #Record Ns in current alignment
                 if current.s2 < current.e2:
                     #print "\t\t(forward)Recording Ns from $current[3]+$snip_left to $current[4]-$snip_right...\n";
@@ -1156,6 +1174,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 cur_indel = 0
 
                 print >> planta_out_f
+        vcf_snps_file.close()
 
     ##### getting results from Plantagora's algorithm
     SNPs = region_snp
