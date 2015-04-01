@@ -122,7 +122,7 @@ class Fields:
     REFMAPPED_READS = 'Reference mapped reads'
     REFPROPERLYPAIR_READS = 'Reference properly paired reads'
     REFSINGLETONS = 'Reference singletons'
-    REFREADS_DIFFCHROM = 'Reference mate mapped to a different chr'
+    REFREADS_DIFFCHROM = 'Reference mates mapped to a different chr'
 
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):

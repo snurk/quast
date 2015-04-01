@@ -104,6 +104,7 @@
           <li><a href="#sec3.1.1">Summary report</a></li>
           <li><a href="#sec3.1.2">Misassemblies report</a></li>
           <li><a href="#sec3.1.3">Unaligned report</a></li>
+          <li><a href="#sec3.1.4">Reads report</a></li>
         </ol>
       </li>
       <li><a href="#sec3.2">Plots descriptions</a></li>      
@@ -196,6 +197,8 @@ Running QUAST on test data from the installation tarball (reference genome, gene
 <pre class="code">
     ./quast.py test_data/contigs_1.fasta \
                test_data/contigs_2.fasta \
+               -1 test_data/reads1.fastq.gz \
+               -2 test_data/reads2.fastq.gz \
                -R test_data/reference.fasta.gz \
                -G test_data/genes.txt \
                -O test_data/operons.txt \
@@ -211,7 +214,7 @@ View the summary of the evaluation results with the <a href="http://www.greenwoo
     The <code>test_data</code> directory contains examples of assembly, reference, gene and operon files.<br>
     <br>
     <b>Sequences</b><br>
-    The tool accepts assemblies and references in FASTA format. Files may be compressed with zip, gzip, or&nbsp;bzip2.<br>
+    The tool accepts assemblies and references in FASTA format and reads (single-end and paired-end) in FASTQ format. Files may be compressed with zip, gzip, or&nbsp;bzip2.<br>
     Multiple reference chromosomes can be provided as separate sequences in a single FASTA file.<br>
     <span style='line-height: 50%;'>&nbsp;</span><br>  
     Maximum assembly length is 4.29<span class="rhs">&nbsp;</span>Gbp.<br>
@@ -224,7 +227,7 @@ View the summary of the evaluation results with the <a href="http://www.greenwoo
     One can also specify files with gene and operon positions in the reference. QUAST will count fully and partially aligned regions, 
     and output <a href='#genes'>total values</a> and <a href='#gene_plot'>cumulative plots</a>.<br>
     <span style='line-height: 50%;'>&nbsp;</span><br>  
-    The following file formats are suported:
+    The following file formats are supported:
     <ul>
         <li>GFF, versions <a href="http://www.sanger.ac.uk/resources/software/gff/spec.html">2</a> and <a href="http://www.sequenceontology.org/gff3.shtml">3</a>
         (note: &lt;feature&gt;/&lt;type&gt; field should be either "gene" or "operon");
@@ -234,7 +237,7 @@ View the summary of the evaluation results with the <a href="http://www.greenwoo
     Note that the sequence name has to match a name in the reference file.<br>
     <span style='line-height: 50%;'>&nbsp;</span><br>  
     Coordinates are 1-based, i.e. the first nucleotide in the reference has position 1, not 0.
-    If a <i>start postion</i> less than a corresponding <i>end postion</i>, such gene or operon is on a positive strand, otherwise it is on a negative strand.
+    If a <i>start position</i> less than a corresponding <i>end position</i>, such gene or operon is on a positive strand, otherwise it is on a negative strand.
 </p>    
 
 <a name="sec2.3"></a>
@@ -274,6 +277,16 @@ Also, a symlink <code>quast_results/latest</code> is created.<br>
 <br>
 Note: QUAST reuses Nucmer alignments if run repeatedly on the same directory.
 Thus, you can efficiently reuse already computed results when running QUAST with different parameters, or adding more assemblies to an existing comparison.
+
+<div class='option'>
+<code><b>-1</b> &lt;path&gt;</code>
+</div>
+File with forward or unpaired reads. Optional.
+
+<div class='option'>
+<code><b>-2</b> &lt;path&gt;</code>
+</div>
+File with reverse reads (for paired-end reads). Optional.
 
 <div class='option'>
 <code><b>-R</b> &lt;path&gt;</code>
@@ -333,7 +346,7 @@ Take assembly names from their parent directory names.
 </div>
 Enables gene finding. Affects perfomance, thus disabled by default.<br>
 <span style='line-height: 50%;'>&nbsp;</span><br>  
-By default, we asume that the genome is prokaryotic, and apply GeneMark.hmm for gene finding.
+By default, we assume that the genome is prokaryotic, and apply GeneMark.hmm for gene finding.
 If the genome is eukaryotic, add the <a href='#eukaryote'><code>--eukaryte</code></a> option to enable GlimmerHMM instead.
 If it is a metagenome, add the <a href='#meta'><code>--meta</code></a> option.<br>
 <span style='line-height: 50%;'>&nbsp;</span><br>  
@@ -352,9 +365,9 @@ Note: this list is used only if <code>--gene-finding</code> option is specified.
     <a name="eukaryote"></a>
     <code><b>--eukaryote</b></code>
 </div>
-Genome is eukarytic. Affects gene finding and contig alignment:<br>
+Genome is eukaryotic. Affects gene finding and contig alignment:<br>
 <ol class='my_ol' style='margin-top: 0;'>
-<li>For prokaryotes (which is default), GeneMark.hmm is used. For eukaryotes, GlimmerHMM is used.
+<li>For prokaryotes (which is default), GeneMark.hmm is used. For eukaryotes, GlimmerHMM and BUSCO are used.
 <li>By default, QUAST assumes that a genome is circular and correctly processes its linear representation.
 This options indicates that the genome is not circular.
 </ol>
@@ -626,6 +639,12 @@ Note:
 
 <p><span class='metric-name'># operons</span> is defined similarly to <span class='metric-ref'># genes</span>, but an operon positions file required instead.</p>
 
+<p><a name='complete_orthologs'><span class='metric-name'>Complete conserved orthologs (%)</span> is the number of complete conserved eukaryotes orthologs in the assembly,
+    divided by the total number of conserved eukaryotes orthologs searched by BUSCO.</p>
+
+<p><a name='partial_orthologs'><span class='metric-name'>Partial conserved orthologs (%)</span> is the number of partial conserved eukaryotes orthologs in the assembly,
+    divided by the total number of conserved eukaryotes orthologs searched by BUSCO.</p>
+
 <p><a name='predicted_genes'><span class='metric-name'># predicted genes</span> is the number of genes in the assembly
     found by GeneMark.hmm, GlimmerHMM or MetaGeneMark. See the description of the <a href='#gene_finding'><code>--gene-finding</code></a> option for details.</p>
 
@@ -635,6 +654,16 @@ Note:
 <p><a name='NAx'><a name='NGAx'></a><span class='metric-name'>NA50, NGA50, NA75, NGA75, LA50, LA75, LGA50, LGA75</span> ("A" stands for "aligned") are similar to
     the corresponding metrics without "A", but in this case aligned blocks instead of contigs are considered.<br>
     Aligned blocks are obtained by breaking contigs in misassembly events and removing all analigned bases.</p>
+
+<p><span class='metric-name'># reads</span> is the total number of reads.</p>
+
+<p><span class='metric-name'># mapped reads</span> is the number of reads that mapped to the assembly.</p>
+
+<p><span class='metric-name'># properly paired reads</span> is the number of reads that mapped within expected range and orientation of each other to the assembly.</p>
+
+<p><span class='metric-name'>Reference mapped reads</span> is the number of reads that mapped to the reference.</p>
+
+<p><span class='metric-name'>Reference properly paired reads</span> is the number of reads that mapped within expected range and orientation of each other to the reference.</p>
 
 
 <a name="sec3.1.2"></a>
@@ -691,6 +720,30 @@ opposite strands of the same chromosome. </p>
 
 <p><span class='metric-name'># N's</span> is the total number of uncalled bases (N's) in the assembly.</p>
 
+<a name="sec3.1.4"></a>
+<h4>3.1.4 Reads report</h4>
+
+<p><span class='metric-name'># reads</span> is the same as <span class='metric-ref'># reads</span> from <a href="#sec3.1.1">section 3.1.1</a>.</p>
+
+<p><span class='metric-name'># left reads</span> is the number of forward reads.</p>
+
+<p><span class='metric-name'># right reads</span> is the number of reverse reads. </p>
+
+<p><span class='metric-name'># mapped reads</span> is the same as <span class='metric-ref'># mapped reads</span> from <a href="#sec3.1.1">section 3.1.1</a>.</p>
+
+<p><span class='metric-name'># properly paired reads</span> is the same as <span class='metric-ref'># properly paired reads</span> from <a href="#sec3.1.1">section 3.1.1</a>.</p>
+
+<p><span class='metric-name'># singletons</span> is the number of reads that mapped to the assembly, but do not overlap any other reads.</p>
+
+<p><span class='metric-name'># mates mapped to a different contig</span> is the number of reads with mate mapped to a different contig (if the number of contigs is greater than 1).</p>
+
+<p><span class='metric-name'># properly paired reads</span> is the number of reads that mapped within expected range and orientation of each other to the assembly.</p>
+
+<p><span class='metric-name'>Reference mapped reads</span> and <span class='metric-ref'>reference properly paired reads</span> are the same as the metrics from <a href="#sec3.1.1">section 3.1.1</a>.</p>
+
+<p><span class='metric-name'>Reference singletons</span> is the number of reads that mapped to the reference, but do not overlap any other reads.</p>
+
+<p><span class='metric-name'>Reference mates mapped to a different chr</span> is the number of reads with mate mapped to a different chromosome (if the number of chromosomes is greater than 1).</p>
 
 <a name="sec3.2"></a>
 <h3>3.2 Plots description</h3>
@@ -821,7 +874,7 @@ Q3. Is it possible to find which misassembly corresponds to each contig and whic
 <p>
 Yes, it is possible.
 <br>
-You should open <code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.stdout&gt;</code> file. 
+You should open <code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.stdout</code> file.
 <br> 
 E.g. if your assembly is "contigs.fasta" then the file is "contigs_report_contigs.stdout", if your assembly is "ecoli_assembly_1.fasta" then the file is "contigs_report_ecoli_assembly_1.stdout".
 <br> 
@@ -869,8 +922,10 @@ Top Length: 121089  Top ID: 99.98
 </pre>
 </code>
 This contig is <b>Contigs_753</b> of length <b>140518 bp</b>. It has <b>3 extensive misassemblies</b> (all three are <b>relocations</b>) and one local misassembly.
+<br><br>
+The brief information about misassemblies (contig name, type and coordinates on the contig of the misassembly) you can find in
+<code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.mis_contigs.info</code> file.
 </p>
-
 <br>
 <p><b><i>
 Q4. Could you explain the format of Real Alignments in contigs report files (see the answer for Q3)?
@@ -922,21 +977,12 @@ R and Q specify the number of other alignments which overlap this position (in R
 FRM and TAGS are not documented in Nucmer help message, and the last two columns are reference name and contig name.
 <br>
 <br>
-The second file ("*.used_snps") is generated by QUAST. 
+The second file ("*.vcf") is generated by QUAST.
 <br>
-We analyse all alignments and filter them by skiping some "uninformative" alignments (redundant, duplicated) and after that include in ".used_snps" file 
+We analyse all alignments and filter them by skiping some "uninformative" alignments (redundant, duplicated) and after that include in VCF file
 only those of all SNPs which were actually appear in filtered alignments. Thus, reported by QUAST numbers of "# mismatches per 100 kbp", "# indels per 100 kbp" includes statistics 
 from USED SNPs, not ALL SNPs.
 <br>
-In addition, we use our own format of ".used_snps" file. 
-<br>
-<code>
-<pre>
-  Escherichia_coli  contig_15  728803  C   .  3217983
-</pre>
-</code>
-where the columns are: reference name, contig name, position on the reference, nucleotide in the reference, nucleotide in the contig 
-(in this case it is ".", i.e. an absence of a nucleotide in the contig which means a deletion) and the final column is position on the contig.
 </p>
 <br>
 <br>
