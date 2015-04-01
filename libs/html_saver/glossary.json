@@ -56,6 +56,9 @@
     "GC (%)"                        : "<span>is the total number of G and C nucleotides in the assembly, divided by the total length of the assembly.</span>",
     "Reference GC (%)"              : "<span>is the total number of G and C nucleotides in the reference, divided by the total length of the reference.</span>",
 
+    "Complete conserved orthologs (%)" : "<span>is the total number of complete conserved eukaryotes orthologs in the assembly, divided by the total number of conserved eukaryotes orthologs searched.</span>",
+    "Partial conserved orthologs (%)"  : "<span>is the total number of partial conserved eukaryotes orthologs in the assembly, divided by the total number of conserved eukaryotes orthologs searched.</span>",
+
     "# mismatches per 100 kbp"      : "<span>is the average number of mismatches per 100000 aligned bases.</span>",
     "# mismatches"                  : "<span>is the number of mismatches in all aligned bases.</span>",
     "# indels per 100 kbp"          : "<span>is the average number of indels per 100000 aligned bases.</span>",

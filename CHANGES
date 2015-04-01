@@ -1,5 +1,15 @@
 -- Version history --
 
+2.4   1. Added assessing the reads quality. See details in manual.
+
+      2. BUSCO is used to find conserved eukaryotes orthologs in the assembly to assess
+      the completeness of genome assembly.
+
+      3. VCF file is generated instead ".used_snps" file.
+
+      4. Added output files with brief information about each misassembly.
+
+
 2.3   1. Changed logic in misassembly computation. Fixed several minor bugs in misassembly 
       detection algorithm and one major bug caused by linear represenation of circular
       references and contigs in fasta format.
