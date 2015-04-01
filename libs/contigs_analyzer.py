@@ -628,6 +628,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         #Recording contig stats
         ctg_len = len(seq)
         print >> planta_out_f, 'CONTIG: %s (%dbp)' % (contig, ctg_len)
+
         #Check if this contig aligned to the reference
         if contig in aligns:
             #Pull all aligns for this contig
