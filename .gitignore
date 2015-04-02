@@ -39,3 +39,5 @@ libs/Busco/augustus-3.0.3/src/licence.txt
 libs/Busco/augustus-3.0.3/src/LICENCE.TXT
 libs/Busco/hmmer-3.1b2-mac/
 libs/bwa-master/make.*
+
+libs/Busco/augustus-3.0.3/config/species/

@@ -44,8 +44,8 @@ if platform.system() == 'Darwin':
 else:
     sed_cmd = 'sed -i '
     hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2/src')
-    blast_dirpath = os.path.join(busco_dirpath, 'ncbi-blast-2.2.28+/bin')
     augustus_dirpath = os.path.join(busco_dirpath, 'augustus-3.0.3/bin')
+    blast_dirpath = os.path.join(busco_dirpath, 'ncbi-blast-2.2.28+/bin')
 
 def hmmer_fpath(fname):
     return os.path.join(hmmer_dirpath, fname)
@@ -329,9 +329,11 @@ def do(f_args, output_dir):
         err_path = os.path.join(mainout, 'blast.err')
         cmd = blast_fpath('makeblastdb') + (' -in %s -dbtype nucl -out %s' % (args['genome'], mainout + args['abrev']))
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+        logger.debug('')
         cmd = blast_fpath('tblastn') + (' -num_threads %s -query %s/ancestral -db %s -out %s_tblastn -outfmt 7' % (
             cpus, os.path.join(busco_dirpath, clade), mainout + args['abrev'], mainout + args['abrev']))
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+        logger.debug('')
 
     #Get coordinates for a genome analysis
     if mode == 'genome' or mode == 'blast':
@@ -533,6 +535,7 @@ def do(f_args, output_dir):
                          'scaffold': mainout + dic[i][z][0] + args['abrev'] + '_.temp'})
                     out_aug = open((mainout + 'augustus/' + i + '.out.' + str(z + 1)), 'w+')
                     qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a+'))
+                    logger.debug('')
             else:
                 cmd = august_fpath('augustus') + (
                     ' --proteinprofile=%(clade)s/%(prot_profile)s --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
@@ -541,6 +544,7 @@ def do(f_args, output_dir):
                      'scaffold': mainout + dic[i][0][0] + args['abrev'] + '_.temp'})
                 out_aug = open((mainout + 'augustus/' + i + '.out'), 'w+')
                 qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'w+'))
+                logger.debug('')
 
 
 
