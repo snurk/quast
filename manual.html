@@ -679,8 +679,16 @@ Note:
 <a name="sec3.1.2"></a>
 <h4>3.1.2 Misassemblies report</h4>
 
-<p><span class='metric-name'># misassemblies</span> is the same as <span class='metric-ref'># misassemblies</span> from <a href="#sec3.1.1">section 3.1.1</a>.
-    However, this report also contains a classification of all misassemblies into three groups: <span class='metric-ref'>relocations</span>, <span class='metric-ref'>translocations</span>,
+<p><span class='metric-name'># misassemblies</span> is the number of positions in the contigs that satisfy one of the following criteria:<br>
+    <ul style='margin-top: -24px;'>
+    <li>the left flanking sequence aligns over 1<span class="rhs">&nbsp;</span>kbp away from the right flanking sequence on the reference;
+    <li>flanking sequences overlap on more than 1<span class="rhs">&nbsp;</span>kbp;
+    <li>flanking sequences align to different strands or different chromosomes.
+    </ul>
+    Requires a reference genome.<br><br>
+
+    This statistic is identical to <span class='metric-ref'># misassemblies</span> from <a href="#sec3.1.1">section 3.1.1</a>,
+    although this report also contains a classification of all misassemblies into three groups: <span class='metric-ref'>relocations</span>, <span class='metric-ref'>translocations</span>,
     and <span class='metric-ref'>inversions</span> (see below).</p>
 
 <p><span class='metric-name'>Relocation</span> is a misassembly where the left flanking sequence aligns over 1<span class="rhs">&nbsp;</span>kbp away from the right flanking
@@ -695,8 +703,12 @@ opposite strands of the same chromosome. </p>
     <a href="#sec3.1.1">section 3.1.1</a> and are counted among all contigs with any type of a misassembly 
     (relocation, translocation or inversion). </p>
 
-<p><span class='metric-name'># local misassemblies</span> is the same as <span class='metric-ref'># local misassemblies</span> from 
-<a href="#sec3.1.1">section 3.1.1</a>.
+<p><span class='metric-name'># local misassemblies</span> is the number of breakpoints that satisfy the following conditions:
+<ol class='my_ol' style='margin-top: -24px;'>
+<li>Two or more distinct alignments cover the breakpoint.</li>
+<li>The gap between left and right flanking sequences is less than 1<span class="rhs">&nbsp;</span>kbp.</li>
+<li>The left and right flanking sequences both are on the same strand of the same chromosome of the reference genome.</li>
+</ol>
 </p>
 
 <p><span class='metric-name'># mismatches</span> is the number of mismatches in all aligned bases.</p>
@@ -733,15 +745,15 @@ opposite strands of the same chromosome. </p>
 <a name="sec3.1.4"></a>
 <h4>3.1.4 Reads report</h4>
 
-<p><span class='metric-name'># reads</span> is the same as <span class='metric-ref'># reads</span> from <a href="#sec3.1.1">section 3.1.1</a>.</p>
+<p><span class='metric-name'># reads</span> is the total number of reads.</p>
 
 <p><span class='metric-name'># left reads</span> is the number of forward reads.</p>
 
 <p><span class='metric-name'># right reads</span> is the number of reverse reads. </p>
 
-<p><span class='metric-name'># mapped reads</span> is the same as <span class='metric-ref'># mapped reads</span> from <a href="#sec3.1.1">section 3.1.1</a>.</p>
+<p><span class='metric-name'># mapped reads</span> is the number of reads that mapped to the assembly.</p>
 
-<p><span class='metric-name'># properly paired reads</span> is the same as <span class='metric-ref'># properly paired reads</span> from <a href="#sec3.1.1">section 3.1.1</a>.</p>
+<p><span class='metric-name'># properly paired reads</span> is the number of reads that mapped within expected range and orientation of each other to the assembly.</p>
 
 <p><span class='metric-name'># singletons</span> is the number of reads that mapped to the assembly, but do not overlap any other reads.</p>
 
