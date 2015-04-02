@@ -373,7 +373,7 @@ def main(args):
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''), # for compiling GAGE Java classes
-                        ('--gene-finding',''), ('--eukaryote','')] # for compiling GlimmerHMM
+                        ('--gene-finding',''), ('--eukaryote','')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta',]
             qconfig.test = True
@@ -423,7 +423,7 @@ def main(args):
             reads_fpaths.append(arg)
             qconfig.reads = True
 
-        elif opt in ('--12'):
+        elif opt in '--12':
             assert_file_exists(arg, 'reads')
             reads_inter_fpath.append(arg)
             reads_inter_fpath.append('-p')

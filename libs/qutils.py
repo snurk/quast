@@ -144,9 +144,9 @@ def call_subprocess(args, stdin=None, stdout=None, stderr=None,
     if stdin:
         printed_args += ['<', stdin.name]
     if stdout:
-        printed_args += ['>>' if stdout.mode == 'a' else '>', stdout.name]
+        printed_args += ['>>' if stdout.mode in ['a', 'a+'] else '>', stdout.name]
     if stderr:
-        printed_args += ['2>>' if stderr.mode == 'a' else '2>', stderr.name]
+        printed_args += ['2>>' if stderr.mode in ['a', 'a+'] else '2>', stderr.name]
 
     for i, arg in enumerate(printed_args):
         if arg.startswith(os.getcwd()):
