@@ -397,6 +397,7 @@ def main(args):
     genes_fpaths = []
     operons_fpaths = []
     reads_fpaths = []
+    reads_inter_fpath = []
 
     # Yes, this is a code duplicating. But OptionParser is deprecated since version 2.7.
     for opt, arg in options:
@@ -418,6 +419,16 @@ def main(args):
             qconfig.reads = True
 
         elif opt in ('-2', '--reads2'):
+            reads_fpaths.append(arg)
+            qconfig.reads = True
+
+        elif opt in ('--12'):
+            assert_file_exists(arg, 'reads')
+            reads_inter_fpath.append(arg)
+            reads_inter_fpath.append('-p')
+            qconfig.reads = True
+
+        elif opt in ('-s', '--single-reads'):
             reads_fpaths.append(arg)
             qconfig.reads = True
 
@@ -553,7 +564,10 @@ def main(args):
 
     if qconfig.reads:
         from libs import reads_analyzer
-        reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
+        if reads_fpaths:
+            reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
+        if reads_inter_fpath:
+            reads_analyzer.do(ref_fpath, contigs_fpaths, reads_inter_fpath, os.path.join(output_dirpath, 'reads_reports'))
 
     # PROCESSING CONTIGS
     logger.info()

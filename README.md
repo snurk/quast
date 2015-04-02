@@ -6,6 +6,8 @@ Usage
 
     ./quast.py test_data/contigs_1.fasta \
                test_data/contigs_2.fasta \
+               -1 test_data/reads1.fastq.gz \
+               -2 test_data/reads2.fastq.gz \
             -R test_data/reference.fasta.gz \
             -O test_data/operons.txt \
             -G test_data/genes.txt \
@@ -27,7 +29,8 @@ Output
 * Number of large contigs (i.e., longer than 500 bp) and total length of them.  
 * Length of the largest contig.  
 * N50 (length of a contig, such that all the contigs ofat least the same length together cover at least 50% of the assembly).  
-* Number of predicted genes, discovered either by GeneMark.hmm (for prokaryotes), GlimmerHMM (for eukaryotes) or MetaGeneMark (for metagenomes).  
+* Number of predicted genes, discovered either by GeneMark.hmm (for prokaryotes), GlimmerHMM (for eukaryotes) or MetaGeneMark (for metagenomes).
+* Number of conserved eukaryotes orthologs, searched by BUSCO.
 
 **When a reference is given:**  
 
