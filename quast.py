@@ -373,7 +373,7 @@ def main(args):
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''), # for compiling GAGE Java classes
-                        ('--gene-finding',''), ('--eukaryote','')]  # for compiling GlimmerHMM
+                        ('--gene-finding','')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta',]
             qconfig.test = True
@@ -594,7 +594,7 @@ def main(args):
             logger.warning("GAGE can't be run without a reference and will be skipped.")
         else:
             from libs import gage
-            gage.do(ref_fpath, contigs_fpaths, output_dirpath)
+            #gage.do(ref_fpath, contigs_fpaths, output_dirpath)
 
     # Where all pdfs will be saved
     all_pdf_fpath = os.path.join(output_dirpath, qconfig.plots_fname)
@@ -660,12 +660,14 @@ def main(args):
             from libs import genemark
             genemark.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'),
                         qconfig.meta)
+            from libs import busco
+            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'), 'B')
         else:
             ########################################################################
             ### Glimmer
             ########################################################################
             from libs import busco
-            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'))
+            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'), 'E')
             from libs import glimmer
             glimmer.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'))
 
