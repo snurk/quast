@@ -423,7 +423,7 @@ def main(args):
             reads_fpaths.append(arg)
             qconfig.reads = True
 
-        elif opt in '--12':
+        elif opt == '--12':
             assert_file_exists(arg, 'reads')
             reads_inter_fpath.append(arg)
             reads_inter_fpath.append('-p')
@@ -594,7 +594,7 @@ def main(args):
             logger.warning("GAGE can't be run without a reference and will be skipped.")
         else:
             from libs import gage
-            #gage.do(ref_fpath, contigs_fpaths, output_dirpath)
+            gage.do(ref_fpath, contigs_fpaths, output_dirpath)
 
     # Where all pdfs will be saved
     all_pdf_fpath = os.path.join(output_dirpath, qconfig.plots_fname)
