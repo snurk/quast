@@ -56,6 +56,8 @@ operons = 'operons.txt'
 # --use-all-alignments              Computes Genome fraction, # genes, # operons metrics in compatible with QUAST v.1.* mode.
 #                                   By default, QUAST filters Nucmer's alignments to keep only best ones
 #
+# --find-conserved-genes            Use BUSCO for finding conserved orthologs
+#
 # --ambiguity-usage <none|one|all>  Uses none, one, or all alignments of a contig with multiple equally good alignments (probably a repeat).
 #                                   [default is none]
 #
