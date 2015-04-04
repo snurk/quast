@@ -373,7 +373,7 @@ def main(args):
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''), # for compiling GAGE Java classes
-                        ('--find-conservative-genes', ''), # for compiling BUSCO
+                        ('--find-conserved-genes', ''), # for compiling BUSCO
                         ('--gene-finding', ''), ('--eukaryote', '')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta']
@@ -468,7 +468,7 @@ def main(args):
         elif opt == "--gage":
             qconfig.with_gage = True
 
-        elif opt in ('-b', "--find-conservative-genes"):
+        elif opt in ('-b', "--find-conserved-genes"):
             qconfig.busco = True
 
         elif opt in ('-e', "--eukaryote"):
