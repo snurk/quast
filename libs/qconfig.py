@@ -33,8 +33,8 @@ splitted_ref = []
 long_options = "output-dir= save-json-to= genes= operons= reference= reads1= reads2= contig-thresholds= min-contig= "\
                "gene-thresholds= save-json gage eukaryote no-plots no-html help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
-               "strict-NA meta labels= test help-hidden".split()
-short_options = "o:G:O:R:1:2:t:M:S:J:jehdsa:T:c:ufnml:L"
+               "find-conserved-genes strict-NA meta labels= test help-hidden".split()
+short_options = "o:G:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
 
 # default values for options
 contig_thresholds = "0,1000"
