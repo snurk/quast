@@ -377,7 +377,7 @@ Note: this list is used only if <code>--gene-finding</code> option is specified.
 </div>
 Genome is eukaryotic. Affects gene finding and contig alignment:<br>
 <ol class='my_ol' style='margin-top: 0;'>
-<li>For prokaryotes (which is default), GeneMark.hmm is used. For eukaryotes, GlimmerHMM and BUSCO are used.
+<li>For prokaryotes (which is default), GeneMark.hmm is used. For eukaryotes, GlimmerHMM is used.
 <li>By default, QUAST assumes that a genome is circular and correctly processes its linear representation.
 This options indicates that the genome is not circular.
 </ol>
@@ -424,13 +424,19 @@ By default, QUAST v.2.0 and higher filters out ambiguous and redundant alignment
 (or one set of non-overlapping or slightly overlapping alignments). This option makes QUAST count all alignments.
 
 <div class='option'>
+    <code><b>-b</b></code> (or <code>--threads</code>) <code>&lt;int&gt;</code>
+</div>
+Use BUSCO for finding conserved orthologs (429 groups for eukaryotic and 40 groups for prokaryotic organisms).
+It allows to assess the completeness of genome assembly.
+
+<div class='option'>
     <code><b>--ambiguity-usage</b> &lt;<b>none</b>|<b>one</b>|<b>all</b>&gt;</code>
 </div>
 Way of processing equally good alignments (probably repeats):<br>
 <table style="margin-left: 30px; font-size: 1em; vertical-align: bottom;">
     <tr><td style='width: 40px;'><code>none</code></td><td>skip all such alignments;</td></tr>
     <tr><td><code>one</code></td><td>take only one (the first one);</td></tr>
-    <tr><td><code>all</code></td><td>use all alignements. Can cause a significant increase of <span class='metric-ref'># mismatches</span>
+    <tr><td><code>all</code></td><td>use all alignments. Can cause a significant increase of <span class='metric-ref'># mismatches</span>
     (repeats are almost always inexact due to accumulated SNPs, indels, etc.).</td></tr>
 </table>
 The default value is 'one'.
@@ -649,11 +655,11 @@ Note:
 
 <p><span class='metric-name'># operons</span> is defined similarly to <span class='metric-ref'># genes</span>, but an operon positions file required instead.</p>
 
-<p><a name='complete_orthologs'><span class='metric-name'>Complete conserved orthologs (%)</span> is the number of complete conserved eukaryotes orthologs in the assembly,
-    divided by the total number of conserved eukaryotes orthologs searched by BUSCO.</p>
+<p><a name='complete_orthologs'><span class='metric-name'>Complete conserved orthologs (%)</span> is the number of complete conserved orthologs in the assembly,
+    divided by the total number of conserved orthologs searched by BUSCO.</p>
 
-<p><a name='partial_orthologs'><span class='metric-name'>Partial conserved orthologs (%)</span> is the number of partial conserved eukaryotes orthologs in the assembly,
-    divided by the total number of conserved eukaryotes orthologs searched by BUSCO.</p>
+<p><a name='partial_orthologs'><span class='metric-name'>Partial conserved orthologs (%)</span> is the number of partially recovered
+    conserved orthologs in the assembly, divided by the total number of conserved orthologs searched by BUSCO.</p>
 
 <p><a name='predicted_genes'><span class='metric-name'># predicted genes</span> is the number of genes in the assembly
     found by GeneMark.hmm, GlimmerHMM or MetaGeneMark. See the description of the <a href='#gene_finding'><code>--gene-finding</code></a> option for details.</p>

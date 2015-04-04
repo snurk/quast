@@ -30,7 +30,7 @@ Output
 * Length of the largest contig.  
 * N50 (length of a contig, such that all the contigs ofat least the same length together cover at least 50% of the assembly).  
 * Number of predicted genes, discovered either by GeneMark.hmm (for prokaryotes), GlimmerHMM (for eukaryotes) or MetaGeneMark (for metagenomes).
-* Number of conserved eukaryotes orthologs, searched by BUSCO.
+* Percent of conserved orthologs, found by BUSCO.
 
 **When a reference is given:**  
 

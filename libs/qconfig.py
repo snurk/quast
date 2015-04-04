@@ -58,7 +58,7 @@ save_json = False
 meta = False
 debug = False
 test = False
-
+busco = False
 
 default_results_root_dirname = "quast_results"
 output_dirname = "results_" + datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -143,6 +143,8 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "-R                <filename>  Reference genome file"
     print >> sys.stderr, "-1  --reads1                    File with forward reads"
     print >> sys.stderr, "-2  --reads2                    File with reverse reads"
+    print >> sys.stderr, "-s  --single-reads              File with unpaired reads"
+    print >> sys.stderr, "--12                          File with interleaved forward and reverse paired-end reads"
     print >> sys.stderr, "-G  --genes       <filename>  File with gene coordinates in the reference"
     print >> sys.stderr, "-O  --operons     <filename>  File with operon coordinates in the reference"
     print >> sys.stderr, "-M  --min-contig  <int>       Lower threshold for contig length [default: %s]" % min_contig
@@ -163,6 +165,7 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "-m  --meta                            Use MetaGeneMark for gene prediction. "
     print >> sys.stderr, "    --est-ref-size <int>              Estimated reference size (for computing NGx metrics without a reference)"
     print >> sys.stderr, "    --gage                            Use GAGE (results are in gage_report.txt)"
+    print >> sys.stderr, "-b  --find-conserved-genes            Use BUSCO for finding conserved orthologs"
     print >> sys.stderr, "-t  --contig-thresholds               Comma-separated list of contig length thresholds [default: %s]" % contig_thresholds
     print >> sys.stderr, "-s  --scaffolds                       Assemblies are scaffolds, split them and add contigs to the comparison"
     print >> sys.stderr, "-u  --use-all-alignments              Compute genome fraction, # genes, # operons in the v.1.0-1.3 style."

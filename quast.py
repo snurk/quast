@@ -467,6 +467,9 @@ def main(args):
         elif opt == "--gage":
             qconfig.with_gage = True
 
+        elif opt in ('-b', "--find-conservative-genes"):
+            qconfig.busco = True
+
         elif opt in ('-e', "--eukaryote"):
             qconfig.prokaryote = False
 
@@ -660,20 +663,27 @@ def main(args):
             from libs import genemark
             genemark.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'),
                         qconfig.meta)
-            from libs import busco
-            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'), 'B')
         else:
             ########################################################################
             ### Glimmer
             ########################################################################
-            from libs import busco
-            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'), 'E')
             from libs import glimmer
             glimmer.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'))
 
     else:
         logger.info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
+
+    if qconfig.busco:
+        ########################################################################
+        ### BUSCO
+        ########################################################################
+        from libs import busco
+        if qconfig.prokaryote or qconfig.meta:
+            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'), 'B')
+        else:
+            busco.do(contigs_fpaths, os.path.join(output_dirpath, 'busco_output'), 'E')
+
     ########################################################################
     reports_fpaths, transposed_reports_fpaths = reporting.save_total(output_dirpath)
 
