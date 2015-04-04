@@ -96,7 +96,7 @@ def do(f_args, output_dir):
     err_path = join(output_dir, 'busco.err')
 
     if os.path.isfile(summary_path):
-        logger.info('Using existing BUSCO files for ' + args['abrev'])
+        logger.info('  Using existing BUSCO files for ' + args['abrev'])
         results = open(summary_path)
         complete_buscos = 0
         for line in results:
@@ -334,7 +334,7 @@ def do(f_args, output_dir):
     #Make a blast database and run tblastn
 
     if mode == 'genome' or mode == 'blast' or mode == 'trans':
-        logger.info('*** Running tBlastN ***')
+        logger.debug('  Running tBlastN')
         out_fpath = join(mainout, args['abrev'])
         cmd = blast_fpath('makeblastdb') + (' -in %s -dbtype nucl -out %s' % (args['genome'], out_fpath))
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
@@ -348,7 +348,7 @@ def do(f_args, output_dir):
 
     #Get coordinates for a genome analysis
     if mode == 'genome' or mode == 'blast':
-        logger.info('*** Getting coordinates for candidate regions! ***')
+        logger.debug('  Getting coordinates for candidate regions!')
         f = open('%s_tblastn' % out_fpath)  #open input file
         out = open(coord_path, 'w')  #open Coordinates output file
         dic = {}
@@ -415,7 +415,7 @@ def do(f_args, output_dir):
 
     #Get coordinates, candidate regions and translate sequences (transcriptome analysis)
     if mode == 'transcriptome' or mode == 'trans':
-        logger.info('*** Getting coordinates for candidate transcripts! ***')
+        logger.debug('  Getting coordinates for candidate transcripts!')
         f = open('%s_tblastn' % mainout)  #open input file
         dic = {}
         transdic = {}
@@ -441,7 +441,7 @@ def do(f_args, output_dir):
             for scaff in dic[busco]:
                 if scaff not in scaff_list:
                     scaff_list.append(scaff)
-        logger.info('*** Extracting candidate transcripts! ***')
+        logger.debug('  Extracting candidate transcripts!')
         f = open(args['genome'])
         check = 0
         for i in f:
@@ -466,7 +466,7 @@ def do(f_args, output_dir):
             if entry.endswith(args['abrev'] + '_.temp'):
                 lista.append(entry)
 
-        logger.info('Translating candidate transcripts !')
+        logger.debug('  Translating candidate transcripts !')
         for entry in lista:
             #logger.info(entry)a=input('press to continue')
             cmd = ('transeq -clean -frame 6 -trim -sequence %(scaffold)s -outseq %(translated_scaffold)s.fas' % {
@@ -492,7 +492,7 @@ def do(f_args, output_dir):
     if mode == 'genome' or mode == 'augustus':
 
         #target_species=species_list[0]
-        logger.info('*** pre-Augustus scaffold extraction ***')
+        logger.debug('  pre-Augustus scaffold extraction  ')
         coord = open(coord_path)
         dic = {}
         scaff_list = []
@@ -521,7 +521,7 @@ def do(f_args, output_dir):
 
         #Step-4
         #Augustus search on candidate regions using the pre-built Block profiles (msa2prfl.pl)
-        logger.info('*** Running Augustus prediction ***')
+        logger.info('  Running Augustus prediction  ')
         aug_out_path = join(mainout, 'augustus')
         if not os.path.exists(aug_out_path):
             os.makedirs(aug_out_path)
@@ -568,7 +568,7 @@ def do(f_args, output_dir):
 
     if mode == 'genome' or mode == 'hmmer':  #should be augustus
         #STEP-1 EXTRACT AUGUSTUS PROTEINS
-        logger.info('*** Extracting predicted proteins ***')
+        logger.debug('  Extracting predicted proteins  ')
         files = os.listdir(join(mainout, 'augustus'))
         count = 0
         check = 0
@@ -619,7 +619,7 @@ def do(f_args, output_dir):
 
     #Run HMMer (genome mode)
     if mode == 'genome' or mode == 'hmmer':
-        logger.info('*** Running HMMER to confirm orthology of predicted proteins ***')
+        logger.debug('  Running HMMER to confirm orthology of predicted proteins  ')
         hmmer_out_path = join(mainout, 'hmmer_output')
         files = os.listdir(aug_prot_path)
         if not os.path.exists(hmmer_out_path):
@@ -645,7 +645,7 @@ def do(f_args, output_dir):
 
     #Run HMMer (transcriptome mode)
     if mode == 'trans' or mode == 'transcriptome':
-        logger.info('*** Running HMMER to confirm transcript orthology ***')
+        logger.debug('  Running HMMER to confirm transcript orthology  ')
         trans_protein_path = join(mainout, 'translated_proteins')
         files = os.listdir(trans_protein_path)
         if not os.path.exists(hmmer_out_path):
@@ -703,10 +703,10 @@ def do(f_args, output_dir):
                 qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
 
-    ###*******get list to be re-run
+    ###  *get list to be re-run
 
     if mode == 'genome' or mode == 'hmmer':
-        logger.info('*** Parsing HMMER results ***')
+        logger.debug('  Parsing HMMER results  ')
         #Open the output file if no name was specified the default name will be used
         f2 = open(join(busco_dirpath, clade, 'scores_cutoff'))  #open target scores file
         #Load dictionary of HMM expected scores and full list of groups
@@ -728,7 +728,7 @@ def do(f_args, output_dir):
             elif name in dic:
                 dic[name].append([i[1], i[2], i[3]])
 
-    ###*********
+    ###   
 
 
     ####Make summary
@@ -1078,10 +1078,13 @@ def do(f_args, output_dir):
             cmd = join(augustus_short_dirpath, 'scripts/gff2gbSmallDNA.pl %sgffs/%s %s 1000 %sgb/%s.raw.gb' % (
                 mainout, entry, args['genome'], mainout, entry[:-4]))
             qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-        logger.info('Training augustus gene predictor')
+        logger.debug('Training augustus gene predictor')
         os.chdir(augustus_short_dirpath)
-        cmd = join(augustus_short_dirpath, 'scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s' % (
-            args['abrev'], join(augustus_short_dirpath, 'config/')))  #create new species config file from template
+        prokaryotic = ''
+        if clade == 'bacteria':
+            prokaryotic = '--prokaryotic'
+        cmd = join(augustus_short_dirpath, 'scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s --out=%s %s' % (
+            args['abrev'], join(augustus_short_dirpath, 'config/'), output_dir, prokaryotic))  #create new species config file from template
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
         cmd = 'cat %sgb/*.gb > %straining_set_%s' % (mainout, mainout, args['abrev'])
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
@@ -1102,7 +1105,7 @@ def do(f_args, output_dir):
             out_aug = open(join(mainout, 'augustus/train.log'), 'w')
             qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
-        logger.info('*** Re-running failed predictions with different constraints, total number %s ***' % len(re_run))
+        logger.info('  Re-running failed predictions with different constraints, total number %s  ' % len(re_run))
         done = []
         target_species = args['abrev']
 
@@ -1157,8 +1160,6 @@ def do(f_args, output_dir):
 
     ###retraining and running over
 
-    # Report run time per step
-    logger.info('Total running time:  %s seconds' % str(time.time() - start_time))
     shutil.rmtree(join(augustus_short_dirpath, 'config/species', args['abrev']), ignore_errors=True)
 
     #parse results and write final summary
@@ -1242,14 +1243,10 @@ def do(f_args, output_dir):
 
                 #summarize results, logger.info and write to output files
         summary = open(summary_path, 'w')
+
         logger.info(
-            'Total complete BUSCOs found in assembly (<2 sigma) :  %s\t(%s duplicated).' % (len(set(unique)), len(mcc)))
-        logger.info('Total BUSCOs partially recovered (>2 sigma) :  %s' % (fcc))
-        logger.info('Total groups searched: %s' % totalbuscos)
-        try:
-            logger.info('Total BUSCOs not found:  %s' % (totalbuscos - (len(set(cc)) + fcc)))
-        except:
-            logger.info('Total BUSCOs not found:  %s' % (totalbuscos - (len(set(cc)) + len(fcc))))
+            '  %s, complete BUSCOs found: %s (%s duplicated), partially recovered: %s, '
+            'total groups: %s' % (args['abrev'], len(set(unique)), len(mcc), fcc, totalbuscos))
 
         summary.write(
             '#Summarized BUSCO benchmarking for file: %s\n#BUSCO was run in mode: %s\n\n' % (args['genome'], mode))

@@ -373,9 +373,9 @@ def main(args):
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''), # for compiling GAGE Java classes
-                        ('--gene-finding','')]  # for compiling GlimmerHMM
+                        ('--gene-finding', ''), ('--eukaryote', '')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
-                               'test_data/contigs_2.fasta',]
+                               'test_data/contigs_2.fasta']
             qconfig.test = True
 
         if opt.startswith('--help'):
