@@ -7,7 +7,7 @@ import os
 
 bwa_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'bwa-master')
 samtools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'samtools-1.2')
-
+bedtools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'bedtools-2.17.0')
 
 def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, log_path, err_path):
     assembly_name = qutils.name_from_fpath(ref_fpath)
@@ -16,27 +16,55 @@ def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, log
         logger.info('Using existing bwa alignments for ' + assembly_name)
         return res_dirpath
     bam_dirpath = os.path.join(output_dirpath, assembly_name + '.bam')
+    bamsorted_dirpath = os.path.join(output_dirpath, assembly_name + '.bam')
     sam_dirpath = os.path.join(output_dirpath, assembly_name + '.sam')
+    temp_file = os.path.join(output_dirpath, assembly_name + '.temp')
 
     cmd = bin_fpath('bwa') + ' index ' + ref_fpath
-    qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a+'),
-                           stderr=open(err_path, 'a+'))
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'),
+                           stderr=open(err_path, 'a'))
     sam = open(sam_dirpath, 'w+')
     cmd = bin_fpath('bwa') + ' mem -t' + str(bwa_threads) + ' ' + ref_fpath + ' ' + ' '.join(reads_fpath)
-    qutils.call_subprocess(shlex.split(cmd), stdout=sam, stderr=open(err_path, 'a+'))
+    qutils.call_subprocess(shlex.split(cmd), stdout=sam, stderr=open(err_path, 'a'))
     sam.close()
 
     cmd = sam_fpath('samtools') + ' faidx ' + ref_fpath
-    qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a+'),
-                           stderr=open(err_path, 'a+'))
+    qutils.call_subprocess(shlex.split(cmd), stderr=open(err_path, 'a'))
 
     cmd = sam_fpath('samtools') + ' view -bS ' + sam_dirpath
-    qutils.call_subprocess(shlex.split(cmd), stdout=open(bam_dirpath, 'w+'),
-                           stderr=open(err_path, 'a+'))
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(bam_dirpath, 'w'),
+                           stderr=open(err_path, 'a'))
+    cmd = sam_fpath('samtools') + ' sort ' + bam_dirpath  + ' ' + bamsorted_dirpath
+    qutils.call_subprocess(shlex.split(cmd), stderr=open(err_path, 'a'))
     cmd = sam_fpath('samtools') + ' flagstat ' + ' ' + bam_dirpath
     qutils.assert_file_exists(bam_dirpath, 'bam file')
-    qutils.call_subprocess(shlex.split(cmd), stdout=open(res_dirpath, 'w+'),
-                           stderr=open(err_path, 'a+'))
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(res_dirpath, 'w'),
+                           stderr=open(err_path, 'a'))
+    #calculate number of no coverage regions
+    cmd = bed_fpath('bedtools') + ' genomecov -ibam ' + bamsorted_dirpath  + '.bam -bga'
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(temp_file, 'w'), stderr=open(err_path, 'a'))
+    no_coverage_regions = 0
+    f = open(temp_file)
+    for line in f:
+        l = line.split()
+        if l[3] == 0:
+            no_coverage_regions += 1
+    f.close()
+    #calculate average depth
+    cmd = bed_fpath('bedtools') + " genomecov -ibam " + bamsorted_dirpath  + '.bam'
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(temp_file, 'w'), stderr=open(err_path, 'a'))
+    f = open(temp_file)
+    depth = 0
+    for line in f:
+        l = line.split()
+        if l[0] == 'genome':
+            depth += int(l[1]) * float(l[4])
+
+    out_file = open(res_dirpath, 'a')
+    out_file.write('no_coverage: %s \n' % no_coverage_regions)
+    out_file.write('depth: %s' % int(depth))
+    out_file.close()
+
     if not qconfig.debug:
         os.remove(sam_dirpath)
         os.remove(bam_dirpath)
@@ -50,6 +78,8 @@ def bin_fpath(fname):
 def sam_fpath(fname):
     return os.path.join(samtools_dirpath, fname)
 
+def bed_fpath(fname):
+    return os.path.join(bedtools_dirpath, 'bin', fname)
 
 def all_required_binaries_exist(bin_dirpath, binary):
     if not os.path.isfile(os.path.join(bin_dirpath, binary)):
@@ -96,6 +126,22 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed aligning the reads.')
             return
+    if not all_required_binaries_exist(bedtools_dirpath, 'bin/bedtools'):
+        # making
+        logger.info(
+            'Compiling bedtools (details are in ' + os.path.join(bedtools_dirpath, 'make.log') + ' and make.err)')
+        return_code = qutils.call_subprocess(
+            ['make', '-C', bedtools_dirpath],
+            stdout=open(os.path.join(bedtools_dirpath, 'make.log'), 'w'),
+            stderr=open(os.path.join(bedtools_dirpath, 'make.err'), 'w'), )
+
+        if return_code != 0 or not all_required_binaries_exist(bedtools_dirpath, 'bin/bedtools'):
+            logger.error('Failed to compile bedtools (' + bedtools_dirpath + ')! '
+                                                                             'Try to compile it manually. ' + (
+                             'You can restart Quast with the --debug flag '
+                             'to see the command line.' if not qconfig.debug else ''))
+            logger.info('Failed aligning the reads.')
+            return
 
     bwa_output_dir = os.path.join(output_dir, 'bwa_output')
 
@@ -133,6 +179,10 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 ref_singletons = line.split()[0]
             elif 'different' in line and 'mapQ' not in line and chromosomes > 1:
                 ref_diffchrom = line.split()[0]
+            elif 'depth' in line:
+                ref_depth = line.split()[1]
+            elif 'no_coverage' in line:
+                ref_nocover = line.split()[1]
 
     # process all contigs files
     for index, contigs_fpath in enumerate(contigs_fpaths):
@@ -154,6 +204,10 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 report.add_field(reporting.Fields.SINGLETONS, line.split()[0])
             elif 'different' in line and 'mapQ' not in line and len(contigs_fpaths) > 1:
                 report.add_field(reporting.Fields.READS_DIFFCHROM, line.split()[0])
+            elif 'depth' in line:
+                report.add_field(reporting.Fields.DEPTH, line.split()[1])
+            elif 'no_coverage' in line:
+                report.add_field(reporting.Fields.NO_COVERAGE, line.split()[1])
         if ref_fpath:
             report.add_field(reporting.Fields.REFPROPERLYPAIR_READS, ref_paired_reads)
             if chromosomes > 1:
@@ -161,5 +215,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
             report.add_field(reporting.Fields.REFSINGLETONS, ref_singletons)
             report.add_field(reporting.Fields.REFMAPPED_READS, ref_mapped_reads)
             report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
+            report.add_field(reporting.Fields.REFDEPTH, ref_depth)
+            report.add_field(reporting.Fields.REFNOCOVER, ref_nocover)
     reporting.save_reads(output_dir)
     logger.info('Done.')

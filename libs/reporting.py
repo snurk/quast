@@ -44,7 +44,9 @@ class Fields:
     MAPPED_READS = '# mapped reads'
     PROPERLYPAIR_READS = '# properly paired reads'
     SINGLETONS = '# singletons'
-    READS_DIFFCHROM = '# mates mapped to a different contig'
+    READS_DIFFCHROM = '# mates mapped to different contig'
+    DEPTH = 'Average depth of coverage'
+    NO_COVERAGE = 'Number of no-coverage regions'
 
     # Misassemblies
     MISASSEMBL = '# misassemblies'
@@ -123,7 +125,8 @@ class Fields:
     REFPROPERLYPAIR_READS = 'Reference properly paired reads'
     REFSINGLETONS = 'Reference singletons'
     REFREADS_DIFFCHROM = 'Reference mates mapped to a different chr'
-
+    REFDEPTH = 'Average depth of coverage of reference'
+    REFNOCOVER = 'Number of no-coverage regions of reference'
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):
     order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS,
@@ -132,10 +135,12 @@ class Fields:
              UNCALLED_PERCENT, SUBSERROR, INDELSERROR, GENES, OPERONS, CORE_COMPLETE, CORE_PART, PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
              LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75,
              TOTALREADS, MAPPED_READS, PROPERLYPAIR_READS,
-             REFMAPPED_READS, REFPROPERLYPAIR_READS]
+             DEPTH, NO_COVERAGE,
+             REFMAPPED_READS, REFPROPERLYPAIR_READS, REFDEPTH, REFNOCOVER]
 
     read_order = [NAME, TOTALREADS, LEFT_READS, RIGHT_READS, MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM,
-                  REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM]
+                  DEPTH, NO_COVERAGE,
+                  REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM, REFDEPTH, REFNOCOVER]
 
     # content and order of metrics in DETAILED MISASSEMBLIES REPORT (<quast_output_dir>/contigs_reports/misassemblies_report.txt, .tex, .tsv)
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
@@ -185,7 +190,8 @@ class Fields:
         ('Statistics without reference', [CONTIGS, CONTIGS__FOR_THRESHOLDS, LARGCONTIG, TOTALLEN, CHAFFCONTIG_PERCENT, TOTALLENS__FOR_THRESHOLDS,
                                           N50, N75, L50, L75, GC,]),
 
-        ('Reads', [TOTALREADS, LEFT_READS, RIGHT_READS, MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM]),
+        ('Reads', [TOTALREADS, LEFT_READS, RIGHT_READS, MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM,
+                   DEPTH, NO_COVERAGE,]),
 
         ('Misassemblies', [MIS_ALL_EXTENSIVE,
                            MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
@@ -206,7 +212,8 @@ class Fields:
         ('Predicted genes', [PREDICTED_GENES_UNIQUE, PREDICTED_GENES,]),
 
         ('Reference statistics', [REFLEN, ESTREFLEN, REFCHROMOSOMES, REFGC, REF_GENES, REF_OPERONS,
-                                  REF_READS, REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM])
+                                  REF_READS, REFMAPPED_READS, REFPROPERLYPAIR_READS, REFSINGLETONS, REFREADS_DIFFCHROM,
+                                  REFDEPTH, REFNOCOVER])
     ]
 
     # for "short" version of HTML report
@@ -216,7 +223,7 @@ class Fields:
                     MAPPEDGENOME, DUPLICATION_RATIO, GENES, OPERONS, NGA50,
                     CORE_COMPLETE, CORE_PART,
                     PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
-                    MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM]
+                    MAPPED_READS, PROPERLYPAIR_READS, SINGLETONS, READS_DIFFCHROM, DEPTH, NO_COVERAGE]
 
 ####################################################################################
 ########################  END OF CONFIGURABLE PARAMETERS  ##########################
@@ -231,12 +238,12 @@ class Fields:
         Quality.MORE_IS_BETTER:
             [LARGCONTIG, TOTALLEN, TOTALLENS__FOR_THRESHOLDS, N50, NG50, N75, NG75, NA50, NGA50, NA75, NGA75, LARGALIGN,
              MAPPEDGENOME, GENES, OPERONS, CORE_COMPLETE, CORE_PART, PREDICTED_GENES_UNIQUE, PREDICTED_GENES, AVGIDY,
-             MAPPED_READS, PROPERLYPAIR_READS],
+             DEPTH, MAPPED_READS, PROPERLYPAIR_READS],
         Quality.LESS_IS_BETTER:
             [CONTIGS, CONTIGS__FOR_THRESHOLDS, L50, LG50, L75, LG75,
              MISLOCAL, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISINTERNALOVERLAP,
              UNALIGNED, UNALIGNEDBASES, AMBIGUOUS, AMBIGUOUSEXTRABASES,
-             UNCALLED, UNCALLED_PERCENT, SINGLETONS, READS_DIFFCHROM,
+             UNCALLED, UNCALLED_PERCENT, SINGLETONS, READS_DIFFCHROM, NO_COVERAGE,
              LA50, LGA50, LA75, LGA75, DUPLICATION_RATIO, INDELS, INDELSERROR, MISMATCHES, SUBSERROR,
              MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES],
         Quality.EQUAL:
