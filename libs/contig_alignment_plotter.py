@@ -11,6 +11,7 @@ from __future__ import with_statement
 from libs import qconfig, qutils, fastaparser
 import os
 import math
+from shutil import copyfile
 
 from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
@@ -591,6 +592,9 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
     plot_fpath = draw_alignment_plot(
         contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift, output_dirpath,
         lists_of_aligned_blocks, arcs, similar, coverage_hist)
+
+    javascript_generator(lists_of_aligned_blocks, output_dirpath)
+
     return plot_fpath
 
 
@@ -644,3 +648,35 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 aligned_blocks.append(block)
 
     return aligned_blocks
+
+def javascript_generator(lists_of_aligned_blocks, output_dir_path):
+    template = open('my_data_template.js', 'r')
+    result = open(os.path.join(output_dir_path, 'my_data.js'), 'w')
+
+    result.write('\"use strict\";\n')
+    result.write('var my_data = [\n')
+
+    id_counter = 0
+
+    for aligned_blocks in lists_of_aligned_blocks:
+        result.write("\t[")
+        for block in aligned_blocks:
+            result.write('{' + 'id: ' + str(id_counter) +', '
+                             + 'name: ' + '\"' + block.name + '\"' + ', '
+                             + 'begin: ' + str(block.start) + ', '
+                             + 'end: ' + str(block.end) +
+                         '}' + ', ')
+            ++id_counter
+        result.write('{id: -1, name: \"_\", begin: 0, end: 0}')
+        result.write('],\n')
+
+    result.write('\t[]\n')
+    result.write('];\n')
+
+    for line in template:
+        result.write(line)
+
+    result.close()
+    template.close()
+    copyfile('index_template.html', os.path.join(output_dir_path, 'index.html'))
+    copyfile('d3.js', os.path.join(output_dir_path, 'd3.js'))
