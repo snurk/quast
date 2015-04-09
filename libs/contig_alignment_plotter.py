@@ -649,34 +649,30 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
 
     return aligned_blocks
 
+
 def javascript_generator(lists_of_aligned_blocks, output_dir_path):
-    template = open('my_data_template.js', 'r')
-    result = open(os.path.join(output_dir_path, 'my_data.js'), 'w')
+    with open(os.path.join(output_dir_path, 'my_data.js'), 'w') as result:
+        result.write('\"use strict\";\n')
+        result.write('var my_data = [\n')
 
-    result.write('\"use strict\";\n')
-    result.write('var my_data = [\n')
+        id_counter = 0
+        for aligned_blocks in lists_of_aligned_blocks:
+            result.write("\t[")
+            for block in aligned_blocks:
+                result.write('{' + 'id: ' + str(id_counter) + ', '
+                                 + 'name: ' + '\"' + block.name + '\"' + ', '
+                                 + 'begin: ' + str(block.start) + ', '
+                                 + 'end: ' + str(block.end) +
+                             '}' + ', ')
+                id_counter += 1
+            result.write('{id: -1, name: \"_\", begin: 0, end: 0}')
+            result.write('],\n')
 
-    id_counter = 0
+        result.write('\t[]\n')
+        result.write('];\n')
 
-    for aligned_blocks in lists_of_aligned_blocks:
-        result.write("\t[")
-        for block in aligned_blocks:
-            result.write('{' + 'id: ' + str(id_counter) +', '
-                             + 'name: ' + '\"' + block.name + '\"' + ', '
-                             + 'begin: ' + str(block.start) + ', '
-                             + 'end: ' + str(block.end) +
-                         '}' + ', ')
-            ++id_counter
-        result.write('{id: -1, name: \"_\", begin: 0, end: 0}')
-        result.write('],\n')
+        with open('my_data_template.js', 'r') as template:
+            result.write(template.read())
 
-    result.write('\t[]\n')
-    result.write('];\n')
-
-    for line in template:
-        result.write(line)
-
-    result.close()
-    template.close()
     copyfile('index_template.html', os.path.join(output_dir_path, 'index.html'))
     copyfile('d3.js', os.path.join(output_dir_path, 'd3.js'))
