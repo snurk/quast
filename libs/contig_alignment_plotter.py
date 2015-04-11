@@ -597,7 +597,6 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
 
     return plot_fpath
 
-
 def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_lengths):
     aligned_blocks = []
 
@@ -640,7 +639,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 is_rc = ((start - end) * (start_in_contig - end_in_contig)) < 0
                 block = Alignment(
                     contig_id, start, end, is_rc,
-                    position_in_conitg=min(start_in_contig, end_in_contig))
+                    position_in_conitg = min(start_in_contig, end_in_contig))
 
                 if contig_id in misassembled_contigs_ids:
                     block.misassembled = True
@@ -651,28 +650,55 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
 
 
 def javascript_generator(lists_of_aligned_blocks, output_dir_path):
-    with open(os.path.join(output_dir_path, 'my_data.js'), 'w') as result:
-        result.write('\"use strict\";\n')
-        result.write('var my_data = [\n')
+    def get_real_path_in_html_saver(real_path_in_html_saver):
+        return os.path.join(qconfig.LIBS_LOCATION, 'html_saver', real_path_in_html_saver)
+
+
+    def get_real_path_in_contig_aligment_plot(real_path_in_contig_aligment_plot):
+        return os.path.join(output_dir_path, 'contig_aligment_plot', real_path_in_contig_aligment_plot)
+
+    if not os.path.exists(get_real_path_in_html_saver('')):
+        os.makedirs(get_real_path_in_html_saver(''))
+
+    with open(get_real_path_in_contig_aligment_plot('contig_alignment_plot_data.js'), 'w') as result:
+        result.write('"use strict";\n')
+        result.write('var contig_data = [')
 
         id_counter = 0
+        assembly_counter = 0
         for aligned_blocks in lists_of_aligned_blocks:
-            result.write("\t[")
+            #result.write("\t[")
             for block in aligned_blocks:
+                state = ''
+                if block.similar: 
+                    if block.misassembled:
+                        state = 'Similarmisassebled'
+                    else: 
+                        state = 'Similar'
+                elif block.misassembled:
+                    state = 'Misassembled'
+                else:
+                    state = 'Correct'
+
+                state = '"' + state + '"'
                 result.write('{' + 'id: ' + str(id_counter) + ', '
-                                 + 'name: ' + '\"' + block.name + '\"' + ', '
+                                 + 'name: ' + '"' + block.name + '"' + ', '
                                  + 'begin: ' + str(block.start) + ', '
-                                 + 'end: ' + str(block.end) +
+                                 + 'end: ' + str(block.end) + ','
+                                 + 'assembly: ' + str(assembly_counter) + ','
+                                 + 'class: ' + state +
                              '}' + ', ')
                 id_counter += 1
-            result.write('{id: -1, name: \"_\", begin: 0, end: 0}')
-            result.write('],\n')
-
-        result.write('\t[]\n')
+            assembly_counter += 1
+            
+        result.write('{}')
         result.write('];\n')
+        result.write('var assemblies_num  = ' + str(assembly_counter) + ';' + '\n')
 
-        with open('my_data_template.js', 'r') as template:
+        with open(get_real_path_in_html_saver('static/contig_alignment_plot_data_template.js'), 'r') as template:
             result.write(template.read())
 
-    copyfile('index_template.html', os.path.join(output_dir_path, 'index.html'))
-    copyfile('d3.js', os.path.join(output_dir_path, 'd3.js'))
+    copyfile(get_real_path_in_html_saver('contig_alignment_plot_template.html'),
+             get_real_path_in_contig_aligment_plot('contig_alignment_plot.html'))
+    copyfile(get_real_path_in_html_saver('static/d3.js'),
+             get_real_path_in_contig_aligment_plot('d3.js'))
