@@ -262,8 +262,8 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
             report.add_field(reporting.Fields.REFMAPPED_READS, ref_mapped_reads)
             report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
 
-    #if not qconfig.debug:
-        #shutil.rmtree(temp_output_dir, ignore_errors=True)
+    if not qconfig.debug:
+        shutil.rmtree(temp_output_dir, ignore_errors=True)
 
     reporting.save_reads(output_dir)
     logger.info('Done.')
