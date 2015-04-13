@@ -386,11 +386,56 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             return False, aux_data
 
 
+    def check_sv(max_error, align1, align2, inconsistency, inversions, translocations, deletions, insertions):
+        if align2.s1 < align1.s1:
+            align1, align2 = align2, align1
+        if align1.ref != align2.ref:
+            variations = translocations
+        elif abs(inconsistency) > max_error:
+            if inconsistency > 0:
+                variations = deletions
+            else:
+                variations = insertions
+        else:
+            variations = inversions
+        for sv in variations:
+            if (abs(sv[0].s1-align1.s1) < max_error and abs(sv[0].e1-align1.e1) < max_error) and \
+                    (abs(sv[1].s1-align2.s1) < max_error and abs(sv[1].e1-align2.e1) < max_error) and \
+                        sv[0].ref == align1.ref and sv[1].ref == align2.ref:
+                return True
+        return False
+
     def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features):
         misassembly_internal_overlap = 0
         prev = sorted_aligns[0].clone()
         cur_aligned_length = prev.len2
         is_misassembled = False
+        ref_name = qutils.name_from_fpath(ref_fpath)
+        sv_dirpath = os.path.join(os.path.dirname(output_dirpath), 'reads_reports', 'output', ref_name + '.bed')
+        sv_exists = False
+        if os.path.isfile(sv_dirpath):
+            sv_exists = True
+        if sv_exists:
+            #structure variations
+            inversions = []
+            insertions = []
+            translocations = []
+            deletions = []
+            f = open(sv_dirpath)
+            f.readline()
+            for line in f:
+                l = line.split()
+                if len(l) > 10:
+                    align1 = Mapping(s1=int(l[1]), e1=int(l[2]), ref=l[0], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
+                    align2 = Mapping(s1=int(l[4]), e1=int(l[5]),  ref=l[3], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
+                    if 'INV' in l[10]:
+                        inversions.append((align1, align2))
+                    elif 'TRA' in l[10]:
+                        translocations.append((align1, align2))
+                    elif 'DEL' in l[10]:
+                        deletions.append((align1, align2))
+                    elif 'INS' in l[10] or 'DUP' in l[10]:
+                        insertions.append((align1, align2))
 
         for i in range(len(sorted_aligns) - 1):
             print >> planta_out_f, '\t\t\tReal Alignment %d: %s' % (i+1, str(sorted_aligns[i]))
@@ -403,8 +448,17 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
             ref_aligns.setdefault(sorted_aligns[i].ref, []).append(sorted_aligns[i])
             print >> coords_filtered_file, str(prev)
-
-            if is_extensive_misassembly:
+            is_sv = False
+            if sv_exists:
+                #check if it is structural variation
+                if is_extensive_misassembly:
+                    max_error = 2500
+                else:
+                    max_error = 100
+                is_sv = check_sv(max_error, sorted_aligns[i], sorted_aligns[i+1], inconsistency, inversions, translocations, deletions, insertions)
+                if is_sv:
+                    print >> planta_out_f, '\t\t\t  Fake misassembly (caused by structural variations of genome) between these two alignments'
+            if is_extensive_misassembly and not is_sv:
                 is_misassembled = True
                 aligned_lengths.append(cur_aligned_length)
                 cur_aligned_length = 0
@@ -428,14 +482,13 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                                                                           sorted_aligns[i+1].s2, sorted_aligns[i+1].e2)
                 ref_features.setdefault(sorted_aligns[i].ref, {})[sorted_aligns[i].e1] = 'M'
                 ref_features.setdefault(sorted_aligns[i+1].ref, {})[sorted_aligns[i+1].e1] = 'M'
-            else:
+            elif not is_sv:
                 if cyclic_moment and inconsistency == 0:
                     print >> planta_out_f, '\t\t\t  Fake misassembly (caused by linear representation of circular genome) between these two alignments'
                 else:
                     if qconfig.strict_NA:
                         aligned_lengths.append(cur_aligned_length)
                         cur_aligned_length = 0
-
                     if inconsistency < 0:
                         #There is an overlap between the two alignments, a local misassembly
                         print >> planta_out_f, '\t\t\t  Overlap between these two alignments (local misassembly).',
