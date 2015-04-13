@@ -386,22 +386,20 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             return False, aux_data
 
 
-    def check_sv(max_error, align1, align2, inconsistency, inversions, translocations, deletions, insertions):
+    def check_sv(max_error, align1, align2, inconsistency, inversions, translocations, indels):
         if align2.s1 < align1.s1:
             align1, align2 = align2, align1
         if align1.ref != align2.ref:
             variations = translocations
-        elif abs(inconsistency) > max_error:
-            if inconsistency > 0:
-                variations = deletions
-            else:
-                variations = insertions
-        else:
+        elif (align1.s2 < align1.e2) != (align2.s2 < align2.e2) and abs(inconsistency) < smgap:
             variations = inversions
+        else:
+            variations = indels
         for sv in variations:
             if (abs(sv[0].s1-align1.s1) < max_error and abs(sv[0].e1-align1.e1) < max_error) and \
                     (abs(sv[1].s1-align2.s1) < max_error and abs(sv[1].e1-align2.e1) < max_error) and \
                         sv[0].ref == align1.ref and sv[1].ref == align2.ref:
+                variations.remove(sv)
                 return True
         return False
 
@@ -418,9 +416,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         if sv_exists:
             #structure variations
             inversions = []
-            insertions = []
+            indels = []
             translocations = []
-            deletions = []
             f = open(sv_dirpath)
             f.readline()
             for line in f:
@@ -430,12 +427,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     align2 = Mapping(s1=int(l[4]), e1=int(l[5]),  ref=l[3], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
                     if 'INV' in l[10]:
                         inversions.append((align1, align2))
-                    elif 'TRA' in l[10]:
+                    elif 'BND' in l[10]:
                         translocations.append((align1, align2))
-                    elif 'DEL' in l[10]:
-                        deletions.append((align1, align2))
-                    elif 'INS' in l[10] or 'DUP' in l[10]:
-                        insertions.append((align1, align2))
+                    elif 'INS' in l[10] or 'DUP' in l[10] or 'DEL' in l[10]:
+                        indels.append((align1, align2))
 
         for i in range(len(sorted_aligns) - 1):
             print >> planta_out_f, '\t\t\tReal Alignment %d: %s' % (i+1, str(sorted_aligns[i]))
@@ -454,8 +449,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 if is_extensive_misassembly:
                     max_error = 2500
                 else:
-                    max_error = 100
-                is_sv = check_sv(max_error, sorted_aligns[i], sorted_aligns[i+1], inconsistency, inversions, translocations, deletions, insertions)
+                    max_error = 500
+                is_sv = check_sv(max_error, sorted_aligns[i], sorted_aligns[i+1], inconsistency, inversions, translocations, indels)
                 if is_sv:
                     print >> planta_out_f, '\t\t\t  Fake misassembly (caused by structural variations of genome) between these two alignments'
             if is_extensive_misassembly and not is_sv:
