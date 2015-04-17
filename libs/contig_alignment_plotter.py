@@ -657,8 +657,8 @@ def javascript_generator(lists_of_aligned_blocks, output_dir_path):
     def get_real_path_in_contig_aligment_plot(real_path_in_contig_aligment_plot):
         return os.path.join(output_dir_path, 'contig_aligment_plot', real_path_in_contig_aligment_plot)
 
-    if not os.path.exists(get_real_path_in_html_saver('')):
-        os.makedirs(get_real_path_in_html_saver(''))
+    if not os.path.exists(get_real_path_in_contig_aligment_plot('')):
+        os.makedirs(get_real_path_in_contig_aligment_plot(''))
 
     with open(get_real_path_in_contig_aligment_plot('contig_alignment_plot_data.js'), 'w') as result:
         result.write('"use strict";\n')
