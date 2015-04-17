@@ -563,8 +563,15 @@ def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, s
     return v.save(output_fpath)
 
 
+def make_output_dir(output_dir_path):
+    if not os.path.exists(output_dir_path):
+        os.makedirs(output_dir_path)
+
+
 def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
        ref_fpath, arcs=False, similar=False, coverage_hist=None):
+    make_output_dir(output_dirpath)
+
     lists_of_aligned_blocks = []
 
     total_genome_size = 0
@@ -653,12 +660,8 @@ def javascript_generator(lists_of_aligned_blocks, output_dir_path):
     def get_real_path_in_html_saver(real_path_in_html_saver):
         return os.path.join(qconfig.LIBS_LOCATION, 'html_saver', real_path_in_html_saver)
 
-
     def get_real_path_in_contig_aligment_plot(real_path_in_contig_aligment_plot):
-        return os.path.join(output_dir_path, 'contig_aligment_plot', real_path_in_contig_aligment_plot)
-
-    if not os.path.exists(get_real_path_in_contig_aligment_plot('')):
-        os.makedirs(get_real_path_in_contig_aligment_plot(''))
+        return os.path.join(output_dir_path, real_path_in_contig_aligment_plot)
 
     with open(get_real_path_in_contig_aligment_plot('contig_alignment_plot_data.js'), 'w') as result:
         result.write('"use strict";\n')

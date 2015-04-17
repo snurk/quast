@@ -650,7 +650,7 @@ def main(args):
                 from libs import contig_alignment_plotter
                 contig_alignment_plot_fpath = contig_alignment_plotter.do(
                     contigs_fpaths, os.path.join(detailed_contigs_reports_dirpath, 'contigs_report_%s.stdout'),
-                    output_dirpath, ref_fpath, similar=True)
+                    os.path.join(output_dirpath, 'contig_alignment_plot'), ref_fpath, similar=True)
 
             if all_pdf_file:
                 # full report in PDF format: all tables and plots
