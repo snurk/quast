@@ -11,6 +11,7 @@ from __future__ import with_statement
 from libs import qconfig, qutils, fastaparser
 import os
 import math
+import libs.html_saver.html_saver as html_saver
 from shutil import copyfile
 
 from libs.log import get_logger
@@ -560,7 +561,7 @@ def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, s
 
     v = Visualizer(assemblies, coverage_hist, settings, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift)
     v.visualize()
-    return v.save(output_fpath)
+    return (v.save(output_fpath), assemblies)
 
 
 def make_output_dir(output_dir_path):
@@ -596,11 +597,11 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
             return None
         lists_of_aligned_blocks.append(aligned_blocks)
 
-    plot_fpath = draw_alignment_plot(
+    plot_fpath, assemblies = draw_alignment_plot(
         contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift, output_dirpath,
         lists_of_aligned_blocks, arcs, similar, coverage_hist)
 
-    javascript_generator(lists_of_aligned_blocks, output_dirpath)
+    javascript_generator(assemblies, output_dirpath)
 
     return plot_fpath
 
@@ -656,52 +657,35 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
     return aligned_blocks
 
 
-def javascript_generator(lists_of_aligned_blocks, output_dir_path):
-    def get_real_path_in_html_saver(real_path_in_html_saver):
-        return os.path.join(qconfig.LIBS_LOCATION, 'html_saver', real_path_in_html_saver)
+def javascript_generator(assemblies, output_dir_path):
+    with open(os.path.join(output_dir_path, 'contig_alignment_plot_data.js'), 'w') as result:
+        result.write('"use strict";\n\
+var contig_data = [')
 
-    def get_real_path_in_contig_aligment_plot(real_path_in_contig_aligment_plot):
-        return os.path.join(output_dir_path, real_path_in_contig_aligment_plot)
+        for assembly in assemblies.assemblies:
+            for alignment in assembly.alignments:
+                result.write('\
+{{\n\
+    name:               "{alignment.name}",\n\
+    start:              {alignment.start},\n\
+    end:                {alignment.end},\n\
+    assembly:           "{assembly.label}",\n\
+    color:              "{alignment.color}",\n\
+    similar:            "{alignment.similar}",\n\
+    misassembled:       "{alignment.misassembled}",\n\
+    position_in_contig: {alignment.position_in_contig}}},\n'.format(**locals()))
 
-    with open(get_real_path_in_contig_aligment_plot('contig_alignment_plot_data.js'), 'w') as result:
-        result.write('"use strict";\n')
-        result.write('var contig_data = [')
+        result.write('\
+{{}}];\n\
+\n\
+var assemblies_num = {};\n\
+\n'.format(len(assemblies.assemblies)))
 
-        id_counter = 0
-        assembly_counter = 0
-        for aligned_blocks in lists_of_aligned_blocks:
-            #result.write("\t[")
-            for block in aligned_blocks:
-                state = ''
-                if block.similar: 
-                    if block.misassembled:
-                        state = 'Similarmisassebled'
-                    else: 
-                        state = 'Similar'
-                elif block.misassembled:
-                    state = 'Misassembled'
-                else:
-                    state = 'Correct'
-
-                state = '"' + state + '"'
-                result.write('{' + 'id: ' + str(id_counter) + ', '
-                                 + 'name: ' + '"' + block.name + '"' + ', '
-                                 + 'begin: ' + str(block.start) + ', '
-                                 + 'end: ' + str(block.end) + ','
-                                 + 'assembly: ' + str(assembly_counter) + ','
-                                 + 'class: ' + state +
-                             '}' + ', ')
-                id_counter += 1
-            assembly_counter += 1
-            
-        result.write('{}')
-        result.write('];\n')
-        result.write('var assemblies_num  = ' + str(assembly_counter) + ';' + '\n')
-
-        with open(get_real_path_in_html_saver('static/contig_alignment_plot_data_template.js'), 'r') as template:
+        with open(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_data_template.js')), 'r') \
+                as template:
             result.write(template.read())
 
-    copyfile(get_real_path_in_html_saver('contig_alignment_plot_template.html'),
-             get_real_path_in_contig_aligment_plot('contig_alignment_plot.html'))
-    copyfile(get_real_path_in_html_saver('static/d3.js'),
-             get_real_path_in_contig_aligment_plot('d3.js'))
+    copyfile(html_saver.get_real_path('contig_alignment_plot_template.html'),
+             os.path.join(output_dir_path, 'contig_alignment_plot.html'))
+    copyfile(html_saver.get_real_path(os.path.join('static', 'd3.js')),
+             os.path.join(output_dir_path, 'd3.js'))
