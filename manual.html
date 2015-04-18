@@ -76,7 +76,8 @@
     at <a href="http://sourceforge.net/projects/quast/">http://sourceforge.net/projects/quast</a>.
     <br>
     <br>
-    QUAST utilizes <a href="http://mummer.sourceforge.net/">MUMmer</a>, <a href="http://exon.gatech.edu/gmhmm2_prok.cgi">GeneMark.hmm</a>, <a href="http://exon.gatech.edu/metagenome/">MetaGeneMark</a>, 
+    QUAST utilizes <a href="http://mummer.sourceforge.net/">MUMmer</a>, <a href="http://exon.gatech.edu/GeneMark/gmhmmp.cgi">GeneMark.hmm</a>,
+    <a href="http://exon.gatech.edu/GeneMark/gmes_instructions.html">GeneMarkES</a>, <a href="http://exon.gatech.edu/GeneMark/meta_gmhmmp.cgi">MetaGeneMark</a>,
     <a href="http://cbcb.umd.edu/software/glimmerhmm/">GlimmerHMM</a>, <a href="http://bio-bwa.sourceforge.net/">BWA</a>, <a href="http://busco.ezlab.org/">BUSCO</a>
     and <a href="http://gage.cbcb.umd.edu/index.html">GAGE</a>. These tools are built in, so you do not need to install
     them separately.
@@ -359,13 +360,18 @@ Take assembly names from their parent directory names.
 Enables gene finding. Affects perfomance, thus disabled by default.<br>
 <span style='line-height: 50%;'>&nbsp;</span><br>  
 By default, we assume that the genome is prokaryotic, and apply GeneMark.hmm for gene finding.
-If the genome is eukaryotic, add the <a href='#eukaryote'><code>--eukaryte</code></a> option to enable GlimmerHMM instead.
+If the genome is eukaryotic, add the <a href='#eukaryote'><code>--eukaryote</code></a> option to enable GeneMarkES for eukaryotes.
 If it is a metagenome, add the <a href='#meta'><code>--meta</code></a> option.<br>
 <span style='line-height: 50%;'>&nbsp;</span><br>  
 If a <a href='#sec2.2'>gene file</a> is provided by <code>-G</code> as well, both 
 <span class='metric_ref'><a href='#genes'># genes</a></span> in the file covered by the assembly, and
 <span class='metric_ref'><a href='#predicted_genes'># predicted genes</a></span> are reported. Note that operons are not predicted,
 but a file of known operon positions can be provided instead.<br>
+
+<div class='option'>
+    <code><b>--glimmer</b></code>
+</div>
+Use GlimmerHMM for gene finding for eukaryotes instead of GeneMarkES.
 
 <div class='option'>
     <code><b>--gene-thresholds</b> &lt;int,int,...&gt;</code>
@@ -448,6 +454,11 @@ The default value is 'one'.
 </div>
 Break contigs at every misassembly event (including local ones) to compute <span class='metric-ref'>NAx</span> and
 <span class='metric-ref'>NGAx</span> statistics. By default, QUAST breaks contigs <i>only at extensive</i> misassemblies (not local ones).
+
+<div class='option'>
+    <code><b>--no-snps</b></code>
+</div>
+Do not search SNPs. This will speed up computation and reduce memory consumption.
 
 <div class='option'>
     <code><b>--no-plots</b></code>

@@ -374,7 +374,7 @@ def main(args):
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''),  # for compiling GAGE Java classes
                         ('--find-conserved-genes', ''),  # for compiling BUSCO
-                        ('--gene-finding', ''), ('--eukaryote', '')]  # for compiling GlimmerHMM
+                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta']
             qconfig.test = True
@@ -487,8 +487,14 @@ def main(args):
         elif opt in ('-n', "--strict-NA"):
             qconfig.strict_NA = True
 
+        elif opt == '--no-snps':
+            qconfig.search_snps = False
+
         elif opt == '--no-plots':
             qconfig.draw_plots = False
+
+        elif opt == '--glimmer':
+            qconfig.glimmer = True
 
         elif opt == '--no-html':
             qconfig.html_report = False
@@ -656,24 +662,25 @@ def main(args):
             genes_fpaths, operons_fpaths, detailed_contigs_reports_dirpath, os.path.join(output_dirpath, 'genome_stats'))
 
 
-    if qconfig.gene_finding:
-        if qconfig.prokaryote or qconfig.meta:
-            ########################################################################
-            ### GeneMark
-            ########################################################################
-            from libs import genemark
-            genemark.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'),
-                        qconfig.meta)
-        else:
+    if qconfig.gene_finding or qconfig.glimmer:
+        if qconfig.glimmer:
             ########################################################################
             ### Glimmer
             ########################################################################
             from libs import glimmer
             glimmer.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'))
+        else:
+            ########################################################################
+            ### GeneMark
+            ########################################################################
+            from libs import genemark
+            genemark.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'), qconfig.prokaryote,
+                        qconfig.meta)
 
     else:
         logger.info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
+
 
     if qconfig.busco:
         ########################################################################

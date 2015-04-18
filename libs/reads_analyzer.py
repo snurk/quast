@@ -18,7 +18,7 @@ def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, res
     res_dirpath = os.path.join(res_path, assembly_name + '.res')
 
     if os.path.isfile(res_dirpath):
-        logger.info('Using existing bwa alignments for ' + assembly_name)
+        logger.info('  Using existing bwa alignments for ' + assembly_name)
         return res_dirpath
     sam_dirpath = os.path.join(output_dirpath, assembly_name + '.sam')
     bam_dirpath = os.path.join(output_dirpath, assembly_name + '.bam')
@@ -32,9 +32,6 @@ def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, res
                            stderr=open(err_path, 'a'))
 
     qutils.assert_file_exists(bam_dirpath, 'bam file')
-    qutils.call_subprocess([sam_fpath('samtools'), 'sort', bam_dirpath, bams_dirpath],
-                           stderr=open(err_path, 'a'))
-
     qutils.call_subprocess([sam_fpath('samtools'), 'flagstat', bam_dirpath], stdout=open(res_dirpath, 'w'),
                            stderr=open(err_path, 'a'))
 
@@ -43,10 +40,12 @@ def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, res
 
 def create_vcf(ref_fpath, output_dirpath, res_path, log_path, err_path):
 
+    logger.info(
+            '  Running lumpy')
     ref_name = qutils.name_from_fpath(ref_fpath)
     bed_dirpath = os.path.join(res_path, ref_name + '.bed')
     if os.path.isfile(bed_dirpath):
-        logger.info('Using existing bed-file for ' + ref_name)
+        logger.info('  Using existing bed-file for ' + ref_name)
         return bed_dirpath
     bam_dirpath = os.path.join(output_dirpath, ref_name + '.bam')
     ##preprocessing for lumpy
@@ -84,10 +83,10 @@ def create_vcf(ref_fpath, output_dirpath, res_path, log_path, err_path):
     qutils.call_subprocess(['tail', temp_file, '-n', '+100000'], stdout=open(readgroup_dirpath, 'w'),
                            stderr=open(err_path, 'a'))
 
-    bam_info = open(temp_file).readline()
-    if len(bam_info) < 4:
+    bam_info = open(temp_file).readline().split()
+    if len(bam_info) < 10:
         return
-    read_length = bam_info.split()[4]
+    read_length = str(len(bam_info[9]))
     qutils.call_subprocess(
         [os.path.join(lumpytools_dirpath, 'scripts/pairend_distro.py'), '-r', read_length, '-X', '4', '-N', '10000',
          '-o', histo_dirpath],
@@ -106,7 +105,7 @@ def create_vcf(ref_fpath, output_dirpath, res_path, log_path, err_path):
     qutils.call_subprocess(
         [os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_file, '-o', bed_dirpath],
         stderr=open(err_path, 'a'))
-
+    logger.info('  Structural variations saved to ' + bed_dirpath)
     return bed_dirpath
 
 def bin_fpath(fname):
@@ -174,14 +173,14 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     if not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
         # making
         logger.info(
-            'Compiling lumpytools (details are in ' + os.path.join(lumpytools_dirpath, 'make.log') + ' and make.err)')
+            'Compiling lumpy (details are in ' + os.path.join(lumpytools_dirpath, 'make.log') + ' and make.err)')
         return_code = qutils.call_subprocess(
             ['make', '-C', lumpytools_dirpath],
             stdout=open(os.path.join(lumpytools_dirpath, 'make.log'), 'w'),
             stderr=open(os.path.join(lumpytools_dirpath, 'make.err'), 'w'), )
 
         if return_code != 0 or not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
-            logger.error('Failed to compile lumpytools (' + lumpytools_dirpath + ')! '
+            logger.error('Failed to compile lumpy (' + lumpytools_dirpath + ')! '
                                                                                'Try to compile it manually. ' + (
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))

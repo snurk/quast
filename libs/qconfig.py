@@ -31,7 +31,7 @@ splitted_ref = []
 
 # available options
 long_options = "output-dir= save-json-to= genes= operons= reference= reads1= reads2= contig-thresholds= min-contig= "\
-               "gene-thresholds= save-json gage eukaryote no-plots no-html help debug "\
+               "gene-thresholds= save-json gage eukaryote glimmer no-snps no-plots no-html help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
                "find-conserved-genes strict-NA meta labels= test help-hidden".split()
 short_options = "o:G:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
@@ -52,6 +52,7 @@ mincluster = 65
 estimated_reference_size = None
 strict_NA = False
 scaffolds = False
+search_snps = True
 draw_plots = True
 html_report = True
 save_json = False
@@ -59,6 +60,7 @@ meta = False
 debug = False
 test = False
 busco = False
+glimmer = False
 
 default_results_root_dirname = "quast_results"
 output_dirname = "results_" + datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -156,8 +158,9 @@ def usage(show_hidden=False, meta=False):
     if meta:
         print >> sys.stderr, "-f  --gene-finding                    Predict genes using MetaGeneMark"
     else:
-        print >> sys.stderr, "-f  --gene-finding                    Predict genes (with GeneMark.hmm for prokaryotes (default), GlimmerHMM"
+        print >> sys.stderr, "-f  --gene-finding                    Predict genes (with GeneMark.hmm for prokaryotes (default), GeneMarkES"
         print >> sys.stderr, "                                      for eukaryotes (--eukaryote), or MetaGeneMark for metagenomes (--meta)"
+    print >> sys.stderr, "    --glimmer                         Predict genes with GlimmerHMM instead of GeneMarkES"
     print >> sys.stderr, "-S  --gene-thresholds                 Comma-separated list of threshold lengths of genes to search with Gene Finding module"
     print >> sys.stderr, "                                      [default is %s]" % genes_lengths
     print >> sys.stderr, "-e  --eukaryote                       Genome is eukaryotic"
@@ -174,6 +177,7 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "                                      good alignments [default is %s]" % ambiguity_usage
     print >> sys.stderr, "-n  --strict-NA                       Break contigs in any misassembly event when compute NAx and NGAx"
     print >> sys.stderr, "                                      By default, QUAST breaks contigs only by extensive misassemblies (not local ones)"
+    print >> sys.stderr, "    --no-snps                         Do not search SNPs (to speed up computation and reduce memory consumption)"
     print >> sys.stderr, "    --no-plots                        Do not draw plots (to speed up computation)"
     if show_hidden:
         print >> sys.stderr, ""
