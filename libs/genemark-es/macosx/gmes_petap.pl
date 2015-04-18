@@ -1069,7 +1069,7 @@ sub CheckBeforeRun
 	$cfg->{'Parameters'}->{'test_set'} = ResolvePath( $cfg->{'Parameters'}->{'test_set'} );
 	$cfg->{'Parameters'}->{'ET'}       = ResolvePath( $cfg->{'Parameters'}->{'ET'} );
 	$cfg->{'Parameters'}->{'out'} = ResolvePath( $cfg->{'Parameters'}->{'out'} );
-	$cfg->{'Parameters'}->{'out'}
+	
 	# check input sequence file 
 	if( $cfg->{'Run'}->{'commit_input_data'} )
 	{

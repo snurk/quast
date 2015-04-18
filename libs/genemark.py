@@ -179,6 +179,9 @@ def gm_es(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath):
     tool_exec_fpath = os.path.join(tool_dirpath, 'gmes_petap.pl')
     libs_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'genemark-es', 'lib')
     err_file = open(err_fpath, 'w')
+    tmp_dirpath += qutils.name_from_fpath(fasta_fpath)
+    if not os.path.isdir(tmp_dirpath):
+            os.mkdir(tmp_dirpath)
     return_code = qutils.call_subprocess(
         ['perl', '-I', libs_dirpath, tool_exec_fpath, '--ES', '--cores', str(qconfig.max_threads), '--sequence', fasta_fpath,
          '--out', tmp_dirpath],
