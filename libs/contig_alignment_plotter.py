@@ -670,10 +670,9 @@ var contig_data = [')
     start:              {alignment.start},\n\
     end:                {alignment.end},\n\
     assembly:           "{assembly.label}",\n\
-    color:              "{alignment.color}",\n\
     similar:            "{alignment.similar}",\n\
     misassembled:       "{alignment.misassembled}",\n\
-    position_in_contig: {alignment.position_in_contig}}},\n'.format(**locals()))
+    order:              {alignment.order}}},\n'.format(**locals()))
 
         result.write('\
 {{}}];\n\
