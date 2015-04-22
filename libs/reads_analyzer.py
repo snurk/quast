@@ -15,98 +15,96 @@ lumpytools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'lumpy')
 
 def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, res_path, log_path, err_path, is_reference=False):
     assembly_name = qutils.name_from_fpath(ref_fpath)
-    res_dirpath = os.path.join(res_path, assembly_name + '.res')
+    res_fpath = os.path.join(res_path, assembly_name + '.res')
 
-    if os.path.isfile(res_dirpath):
+    if os.path.isfile(res_fpath):
         logger.info('  Using existing bwa alignments for ' + assembly_name)
-        return res_dirpath
-    sam_dirpath = os.path.join(output_dirpath, assembly_name + '.sam')
-    bam_dirpath = os.path.join(output_dirpath, assembly_name + '.bam')
-    bams_dirpath = os.path.join(output_dirpath, assembly_name + '.sorted')
+        return res_fpath
+    sam_fpath = os.path.join(output_dirpath, assembly_name + '.sam')
+    bam_fpath = os.path.join(output_dirpath, assembly_name + '.bam')
+
     qutils.call_subprocess([bin_fpath('bwa'), 'index', ref_fpath], stdout=open(log_path, 'a'),
                            stderr=open(err_path, 'a'))
     cmd = bin_fpath('bwa') + ' mem -t' + str(bwa_threads) + ' ' + ref_fpath + ' ' + ' '.join(reads_fpath)
-    qutils.call_subprocess(shlex.split(cmd), stdout=open(sam_dirpath, 'w'), stderr=open(err_path, 'a'))
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(sam_fpath, 'w'), stderr=open(err_path, 'a'))
     qutils.call_subprocess([sam_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-bS', sam_dirpath], stdout=open(bam_dirpath, 'w'),
+    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-bS', sam_fpath], stdout=open(bam_fpath, 'w'),
+                           stderr=open(err_path, 'a'))
+    qutils.assert_file_exists(bam_fpath, 'bam file')
+    qutils.call_subprocess([sam_fpath('samtools'), 'flagstat', bam_fpath], stdout=open(res_fpath, 'w'),
                            stderr=open(err_path, 'a'))
 
-    qutils.assert_file_exists(bam_dirpath, 'bam file')
-    qutils.call_subprocess([sam_fpath('samtools'), 'flagstat', bam_dirpath], stdout=open(res_dirpath, 'w'),
-                           stderr=open(err_path, 'a'))
+    return res_fpath
 
-
-    return res_dirpath
-
-def create_vcf(ref_fpath, output_dirpath, res_path, log_path, err_path):
+def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
     logger.info(
             '  Running lumpy')
     ref_name = qutils.name_from_fpath(ref_fpath)
-    bed_dirpath = os.path.join(res_path, ref_name + '.bed')
-    if os.path.isfile(bed_dirpath):
+    bed_fpath = os.path.join(res_path, ref_name + '.bed')
+    if os.path.isfile(bed_fpath):
         logger.info('  Using existing bed-file for ' + ref_name)
-        return bed_dirpath
+        return bed_fpath
     bam_dirpath = os.path.join(output_dirpath, ref_name + '.bam')
     ##preprocessing for lumpy
     vcfoutput_dirpath = os.path.join(output_dirpath, 'lumpy_output')
 
-    bamdiscordants_dirpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.bam')
-    splitreads_dirpath = os.path.join(vcfoutput_dirpath, ref_name + '.split')
-    bamsplitter_dirpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.bam')
+    bamdiscordants_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.bam')
+    splitreads_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.split')
+    bamsplitter_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.bam')
     qutils.call_subprocess([sam_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
-    discordsorted_dirpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.sorted')
-    splitsorted_dirpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.sorted')
-    readgroup_dirpath = os.path.join(vcfoutput_dirpath, ref_name + '.readgroup')
-    histo_dirpath = os.path.join(vcfoutput_dirpath, ref_name + '.histo')
+    discordsorted_fpath= os.path.join(vcfoutput_dirpath, ref_name + '.discordants.sorted')
+    splitsorted_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.sorted')
+    readgroup_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.readgroup')
+    histo_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.histo')
 
-    temp_file = os.path.join(vcfoutput_dirpath, ref_name + '.temp')
+    temp_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.temp')
 
     cmd = sam_fpath('samtools') + ' view -b -F 1294 ' + bam_dirpath
-    qutils.call_subprocess(shlex.split(cmd), stdout=open(bamdiscordants_dirpath, 'w'),
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(bamdiscordants_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-h', bam_dirpath], stdout=open(splitreads_dirpath, 'w'),
+    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-h', bam_dirpath], stdout=open(splitreads_fpath, 'w'),
                            stderr=open(err_path, 'a'))
 
-    qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/extractSplitReads_BwaMem'), '-i', splitreads_dirpath],
-                           stdout=open(temp_file, 'w'),
+    qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/extractSplitReads_BwaMem'), '-i', splitreads_fpath],
+                           stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-Sb', temp_file], stdout=open(bamsplitter_dirpath, 'w'),
+    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-Sb', temp_fpath], stdout=open(bamsplitter_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'sort', bamsplitter_dirpath, splitsorted_dirpath],
+    qutils.call_subprocess([sam_fpath('samtools'), 'sort', bamsplitter_fpath, splitsorted_fpath],
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'sort', bamdiscordants_dirpath, discordsorted_dirpath],
+    qutils.call_subprocess([sam_fpath('samtools'), 'sort', bamdiscordants_fpath, discordsorted_fpath],
                            stderr=open(err_path, 'a'))
     qutils.call_subprocess([sam_fpath('samtools'), 'view', '-r', 'readgroup1', bam_dirpath],
-                           stdout=open(temp_file, 'w'),
+                           stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess(['tail', temp_file, '-n', '+100000'], stdout=open(readgroup_dirpath, 'w'),
+    qutils.call_subprocess(['tail', temp_fpath, '-n', '+100000'], stdout=open(readgroup_fpath, 'w'),
                            stderr=open(err_path, 'a'))
 
-    bam_info = open(temp_file).readline().split()
+    bam_info = open(temp_fpath).readline().split()
     if len(bam_info) < 10:
         return
     read_length = str(len(bam_info[9]))
     qutils.call_subprocess(
         [os.path.join(lumpytools_dirpath, 'scripts/pairend_distro.py'), '-r', read_length, '-X', '4', '-N', '10000',
-         '-o', histo_dirpath],
-        stdin=open(readgroup_dirpath), stdout=open(temp_file, 'w'), stderr=open(err_path, 'a'))
-    bam_statistics = open(temp_file).readline()
+         '-o', histo_fpath],
+        stdin=open(readgroup_fpath), stdout=open(temp_fpath, 'w'), stderr=open(err_path, 'a'))
+    bam_statistics = open(temp_fpath).readline()
     if len(bam_statistics) < 4:
         return
     mean = bam_statistics.split()[1]
     stdev = bam_statistics.split()[3]
     pe_files = 'id:%s,bam_file:%s.bam,histo_file:%s,mean:%s,stdev:%s,read_length:%s,min_non_overlap:%s,discordant_z:5,back_distance:10,weight:1,min_mapping_threshold:2' %\
-               (ref_name, discordsorted_dirpath, histo_dirpath, mean, stdev, read_length, read_length)
-    sr_files = 'id:%s,bam_file:%s.bam,back_distance:10,weight:1,min_mapping_threshold:20' % (ref_name, splitsorted_dirpath)
+               (ref_name, discordsorted_fpath, histo_fpath, mean, stdev, read_length, read_length)
+    sr_files = 'id:%s,bam_file:%s.bam,back_distance:10,weight:1,min_mapping_threshold:20' % (ref_name, splitsorted_fpath)
     qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'bin/lumpy'), '-mw', '4', '-tt', '0', '-pe', pe_files, '-sr', sr_files],
-                           stdout=open(temp_file, 'w'),
+                           stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
     qutils.call_subprocess(
-        [os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_file, '-o', bed_dirpath],
+        [os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_fpath, '-o', bed_fpath],
         stderr=open(err_path, 'a'))
-    logger.info('  Structural variations saved to ' + bed_dirpath)
-    return bed_dirpath
+    logger.info('  Structural variations saved to ' + bed_fpath)
+    return bed_fpath
 
 def bin_fpath(fname):
     return os.path.join(bwa_dirpath, fname)
@@ -216,8 +214,10 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     res_dirpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(fpath, bwa_threads,
                                                                         reads_fpaths, temp_output_dir, final_output_dir, log_path,
                                                                         err_path) for fpath in proc_files)
-    create_vcf(ref_fpath, temp_output_dir, final_output_dir, log_path, err_path)
-
+    if ref_fpath:
+        bed_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
+    else:
+        bed_fpath = None
     if ref_fpath:
         assembly_name = qutils.name_from_fpath(ref_fpath)
         ref_dirpath = os.path.join(final_output_dir, assembly_name + '.res')
@@ -266,3 +266,4 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
 
     reporting.save_reads(output_dir)
     logger.info('Done.')
+    return bed_fpath

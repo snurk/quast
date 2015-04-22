@@ -367,14 +367,12 @@ def main(args):
         if opt == '--test':
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
-                        ('-1', 'test_data/reads1.fastq.gz'),
-                        ('-2', 'test_data/reads2.fastq.gz'),
                         ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
-                        ('--gage', ''),  # for compiling GAGE Java classes
-                        ('--find-conserved-genes', ''),  # for compiling BUSCO
-                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
+                        ('--gage', ''), # for compiling GAGE Java classes
+                        ('--find-conserved-genes', ''), # for compiling BUSCO
+                        ('--gene-finding',''), ('--eukaryote',''), ('--glimmer','')] # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta']
             qconfig.test = True
@@ -382,7 +380,6 @@ def main(args):
         if opt.startswith('--help'):
             qconfig.usage(opt == "--help-hidden")
             sys.exit(0)
-
 
     if not contigs_fpaths:
         logger.error("You should specify at least one file with contigs!\n")
@@ -576,9 +573,9 @@ def main(args):
     if qconfig.reads:
         from libs import reads_analyzer
         if reads_fpaths:
-            reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
+            bed_fpath = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
         if reads_inter_fpath:
-            reads_analyzer.do(ref_fpath, contigs_fpaths, reads_inter_fpath, os.path.join(output_dirpath, 'reads_reports'))
+            bed_fpath = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_inter_fpath, os.path.join(output_dirpath, 'reads_reports'))
 
     # PROCESSING CONTIGS
     logger.info()
@@ -634,7 +631,7 @@ def main(args):
         ########################################################################
         from libs import contigs_analyzer
         nucmer_statuses, aligned_lengths_per_fpath = contigs_analyzer.do(
-            ref_fpath, contigs_fpaths, qconfig.prokaryote, os.path.join(output_dirpath, 'contigs_reports'))
+            ref_fpath, contigs_fpaths, qconfig.prokaryote, os.path.join(output_dirpath, 'contigs_reports'), bed_fpath)
         for contigs_fpath in contigs_fpaths:
             if nucmer_statuses[contigs_fpath] == contigs_analyzer.NucmerStatus.OK:
                 aligned_contigs_fpaths.append(contigs_fpath)

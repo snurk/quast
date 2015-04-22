@@ -228,7 +228,7 @@ def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath,
     return unique_count, count
 
 
-def do(fasta_fpaths, gene_lengths, out_dirpath, meta, prokaryote):
+def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
     logger.print_timestamp()
     if LICENSE_LIMITATIONS_MODE:
         logger.warning("GeneMark tool can't be started because of license limitations!")
