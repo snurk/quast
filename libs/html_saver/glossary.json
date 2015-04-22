@@ -10,7 +10,7 @@
     "# mapped reads"                : "<span>is the number of reads that mapped to the assembly.</span>",
     "# properly paired reads"       : "<span>is the number of reads that mapped within expected range and orientation of each other to the assembly.</span>",
     "# singletons"                  : "<span>is the number of reads which do not overlap any other reads.</span>",
-    "# mates mapped to a different contig" : "<span>is the number of reads with mate mapped to a different contig.</span>",
+    "# mates mapped to different contig" : "<span>is the number of reads with mate mapped to a different contig.</span>",
 
     "N50"                           : "<span>is the contig length such that using longer or equal length contigs produces half (50%) of the bases of the assembly. Usually there is no value that produces exactly 50%, so the technical definition is the maximum length x such that using contigs of length at least x accounts for at least 50% of the total assembly length.</span>",
     "NG50"                          : "<span>is the contig length such that using longer or equal length contigs produces half (50%) of the bases of the reference genome. This metric is computed only if a reference genome is provided.</span>",
@@ -53,11 +53,12 @@
     "Ambiguous contigs length"      : "<span>is the total number of bases contained in all ambiguous contigs.</span>",
 
     "Genome fraction (%)"           : "<span>is the total number of aligned bases in the reference, divided by the genome size. A base in the reference genome is counted as aligned if there is at least one contig with at least one alignment to this base. Contigs from repeat regions may map to multiple places, and thus may be counted multiple times in this quantity.</span>",
+    "Chaff contig size (%)"         : "<span>is the length of all contigs of length &lt; <i>min-contig threshold</i>, divided by the total length of the assembly.</span>",
     "GC (%)"                        : "<span>is the total number of G and C nucleotides in the assembly, divided by the total length of the assembly.</span>",
     "Reference GC (%)"              : "<span>is the total number of G and C nucleotides in the reference, divided by the total length of the reference.</span>",
 
-    "Complete conserved orthologs (%)" : "<span>is the total number of complete conserved eukaryotes orthologs in the assembly, divided by the total number of conserved eukaryotes orthologs searched.</span>",
-    "Partial conserved orthologs (%)"  : "<span>is the total number of partial conserved eukaryotes orthologs in the assembly, divided by the total number of conserved eukaryotes orthologs searched.</span>",
+    "Complete conserved orthologs (%)" : "<span>is the total number of complete conserved orthologs in the assembly, divided by the total number of conserved orthologs searched.</span>",
+    "Partial conserved orthologs (%)"  : "<span>is the total number of partial conserved orthologs in the assembly, divided by the total number of conserved orthologs searched.</span>",
 
     "# mismatches per 100 kbp"      : "<span>is the average number of mismatches per 100000 aligned bases.</span>",
     "# mismatches"                  : "<span>is the number of mismatches in all aligned bases.</span>",

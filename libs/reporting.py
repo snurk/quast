@@ -27,7 +27,7 @@ class Fields:
     # Basic statistics
     CONTIGS = '# contigs'
     CONTIGS__FOR_THRESHOLDS = ('# contigs (>= %d bp)', tuple(qconfig.contig_thresholds))
-    CHAFFCONTIG_PERCENT = '% chaff contig size'
+    CHAFFCONTIG_PERCENT = 'Chaff contig size (%)'
     LARGCONTIG = 'Largest contig'
     TOTALLEN = 'Total length'
     TOTALLENS__FOR_THRESHOLDS = ('Total length (>= %d bp)', tuple(qconfig.contig_thresholds))

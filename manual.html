@@ -78,8 +78,8 @@
     <br>
     QUAST utilizes <a href="http://mummer.sourceforge.net/">MUMmer</a>, <a href="http://exon.gatech.edu/GeneMark/gmhmmp.cgi">GeneMark.hmm</a>,
     <a href="http://exon.gatech.edu/GeneMark/gmes_instructions.html">GeneMarkES</a>, <a href="http://exon.gatech.edu/GeneMark/meta_gmhmmp.cgi">MetaGeneMark</a>,
-    <a href="http://cbcb.umd.edu/software/glimmerhmm/">GlimmerHMM</a>, <a href="http://bio-bwa.sourceforge.net/">BWA</a>, <a href="http://busco.ezlab.org/">BUSCO</a>
-    and <a href="http://gage.cbcb.umd.edu/index.html">GAGE</a>. These tools are built in, so you do not need to install
+    <a href="http://cbcb.umd.edu/software/glimmerhmm/">GlimmerHMM</a>, <a href="http://bio-bwa.sourceforge.net/">BWA</a>, <a href="http://busco.ezlab.org/">BUSCO</a>,
+    <a href="https://github.com/arq5x/lumpy-sv">lumpy</a> and <a href="http://gage.cbcb.umd.edu/index.html">GAGE</a>. These tools are built in, so you do not need to install
     them separately.
     <br>
     <br>
@@ -578,7 +578,7 @@ Note:
     is total number of contigs of length <code>&ge; x<span class="rhs">&nbsp;</span>bp</code>.
     Not affected by the <code>--min-contig</code> parameter (see <a href="#sec2.4">section 2.4</a>).</p>
 
-<p><span class='metric-name'>Total length (&ge;<span class="rhs">&nbsp;</span>x<span class="rhs">&nbsp;</span>bp)</span> 
+<p><span class='metric-name'>Total length (&ge;<span class="rhs">&nbsp;</span>x<span class="rhs">&nbsp;</span>bp)</span>
     is the total number of bases in contigs of length <code>&ge; x<span class="rhs">&nbsp;</span>bp</code>.
     Not affected by the <code>--min-contig</code> parameter (see <a href="#sec2.4">section 2.4</a>).<br>
     <br>
@@ -587,6 +587,8 @@ Note:
 </p>
 
 <p><span class='metric-name'># contigs</span> is the total number of contigs in the assembly.</p>
+
+<p><span class='metric-name'>Chaff contig size (%)</span> is the length of all contigs of length &lt; <a href='#min_contig'><code>--min-contig</code></a>, divided by the total length of the assembly.</p>
 
 <p><a name='largest_contig'></a><span class='metric-name'>Largest contig</span> is the length of the longest contig in the assembly.</p>
 
@@ -966,6 +968,7 @@ This contig is <b>Contigs_753</b> of length <b>140518 bp</b>. It has <b>3 extens
 <br><br>
 The brief information about misassemblies (contig name, type and coordinates on the contig of the misassembly) you can find in
 <code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.mis_contigs.info</code> file.
+QUAST also can detect structural variations aligning reads to reference.
 </p>
 <br>
 <p><b><i>
