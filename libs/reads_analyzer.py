@@ -27,32 +27,31 @@ def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, res
                            stderr=open(err_path, 'a'))
     cmd = bin_fpath('bwa') + ' mem -t' + str(bwa_threads) + ' ' + ref_fpath + ' ' + ' '.join(reads_fpath)
     qutils.call_subprocess(shlex.split(cmd), stdout=open(sam_fpath, 'w'), stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-bS', sam_fpath], stdout=open(bam_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-bS', sam_fpath], stdout=open(bam_fpath, 'w'),
                            stderr=open(err_path, 'a'))
     qutils.assert_file_exists(bam_fpath, 'bam file')
-    qutils.call_subprocess([sam_fpath('samtools'), 'flagstat', bam_fpath], stdout=open(res_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'flagstat', bam_fpath], stdout=open(res_fpath, 'w'),
                            stderr=open(err_path, 'a'))
 
     return res_fpath
 
 def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
-    logger.info(
-            '  Running lumpy')
+    logger.info('  Running lumpy')
     ref_name = qutils.name_from_fpath(ref_fpath)
     bed_fpath = os.path.join(res_path, ref_name + '.bed')
     if os.path.isfile(bed_fpath):
         logger.info('  Using existing bed-file for ' + ref_name)
         return bed_fpath
-    bam_dirpath = os.path.join(output_dirpath, ref_name + '.bam')
+    bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
     ##preprocessing for lumpy
     vcfoutput_dirpath = os.path.join(output_dirpath, 'lumpy_output')
 
     bamdiscordants_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.bam')
     splitreads_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.split')
     bamsplitter_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.bam')
-    qutils.call_subprocess([sam_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
+    qutils.call_subprocess([samtools_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
     discordsorted_fpath= os.path.join(vcfoutput_dirpath, ref_name + '.discordants.sorted')
     splitsorted_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.sorted')
     readgroup_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.readgroup')
@@ -60,22 +59,22 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
     temp_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.temp')
 
-    cmd = sam_fpath('samtools') + ' view -b -F 1294 ' + bam_dirpath
+    cmd = samtools_fpath('samtools') + ' view -b -F 1294 ' + bam_fpath
     qutils.call_subprocess(shlex.split(cmd), stdout=open(bamdiscordants_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-h', bam_dirpath], stdout=open(splitreads_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-h', bam_fpath], stdout=open(splitreads_fpath, 'w'),
                            stderr=open(err_path, 'a'))
 
     qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/extractSplitReads_BwaMem'), '-i', splitreads_fpath],
                            stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-Sb', temp_fpath], stdout=open(bamsplitter_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-Sb', temp_fpath], stdout=open(bamsplitter_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'sort', bamsplitter_fpath, splitsorted_fpath],
+    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', bamsplitter_fpath, splitsorted_fpath],
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'sort', bamdiscordants_fpath, discordsorted_fpath],
+    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', bamdiscordants_fpath, discordsorted_fpath],
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([sam_fpath('samtools'), 'view', '-r', 'readgroup1', bam_dirpath],
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-r', 'readgroup1', bam_fpath],
                            stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
     qutils.call_subprocess(['tail', temp_fpath, '-n', '+100000'], stdout=open(readgroup_fpath, 'w'),
@@ -83,6 +82,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
     bam_info = open(temp_fpath).readline().split()
     if len(bam_info) < 10:
+        logger.info('  Failed searching structural variations.')
         return
     read_length = str(len(bam_info[9]))
     qutils.call_subprocess(
@@ -91,6 +91,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
         stdin=open(readgroup_fpath), stdout=open(temp_fpath, 'w'), stderr=open(err_path, 'a'))
     bam_statistics = open(temp_fpath).readline()
     if len(bam_statistics) < 4:
+        logger.info('  Failed searching structural variations.')
         return
     mean = bam_statistics.split()[1]
     stdev = bam_statistics.split()[3]
@@ -110,7 +111,7 @@ def bin_fpath(fname):
     return os.path.join(bwa_dirpath, fname)
 
 
-def sam_fpath(fname):
+def samtools_fpath(fname):
     return os.path.join(samtools_dirpath, fname)
 
 
@@ -182,7 +183,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                                                                                'Try to compile it manually. ' + (
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
-            logger.info('Failed aligning the reads.')
+            logger.info('Failed searching structural variations.')
             return
 
     temp_output_dir = os.path.join(output_dir, 'temp_output')

@@ -61,6 +61,8 @@ class Fields:
     MIS_EXTENSIVE_CONTIGS = '# misassembled contigs'
     MIS_EXTENSIVE_BASES = 'Misassembled contigs length'
     MIS_LOCAL = '# local misassemblies'
+    STRUCT_VARIATIONS_EXTENSIVE = '# structural variants'
+    MIS_MATCHED_SV = '# misassemblies matched with SVs'
 
     # Unaligned
     UNALIGNED = '# unaligned contigs'
@@ -144,8 +146,8 @@ class Fields:
 
     # content and order of metrics in DETAILED MISASSEMBLIES REPORT (<quast_output_dir>/contigs_reports/misassemblies_report.txt, .tex, .tsv)
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
-                           MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES, MIS_LOCAL, MISMATCHES,
-                           INDELS, MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES]
+                           MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES, MIS_LOCAL, STRUCT_VARIATIONS_EXTENSIVE, MIS_MATCHED_SV,
+                           MISMATCHES, INDELS, MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES]
 
     # content and order of metrics in DETAILED UNALIGNED REPORT (<quast_output_dir>/contigs_reports/unaligned_report.txt, .tex, .tsv)
     unaligned_order = [NAME, UNALIGNED_FULL_CNTGS, UNALIGNED_FULL_LENGTH, UNALIGNED_PART_CNTGS,
@@ -196,7 +198,7 @@ class Fields:
         ('Misassemblies', [MIS_ALL_EXTENSIVE,
                            MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
                            MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES,
-                           MIS_LOCAL]),
+                           MIS_LOCAL, STRUCT_VARIATIONS_EXTENSIVE, MIS_MATCHED_SV]),
 
         ('Unaligned', [UNALIGNED_FULL_CNTGS, UNALIGNED_FULL_LENGTH, UNALIGNED_PART_CNTGS,
                        UNALIGNED_PART_WITH_MISASSEMBLY, UNALIGNED_PART_SIGNIFICANT_PARTS,
@@ -238,7 +240,7 @@ class Fields:
         Quality.MORE_IS_BETTER:
             [LARGCONTIG, TOTALLEN, TOTALLENS__FOR_THRESHOLDS, N50, NG50, N75, NG75, NA50, NGA50, NA75, NGA75, LARGALIGN,
              MAPPEDGENOME, GENES, OPERONS, CORE_COMPLETE, CORE_PART, PREDICTED_GENES_UNIQUE, PREDICTED_GENES, AVGIDY,
-             DEPTH, MAPPED_READS, PROPERLYPAIR_READS],
+             DEPTH, MAPPED_READS, PROPERLYPAIR_READS, MIS_MATCHED_SV],
         Quality.LESS_IS_BETTER:
             [CONTIGS, CONTIGS__FOR_THRESHOLDS, L50, LG50, L75, LG75,
              MISLOCAL, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISINTERNALOVERLAP,
@@ -248,7 +250,7 @@ class Fields:
              MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES],
         Quality.EQUAL:
             [REFLEN, ESTREFLEN, GC, REFGC, TOTALREADS, REFMAPPED_READS, LEFT_READS, RIGHT_READS, REFPROPERLYPAIR_READS,
-             REFSINGLETONS, REFREADS_DIFFCHROM],
+             REFSINGLETONS, REFREADS_DIFFCHROM, STRUCT_VARIATIONS_EXTENSIVE],
         }
 
     #for name, metrics in filter(lambda (name, metrics): name in ['Misassemblies', 'Unaligned', 'Ambiguous'], grouped_order):

@@ -394,7 +394,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         else:
             return False, aux_data
 
-    def check_sv(align1, align2, inconsistency, region_struct_variations, misassemblies_which_sv):
+    def check_sv(align1, align2, inconsistency, region_struct_variations, misassemblies_matched_sv):
         max_error = max(1000, abs(inconsistency)*0.1)
         if align2.s1 < align1.s1:
             align1, align2 = align2, align1
@@ -408,8 +408,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             if (abs(sv[0].e1-align1.e1) < max_error and abs(sv[1].s1-align2.s1) < max_error) and \
                         sv[0].ref == align1.ref and sv[1].ref == align2.ref:
                 print >> planta_out_f, '\t\t\t  Fake misassembly (caused by structural variations of genome) between these two alignments'
-                return True, (misassemblies_which_sv + 1)
-        return False, misassemblies_which_sv
+                return True, (misassemblies_matched_sv + 1)
+        return False, misassemblies_matched_sv
 
     def find_all_sv(bed_fpath):
         if not bed_fpath:
@@ -429,7 +429,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     region_struct_variations.relocations.append((align1, align2))
         return region_struct_variations
 
-    def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, region_struct_variations, misassemblies_which_sv):
+    def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, region_struct_variations, misassemblies_matched_sv):
         misassembly_internal_overlap = 0
         prev = sorted_aligns[0].clone()
         cur_aligned_length = prev.len2
@@ -449,7 +449,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             is_sv = False
             if region_struct_variations:
                 #check if it is structural variation
-                is_sv, misassemblies_which_sv = check_sv(sorted_aligns[i], sorted_aligns[i+1], inconsistency, region_struct_variations, misassemblies_which_sv)
+                is_sv, misassemblies_matched_sv = check_sv(sorted_aligns[i], sorted_aligns[i+1], inconsistency, region_struct_variations, misassemblies_matched_sv)
 
             if is_extensive_misassembly and not is_sv:
                 is_misassembled = True
@@ -502,7 +502,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         print >> coords_filtered_file, str(prev)
         aligned_lengths.append(cur_aligned_length)
 
-        return is_misassembled, misassembly_internal_overlap, misassemblies_which_sv
+        return is_misassembled, misassembly_internal_overlap, misassemblies_matched_sv
     #### end of aux. functions ###
 
     # Loading the assembly contigs
@@ -592,7 +592,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
     aligned_lengths = []
 
-    misassemblies_which_sv = 0
+    misassemblies_matched_sv = 0
     region_struct_variations = find_all_sv(bed_fpath)
     if region_struct_variations:
         struct_variations = region_struct_variations.get_count()
@@ -880,8 +880,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         continue
 
                     ### processing misassemblies
-                    is_misassembled, current_mio, misassemblies_which_sv = process_misassembled_contig(sorted_aligns, cyclic,
-                         aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, region_struct_variations, misassemblies_which_sv)
+                    is_misassembled, current_mio, misassemblies_matched_sv = process_misassembled_contig(sorted_aligns, cyclic,
+                         aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, region_struct_variations, misassemblies_matched_sv)
                     misassembly_internal_overlap += current_mio
                     if is_misassembled:
                         misassembled_contigs[contig] = len(assembly[contig])
@@ -1255,8 +1255,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     print >> planta_out_f, '\t\tRelocations: %d' % region_misassemblies.count(Misassembly.RELOCATION)
     print >> planta_out_f, '\t\tTranslocations: %d' % region_misassemblies.count(Misassembly.TRANSLOCATION)
     print >> planta_out_f, '\t\tInversions: %d' % region_misassemblies.count(Misassembly.INVERSION)
-    print >> planta_out_f, '\tStructural variations: %d' % struct_variations
-    print >> planta_out_f, '\tFake misassemblies (caused by structural variations): %d' % misassemblies_which_sv
+    print >> planta_out_f, '\tStructural variants: %d' % struct_variations
+    print >> planta_out_f, '\tFake misassemblies (caused by structural variations): %d' % misassemblies_matched_sv
     print >> planta_out_f, '\tMisassembled Contigs: %d' % len(misassembled_contigs)
     misassembled_bases = sum(misassembled_contigs.itervalues())
     print >> planta_out_f, '\tMisassembled Contig Bases: %d' % misassembled_bases
@@ -1336,6 +1336,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         print >> planta_out_f, '\tContigs with Redundant Alignments: %d (%d)' % (len(redundant), total_redundant)
 
     result = {'avg_idy': avg_idy, 'region_misassemblies': region_misassemblies,
+              'region_struct_variations': region_struct_variations.get_count() if region_struct_variations else None, 'misassemblies_matched_sv': misassemblies_matched_sv,
               'misassembled_contigs': misassembled_contigs, 'misassembled_bases': misassembled_bases,
               'misassembly_internal_overlap': misassembly_internal_overlap,
               'unaligned': unaligned, 'partially_unaligned': partially_unaligned,
@@ -1433,6 +1434,8 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
 
         avg_idy = result['avg_idy']
         region_misassemblies = result['region_misassemblies']
+        region_struct_variations = result['region_struct_variations']
+        misassemblies_matched_sv = result['misassemblies_matched_sv']
         misassembled_contigs = result['misassembled_contigs']
         misassembled_bases = result['misassembled_bases']
         misassembly_internal_overlap = result['misassembly_internal_overlap']
@@ -1454,6 +1457,8 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
         report.add_field(reporting.Fields.MISCONTIGS, len(misassembled_contigs))
         report.add_field(reporting.Fields.MISCONTIGSBASES, misassembled_bases)
         report.add_field(reporting.Fields.MISINTERNALOVERLAP, misassembly_internal_overlap)
+        report.add_field(reporting.Fields.STRUCT_VARIATIONS_EXTENSIVE, region_struct_variations)
+        report.add_field(reporting.Fields.MIS_MATCHED_SV, misassemblies_matched_sv)
         report.add_field(reporting.Fields.UNALIGNED, '%d + %d part' % (unaligned, partially_unaligned))
         report.add_field(reporting.Fields.UNALIGNEDBASES, (fully_unaligned_bases + partially_unaligned_bases))
         report.add_field(reporting.Fields.AMBIGUOUS, ambiguous_contigs)

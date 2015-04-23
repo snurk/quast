@@ -367,14 +367,16 @@ def main(args):
         if opt == '--test':
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
+                        ('-1', 'test_data/reads1.fastq.gz'),
+                        ('-2', 'test_data/reads2.fastq.gz'),
                         ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
-                        ('--gage', ''), # for compiling GAGE Java classes
-                        ('--find-conserved-genes', ''), # for compiling BUSCO
-                        ('--gene-finding',''), ('--eukaryote',''), ('--glimmer','')] # for compiling GlimmerHMM
+                        ('--gage', ''),  # for compiling GAGE Java classes
+                        ('--find-conserved-genes', ''),  # for compiling BUSCO
+                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
-                               'test_data/contigs_2.fasta']
+                               'test_data/contigs_2.fasta',]
             qconfig.test = True
 
         if opt.startswith('--help'):
@@ -569,6 +571,7 @@ def main(args):
         ref_fpath = ''
 
     contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
+    bed_fpath = None
 
     if qconfig.reads:
         from libs import reads_analyzer
