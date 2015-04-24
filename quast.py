@@ -374,7 +374,7 @@ def main(args):
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''),  # for compiling GAGE Java classes
                         ('--find-conserved-genes', ''),  # for compiling BUSCO
-                        ('--gene-finding', ''), ('--eukaryote', ''), ('--archaea', '')]  # for compiling GlimmerHMM
+                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta',]
 
