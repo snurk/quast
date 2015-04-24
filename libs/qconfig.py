@@ -31,7 +31,7 @@ splitted_ref = []
 
 # available options
 long_options = "output-dir= save-json-to= genes= operons= reference= reads1= reads2= contig-thresholds= min-contig= "\
-               "gene-thresholds= save-json gage eukaryote glimmer no-snps no-plots no-html help debug "\
+               "gene-thresholds= save-json gage eukaryote archaea glimmer no-snps no-plots no-html help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
                "find-conserved-genes strict-NA meta labels= test help-hidden".split()
 short_options = "o:G:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
@@ -61,6 +61,7 @@ debug = False
 test = False
 busco = False
 glimmer = False
+archaea = False
 
 default_results_root_dirname = "quast_results"
 output_dirname = "results_" + datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -164,6 +165,7 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "-S  --gene-thresholds                 Comma-separated list of threshold lengths of genes to search with Gene Finding module"
     print >> sys.stderr, "                                      [default is %s]" % genes_lengths
     print >> sys.stderr, "-e  --eukaryote                       Genome is eukaryotic"
+    print >> sys.stderr, "--archaea                              Genome is archaeal. BUSCO does not work with archaeal genomes."
     if not meta:
         print >> sys.stderr, "-m  --meta                            Use MetaGeneMark for gene prediction. "
     print >> sys.stderr, "    --est-ref-size <int>              Estimated reference size (for computing NGx metrics without a reference)"

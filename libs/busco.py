@@ -22,6 +22,9 @@ def do(contigs_fpaths, out_dirpath, clade):
 
     logger.print_timestamp()
     logger.info('Running BUSCO...')
+    if qconfig.archaea:
+        logger.info('BUSCO does not work with archaeal genomes.')
+        return
 
     if not all_required_binaries_exist(hmmer_dirpath, 'src/hmmsearch'):
         os.chdir(hmmer_dirpath)

@@ -374,9 +374,10 @@ def main(args):
                         ('-G', 'test_data/genes.gff'),
                         ('--gage', ''),  # for compiling GAGE Java classes
                         ('--find-conserved-genes', ''),  # for compiling BUSCO
-                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
+                        ('--gene-finding', ''), ('--eukaryote', ''), ('--archaea', '')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta',]
+
             qconfig.test = True
 
         if opt.startswith('--help'):
@@ -506,6 +507,9 @@ def main(args):
 
         elif opt == '-L':
             all_labels_from_dirs = True
+
+        elif opt == '--archaea':
+            qconfig.archaea = True
         else:
             logger.error('Unknown option: %s. Use -h for help.' % (opt + ' ' + arg), to_stderr=True, exit_with_code=2)
 
