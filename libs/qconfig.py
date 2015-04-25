@@ -30,11 +30,11 @@ MAX_REFERENCE_LENGTH = 536870908  # Nucmer's max length of a reference file
 splitted_ref = []
 
 # available options
-long_options = "output-dir= save-json-to= genes= operons= reference= contig-thresholds= min-contig= "\
+long_options = "output-dir= save-json-to= genes= coverage= operons= reference= contig-thresholds= min-contig= "\
                "gene-thresholds= save-json gage eukaryote no-plots no-html help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
                "strict-NA meta labels= test help-hidden".split()
-short_options = "o:G:O:R:t:M:S:J:jehdsa:T:c:ufnml:L"
+short_options = "o:G:C:O:R:t:M:S:J:jehdsa:T:c:ufnml:L"
 
 # default values for options
 contig_thresholds = "0,1000"
@@ -141,6 +141,7 @@ def usage(show_hidden=False, meta=False):
     else:
         print >> sys.stderr, "-R                <filename>  Reference genome file"
     print >> sys.stderr, "-G  --genes       <filename>  File with gene coordinates in the reference"
+    print >> sys.stderr, "-C  --coverage    <filename>  File with coverage data"
     print >> sys.stderr, "-O  --operons     <filename>  File with operon coordinates in the reference"
     print >> sys.stderr, "-M  --min-contig  <int>       Lower threshold for contig length [default: %s]" % min_contig
     print >> sys.stderr, ""

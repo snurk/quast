@@ -570,7 +570,7 @@ def make_output_dir(output_dir_path):
 
 
 def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
-       ref_fpath, arcs=False, similar=False, coverage_hist=None):
+       ref_fpath, cov_fpath, arcs=False, similar=False, coverage_hist=None):
     make_output_dir(output_dirpath)
 
     lists_of_aligned_blocks = []
@@ -601,7 +601,7 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
         contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift, output_dirpath,
         lists_of_aligned_blocks, arcs, similar, coverage_hist)
 
-    javascript_generator(assemblies, output_dirpath)
+    javascript_generator(assemblies, output_dirpath, cov_fpath)
 
     return plot_fpath
 
@@ -616,9 +616,22 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 break
 
         cur_contig_id = ''
+        last_contig_id = ''
+        misassembled_id_to_structure = dict()
         for line in report_file:
             if line.startswith('CONTIG:'):
                 cur_contig_id = line.split('CONTIG:')[1].strip()
+                last_contig_id = cur_contig_id.split(' ')[0]
+
+            if last_contig_id not in misassembled_id_to_structure:
+                misassembled_id_to_structure[last_contig_id] = [False]
+
+            if line.find('Real Alignment') != -1:
+                misassembled_id_to_structure[last_contig_id].append(line.split(' ')[3:5])
+
+            if line.find('Extensive misassembly') != -1:
+                misassembled_id_to_structure[last_contig_id][0] = True
+                misassembled_id_to_structure[last_contig_id].append(line.split('(')[1].split(')')[0])
 
             if (line.find('Extensive misassembly') != -1) and (cur_contig_id != ''):
                 misassembled_contigs_ids.append(cur_contig_id.split()[0])
@@ -626,6 +639,12 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
 
             if line.startswith('Analyzing coverage...'):
                 break
+
+        for el in misassembled_id_to_structure.keys():
+            if not misassembled_id_to_structure[el][0]:
+                misassembled_id_to_structure.pop(el)
+            else:
+                misassembled_id_to_structure[el] = misassembled_id_to_structure[el][1:]
 
         cur_shift = 0
         for line in report_file:
@@ -651,34 +670,77 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
 
                 if contig_id in misassembled_contigs_ids:
                     block.misassembled = True
+                    block.misassembled_structure = misassembled_id_to_structure[contig_id]
 
                 aligned_blocks.append(block)
 
     return aligned_blocks
 
 
-def javascript_generator(assemblies, output_dir_path):
+def javascript_generator(assemblies, output_dir_path, cov_fpath):
     with open(os.path.join(output_dir_path, 'contig_alignment_plot_data.js'), 'w') as result:
-        result.write('"use strict";\n\
-var contig_data = [')
+        result.write('"use strict";\n')
+
+        # adding assembly data
+        result.write('var contig_data = [')
 
         for assembly in assemblies.assemblies:
             for alignment in assembly.alignments:
-                result.write('\
-{{\n\
-    name:               "{alignment.name}",\n\
-    start:              {alignment.start},\n\
-    end:                {alignment.end},\n\
-    assembly:           "{assembly.label}",\n\
-    similar:            "{alignment.similar}",\n\
-    misassembled:       "{alignment.misassembled}",\n\
-    order:              {alignment.order}}},\n'.format(**locals()))
+                data = '{{name: "{alignment.name}", start: {alignment.start}, end: {alignment.end}, assembly: "{assembly.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}", order: {alignment.order}'.format(**locals())
+                if alignment.misassembled:
+                    data += ', structure: ['
+                    for el in alignment.misassembled_structure:
+                        if type(el) == list:
+                            data += '{{ type: "A", start: {el[0]}, end: {el[1]} }}, '.format(**locals())
+                        elif type(el) == str:
+                            data += '{{ type: "M", mstype: "{el}" }}, '.format(**locals())
+                    data +='{}]'
+
+                data += '},\n'
+                result.write(data)
 
         result.write('\
 {{}}];\n\
 \n\
 var assemblies_num = {};\n\
 \n'.format(len(assemblies.assemblies)))
+
+        # adding coverage data
+        with open(cov_fpath, 'r') as coverage:
+            cov_data = list(coverage.read().split())
+
+        POINTS_COUNT = 350
+        not_covered = []
+
+        cov_data = cov_data[2 : -2]
+        block_size = cov_data.__len__() // POINTS_COUNT
+        block_counter = 0
+        res_data = []
+        sm = 0
+
+        for pos, count in enumerate(cov_data):
+            if pos % 2:
+                pos = pos // 2 + 1
+                if count == '0':
+                    not_covered.append(pos)
+                block_counter = (block_counter + 1) % block_size
+                sm += int(count)
+                if block_counter == 0:
+                    res_data.append([pos, sm / block_size])
+                    sm = 0
+
+        if block_counter != 0:
+            res_data.append([pos, sm / block_counter])
+
+        result.write('var coverage_data = [\n')
+        for e in res_data:
+            result.write('{{pos: {e[0]}, sum: {e[1]}}},\n'.format(**locals()))
+        result.write('{pos: 0, sum: 0}];\n\n')
+
+        result.write('var not_covered = [\n')
+        for e in not_covered:
+            result.write('{e},\n'.format(**locals()))
+        result.write('0];\n')
 
         with open(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_data_template.js')), 'r') \
                 as template:

@@ -368,6 +368,7 @@ def main(args):
                         ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
+                        ('-C', 'test_data/coverage.cov'),
                         ('--gage', ''), # for compiling GAGE Java classes
                         ('--gene-finding',''), ('--eukaryote','')] # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
@@ -392,6 +393,7 @@ def main(args):
     ref_fpath = ''
     genes_fpaths = []
     operons_fpaths = []
+    cov_fpath = ''
 
     # Yes, this is a code duplicating. But OptionParser is deprecated since version 2.7.
     for opt, arg in options:
@@ -401,6 +403,9 @@ def main(args):
 
         elif opt in ('-G', "--genes"):
             genes_fpaths.append(assert_file_exists(arg, 'genes'))
+
+        elif opt in ('-C', "--coverage"):
+            cov_fpath = assert_file_exists(arg, 'coverage')
 
         elif opt in ('-O', "--operons"):
             operons_fpaths.append(assert_file_exists(arg, 'operons'))
@@ -650,7 +655,7 @@ def main(args):
                 from libs import contig_alignment_plotter
                 contig_alignment_plot_fpath = contig_alignment_plotter.do(
                     contigs_fpaths, os.path.join(detailed_contigs_reports_dirpath, 'contigs_report_%s.stdout'),
-                    os.path.join(output_dirpath, 'contig_alignment_plot'), ref_fpath, similar=True)
+                    os.path.join(output_dirpath, 'contig_alignment_plot'), ref_fpath, cov_fpath, similar=True)
 
             if all_pdf_file:
                 # full report in PDF format: all tables and plots

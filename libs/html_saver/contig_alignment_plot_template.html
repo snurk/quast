@@ -29,6 +29,52 @@ THE SOFTWARE.
 	<!-- <script type="text/javascript" src="http://mbostock.github.com/d3/d3.v2.js"></script> -->
 	<script type="text/javascript" src="contig_alignment_plot_data.js"></script>
 	<style>
+
+        .coverage text {
+            font: 16px sans-serif;
+        }
+
+		.coverage .x path, .x line, .y path, .y line {
+			fill: none;
+			stroke: black;
+			stroke-width: 1px;
+		}
+
+		.coverage .y text, .x text {
+			font: 12px sans-serif;
+		}
+
+		.coverage .covered {
+			stroke: rgb(240, 10, 10);
+			stroke-width: 3px;
+			fill: none;
+		}
+
+		.coverage .notCovered {
+			stroke: rgb(10, 10, 240);
+			stroke-width: 3px;
+			fill: none;
+		}
+
+		#info > g > text {
+			font: 14px arial;
+			font-weight: bolder;
+			fill: white;
+			stroke-width: 0px;
+		}
+
+		#info {
+			fill: rgb(240, 240, 240);
+			stroke-width: 1px;
+			stroke: black
+		}
+
+		#info text {
+			fill: black;
+			stroke-width: 0px;
+			font: 12px arial;
+		}
+
 		.chart {
 			shape-rendering: crispEdges;
 		}
@@ -39,6 +85,11 @@ THE SOFTWARE.
 
 		.main text {
 			font: 12px sans-serif;
+		}
+
+		.mainItem text {
+			fill: black;
+			stroke-width: 0;
 		}
 
 		.axis line, .axis path {
@@ -158,7 +209,8 @@ THE SOFTWARE.
 			width = 1024 - margin.left - margin.right,
 			miniHeight = lanes.length * miniLanesHeight,
 			mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
-			height = mainHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top;
+			coverageHeight = 250;
+			height = mainHeight + coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top;
 
 	var x_mini = d3.scale.linear()
 			.domain([0, d3.max(items, function (d) {
@@ -204,11 +256,11 @@ THE SOFTWARE.
 			.enter().append('line')
 			.attr('x1', 0)
 			.attr('y1', function (d) {
-				return d3.round(y_main(d.id)) + 0.5;
+				return d3.round(y_main(d.id)) + .5;
 			})
 			.attr('x2', width)
 			.attr('y2', function (d) {
-				return d3.round(y_main(d.id)) + 0.5;
+				return d3.round(y_main(d.id)) + .5;
 			})
 			.attr('stroke', function (d) {
 				return d.label === '' ? 'white' : 'lightgray'
@@ -224,7 +276,7 @@ THE SOFTWARE.
 			.attr('y', function (d) {
 				return y_main(d.id + .5);
 			})
-			.attr('dy', '0.5ex')
+			.attr('dy', '.5ex')
 			.attr('text-anchor', 'end')
 			.attr('class', 'laneText');
 
@@ -234,11 +286,11 @@ THE SOFTWARE.
 			.enter().append('line')
 			.attr('x1', 0)
 			.attr('y1', function (d) {
-				return d3.round(y_mini(d.id)) + 0.5;
+				return d3.round(y_mini(d.id)) + .5;
 			})
 			.attr('x2', width)
 			.attr('y2', function (d) {
-				return d3.round(y_mini(d.id)) + 0.5;
+				return d3.round(y_mini(d.id)) + .5;
 			})
 			.attr('stroke', function (d) {
 				return d.label === '' ? 'white' : 'lightgray'
@@ -254,7 +306,7 @@ THE SOFTWARE.
 			.attr('y', function (d) {
 				return y_mini(d.id + .5);
 			})
-			.attr('dy', '0.5ex')
+			.attr('dy', '.5ex')
 			.attr('text-anchor', 'end')
 			.attr('class', 'laneText');
 
@@ -262,16 +314,16 @@ THE SOFTWARE.
 	var miniTickValue;
 
 	if (x_mini.domain()[1] > 1000000000)
-		miniTickValue = 'GB';
+		miniTickValue = 'Gbp';
 	else if (x_mini.domain()[1] > 1000000)
-		miniTickValue = 'MB';
+		miniTickValue = 'Mbp';
 	else if (x_mini.domain()[1] > 1000)
-		miniTickValue = 'KB';
+		miniTickValue = 'kbp';
 	else
-		miniTickValue = 'B';
+		miniTickValue = 'bp';
 
 	var miniTicksValues = x_mini.ticks(5);
-	miniTicksValues.push(x_mini.domain()[1])
+	miniTicksValues.push(x_mini.domain()[1]);
 
 	var xMiniAxis = d3.svg.axis()
 			.scale(x_mini)
@@ -279,11 +331,11 @@ THE SOFTWARE.
 			.tickSize(6, 0, 0)
 			.tickValues(miniTicksValues)
 			.tickFormat(function (d) {
-				if (miniTickValue == 'GB')
+				if (miniTickValue == 'Gbp')
 					return d3.round(d / 1000000000, 2);
-				else if (miniTickValue == 'MB')
+				else if (miniTickValue == 'Mbp')
 					return d3.round(d / 1000000, 2);
-				else if (miniTickValue == 'KB')
+				else if (miniTickValue == 'kbp')
 					return d3.round(d / 1000, 2);
 				else
 					return d;
@@ -307,14 +359,14 @@ THE SOFTWARE.
 	scaleText.append('text')
 			.attr('x', -45)
 			.attr('y', mainHeight + 5)
-			.attr('dy', '0.5ex')
+			.attr('dy', '.5ex')
 			.attr('text-anchor', 'end')
 			.text('Tick value: ');
 
 	scaleText.append('text')
 			.attr('x', -40)
 			.attr('y', mainHeight + 5)
-			.attr('dy', '0.5ex')
+			.attr('dy', '.5ex')
 			.attr('class', 'val')
 			.text(mainTickValue);
 
@@ -335,9 +387,9 @@ THE SOFTWARE.
 	var current = x_mini.domain()[1] / 2;
 
 	mini.append('line')
-			.attr('x1', x_mini(current) + 0.5)
+			.attr('x1', x_mini(current) + .5)
 			.attr('y1', 0)
-			.attr('x2', x_mini(current) + 0.5)
+			.attr('x2', x_mini(current) + .5)
 			.attr('y2', miniHeight)
 			.attr('class', 'curSegment');
 
@@ -382,7 +434,7 @@ THE SOFTWARE.
 	display();
 
 	function display() {
-		var rects, labels
+		var rects
 				, minExtent = brush.extent()[0]
 				, maxExtent = brush.extent()[1]
 				, visItems = items.filter(function (d) {
@@ -394,86 +446,205 @@ THE SOFTWARE.
 					}
 				});
 
-		var getVisibleTextItem = function (d) {
-			var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-
-			if (visibleLength > getTextSize(d.name).width)
-				return d;
-		};
-
 		mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
 
 		x_main.domain([minExtent, maxExtent]);
 
 		// shift the today line
 		main.select('.main.curLine')
-				.attr('x1', x_main(current) + 0.5)
-				.attr('x2', x_main(current) + 0.5);
+				.attr('x1', x_main(current) + .5)
+				.attr('x2', x_main(current) + .5);
 
 		// update the axis
 		mainAxisUpdate();
 
 		// update the item rects
-		rects = itemRects.selectAll('rect')
+
+		rects = itemRects.selectAll('g')
 				.data(visItems, function (d) {
 					return d.id;
 				})
-				.attr('x', function (d) {
-					return x_main(d.start);
-				})
+				.attr('transform', function (d) {
+					var x = x_main(Math.max(minExtent, d.start));
+					var y = y_main(d.lane) + .25 * lanesInterval;
+					d.class.search("misassembled") != -1 ? y += .25 * lanesInterval : 0;
+					d.class.search("odd") != -1 ? y += .25 * lanesInterval : 0;
+
+					return 'translate(' + x + ', ' + y + ')'; })
 				.attr('width', function (d) {
-					return x_main(d.end) - x_main(d.start);
+					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
 				});
 
-		rects.enter().append('rect')
-				.attr('x', function (d) {
-					return x_main(d.start);
-				})
-				.attr('y', function (d) {
-					var y = y_main(d.lane) + .25 * lanesInterval;
-					if (d.class.search("misassembled") != -1)
-						y += .25 * lanesInterval;
-					if (d.class.search("odd") != -1)
-						y += .25 * lanesInterval;
-
-					return y;
-				})
+		rects.select('rect')
 				.attr('width', function (d) {
-					return x_main(d.end) - x_main(d.start);
+					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+				});
+
+		rects.select('text')
+				.text(function (d) {
+					var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+					return (visibleLength > getTextSize(d.name).width + 10 ? d.name : '');
+				});
+
+		var other = rects.enter().append('g')
+				.attr('class', function (d) {
+					return 'mainItem ' + d.class;
+				})
+				.attr('transform', function (d) {
+					var x = x_main(Math.max(minExtent, d.start));
+					var y = y_main(d.lane) + .25 * lanesInterval;
+					d.class.search("misassembled") != -1 ? y += .25 * lanesInterval : 0;
+					d.class.search("odd") != -1 ? y += .25 * lanesInterval : 0;
+
+					return 'translate(' + x + ', ' + y + ')'; })
+				.attr('width', function (d) {
+					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+				})
+				.on('click', function A(d, i) {
+					chart.select('#info')
+							.transition()
+							.attr('opacity', 0)
+							.remove();
+					d3.select('#infoglow')
+							.transition()
+							.style({'opacity': 0})
+							.remove();
+					d3.select(this).append('rect')
+							.attr('id', 'infoglow')
+							.attr('transform', 'translate(2, 2)')
+							.attr('width', d3.select(this).select('rect').attr('width') - 4)
+							.attr('height', d3.select(this).select('rect').attr('height') - 4)
+							.style({'fill': 'white', 'opacity': '0', 'stroke-width': 1, 'stroke': 'white', 'stroke-opacity': .5})
+							.transition()
+							.style({'opacity': '.5'});
+					showInfo(d, i, d3.select(this).attr('transform'));
+				})
+				.on('mouseenter', glow)
+				.on('mouseleave', disglow);
+
+		other.append('rect')
+				.attr('width', function (d) {
+					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
 				})
 				.attr('height', function (d) {
 					return mainLanesHegiht;
-				})
-				.attr('class', function (d) {
-					return 'mainItem ' + d.class;
 				});
 
-		rects.exit().remove();
-
-		// update the item labels
-		labels = itemRects.selectAll('text')
-				.data(visItems.filter(getVisibleTextItem), function (d) {
-					return d.id;
-				})
-				.attr('x', function (d) {
-					return x_main(Math.max(d.start, minExtent)) + 2;
-				});
-
-		labels.enter().append('text')
+		other.append('text')
 				.text(function (d) {
-					return d.name;
-				})
-				.attr('x', function (d) {
-					return x_main(Math.max(d.start, minExtent)) + 2;
-				})
-				.attr('y', function (d) {
-					return y_main(d.lane) + .5 * y_main(1);
+					var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+					return (visibleLength > getTextSize(d.name).width ? d.name : '');
 				})
 				.attr('text-anchor', 'start')
-				.attr('class', 'itemLabel');
+				.attr('class', 'itemLabel')
+				.attr('transform', 'translate(10, ' + 20 + ')');
 
-		labels.exit().remove();
+		rects.exit().remove();
 	}
+
+	/*
+	 function display() {
+	 var rects, labels
+	 , minExtent = brush.extent()[0]
+	 , maxExtent = brush.extent()[1]
+	 , visItems = items.filter(function (d) {
+	 if (d.start < maxExtent && d.end > minExtent) {
+	 var drawLimit = 1;
+	 var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+	 if (visibleLength > drawLimit)
+	 return d;
+	 }
+	 });
+
+	 var getVisibleTextItem = function (d) {
+	 var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+
+	 if (visibleLength > getTextSize(d.name).width)
+	 return d;
+	 };
+
+	 mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
+
+	 x_main.domain([minExtent, maxExtent]);
+
+	 // shift the today line
+	 main.select('.main.curLine')
+	 .attr('x1', x_main(current) + 0.5)
+	 .attr('x2', x_main(current) + 0.5);
+
+	 // update the axis
+	 mainAxisUpdate();
+
+	 // update the item rects
+	 rects = itemRects.selectAll('rect')
+	 .data(visItems, function (d) {
+	 return d.id;
+	 })
+	 .attr('x', function (d) {
+	 return x_main(d.start);
+	 })
+	 .attr('width', function (d) {
+	 return x_main(d.end) - x_main(d.start);
+	 });
+
+	 rects.enter().append('rect')
+	 .attr('x', function (d) {
+	 return x_main(d.start);
+	 })
+	 .attr('y', function (d) {
+	 var y = y_main(d.lane) + .25 * lanesInterval;
+	 if (d.class.search("misassembled") != -1)
+	 y += .25 * lanesInterval;
+	 if (d.class.search("odd") != -1)
+	 y += .25 * lanesInterval;
+
+	 return y;
+	 })
+	 .attr('width', function (d) {
+	 return x_main(d.end) - x_main(d.start);
+	 })
+	 .attr('height', function (d) {
+	 return mainLanesHegiht;
+	 })
+	 .attr('class', function (d) {
+	 return 'mainItem ' + d.class;
+	 })
+	 .on('click', function (d, i) {
+	 if (info_open == true) {
+	 closeInfo();
+	 }
+	 showInfo(d, i, d3.mouse(this));
+	 })
+	 .on('mouseenter', glow)
+	 .on('mouseleave', disglow);
+
+	 rects.exit().remove();
+
+	 // update the item labels
+	 labels = itemRects.selectAll('text')
+	 .data(visItems.filter(getVisibleTextItem), function (d) {
+	 return d.id;
+	 })
+	 .attr('x', function (d) {
+	 return x_main(Math.max(d.start, minExtent)) + 2;
+	 });
+
+	 labels.enter().append('text')
+	 .text(function (d) {
+	 return d.name;
+	 })
+	 .attr('x', function (d) {
+	 return x_main(Math.max(d.start, minExtent)) + 2;
+	 })
+	 .attr('y', function (d) {
+	 return y_main(d.lane) + .5 * y_main(1);
+	 })
+	 .attr('text-anchor', 'start')
+	 .attr('class', 'itemLabel');
+
+	 labels.exit().remove();
+	 }
+	 */
 
 	function moveBrush() {
 		var origin = d3.mouse(this)
@@ -523,13 +694,13 @@ THE SOFTWARE.
 	function mainAxisUpdate() {
 		var domain = x_main.domain()[1] - x_main.domain()[0];
 
-		mainTickValue = 'B';
+		mainTickValue = 'bp';
 		if (domain > 10)
-			mainTickValue = 'KB';
+			mainTickValue = 'kbp';
 		if (domain > 10000)
-			mainTickValue = 'MB';
+			mainTickValue = 'Mbp';
 		if (domain > 100000000)
-			mainTickValue = 'GB';
+			mainTickValue = 'Gbp';
 
 		var mainTicksValues = [];
 		if (x_main.domain()[0] != x_main.ticks(5)[0])
@@ -540,11 +711,11 @@ THE SOFTWARE.
 
 		xMainAxis.tickValues(mainTicksValues)
 				.tickFormat(function (d) {
-					if (mainTickValue == 'GB')
+					if (mainTickValue == 'Gbp')
 						return d3.round(d / 1000000000, 2);
-					else if (mainTickValue == 'MB')
+					else if (mainTickValue == 'Mbp')
 						return d3.round(d / 1000000, 2);
-					else if (mainTickValue == 'KB')
+					else if (mainTickValue == 'kbp')
 						return d3.round(d / 1000, 2);
 					else
 						return d;
@@ -571,6 +742,189 @@ THE SOFTWARE.
 		return size;
 	}
 
+	function glow (d, i) {
+		d3.select(this)
+				.transition()
+				.style({'opacity': .5})
+				.select('rect');
+	}
+
+	function disglow () {
+		d3.select(this)
+				.transition()
+				.style({'opacity': 1})
+				.select('rect');
+	}
+
+	function closeInfo() {
+		d3.select('#infoglow')
+				.transition()
+				.style({'opacity': 0})
+				.remove();
+
+		d3.select(this).transition()
+				.attr('opacity', 0)
+				.remove();
+	}
+
+	function showInfo(d, i, origin) {
+		var info = chart.append('g')
+				.attr('opacity', 0)
+				.attr('transform', origin)
+				.attr('id', 'info')
+				.on('click', closeInfo)
+				.on('mouseenter', function () {d3.select(this).transition().attr('opacity', 1);})
+				.on('mouseleave', function () {d3.select(this).transition().attr('opacity',.5);});
+
+		var width = 200;
+
+		info.append('rect')
+				.attr('class', 'block');
+
+		var y = d3.scale.linear()
+				.domain([1, 3])
+				.range([40, 90]);
+
+		var tmp = info.append('text')
+				.text('Name: ' + d.name)
+				.attr('transform', 'translate(5,' + y(1) + ')');
+
+		width = Math.max(width, getTextSize(tmp.text()).width);
+
+		var pos_val_transform = function (d) {
+			if (mainTickValue == 'Gbp')
+				return d3.round(d / 1000000000, 2);
+			else if (mainTickValue == 'Mbp')
+				return d3.round(d / 1000000, 2);
+			else if (mainTickValue == 'kbp')
+				return d3.round(d / 1000, 2);
+			else
+				return d;
+		};
+
+		if (d.misassembled == "True") {
+			info.select('rect').attr('height', y(4 + d.structure.length));
+			tmp = info.append('text')
+					.text('Type: misassembled')
+					.attr('transform', 'translate(5,' + y(2) + ')');
+
+			width = Math.max(width, getTextSize(tmp.text()).width);
+
+			tmp = info.append('text')
+					.text('Position: [' + pos_val_transform(d.start) + ', '
+										+ pos_val_transform(d.end) + '] ' + mainTickValue)
+					.attr('transform', 'translate(5,' + y(3) + ')');
+
+			width = Math.max(width, getTextSize(tmp.text()).width);
+
+			tmp = info.append('text')
+					.text('Structure:')
+					.attr('transform', 'translate(5,' + y(4) + ')');
+
+			width = Math.max(width, getTextSize(tmp.text()).width);
+
+			for (var i = 0; i < d.structure.length - 1; ++i) {
+				if (d.structure[i].type == "A") {
+					tmp = info.append('text')
+							.text('Alignment: [' + pos_val_transform(d.structure[i].start) + ', '
+									       		 + pos_val_transform(d.structure[i].end) + '] ' + mainTickValue)
+							.attr('transform', 'translate(20,' + y(5 + i) + ')');
+				} else {
+					tmp = info.append('text')
+							.text('Misasembly:' + d.structure[i].mstype)
+							.attr('transform', 'translate(20,' + y(5 + i) + ')');
+				}
+				width = Math.max(width, getTextSize(tmp.text()).width);
+			}
+		} else {
+			info.select('rect').attr('height', 100);
+			tmp = info.append('text')
+					.text('Type: correct')
+					.attr('transform', 'translate(5,' + y(2) + ')');
+
+			width = Math.max(width, getTextSize(tmp.text()).width);
+
+			tmp = info.append('text')
+					.text('Position: [' + pos_val_transform(d.start) + ', '
+					+ pos_val_transform(d.end) + '] ' + mainTickValue)
+					.attr('transform', 'translate(5,' + y(3) + ')');
+
+			width = Math.max(width, getTextSize(tmp.text()).width);
+		}
+
+		info.select('rect').attr('width', width);
+
+		var title = info.append('g')
+				.attr('transform', 'translate(5, 5)');
+
+		title.append('rect')
+				.attr('transform', 'translate(0, 0)')
+				.attr('width', width - 10)
+				.attr('height', 20 )
+				.style( {'fill': 'gray', 'stroke-width': '1px', 'stroke': 'black'});
+
+		tmp = title.append('text')
+				.text('CONTIG INFO')
+				.attr('transform', 'translate(' + (width - getTextSize('CONTIG INFO').width) / 2+ ', 15)');
+
+		info.transition().attr('opacity', .5);
+	}
+
+
+	var XCS = x_mini,		// x coverage scale
+		YCS = d3.scale.log()
+            .domain([Math.max(d3.max(coverage_data, function (d) {return d.sum}), 100) + 100, 1])
+			.range([0, .5 * coverageHeight]),
+		XCA = xMiniAxis,
+		YCA = d3.svg.axis()
+			.scale(YCS)
+			.orient('left')
+			.ticks(4)
+			.tickSize(2, 0),
+		coverage = chart.append('g')
+			.attr('class', 'coverage')
+			.attr('transform', 'translate(' + margin.left + ', ' + (mainHeight + miniHeight + lanesInterval + miniScale + mainScale) + ')');
+
+	coverage.append('g')
+			.attr('class', 'y')
+			.call(YCA);
+
+	coverage.append('g')
+			.attr('transform', 'translate(0, ' + (.5 * coverageHeight) + ')')
+			.attr('class', 'x')
+			.call(XCA);
+
+	var line = '',
+		pos = 0;
+	for (var i = 0; i < coverage_data.length - 1; ++i) {
+		if (coverage_data[i].sum > 0)
+			line += ['M', XCS(pos), YCS(coverage_data[i].sum), 'H', XCS(coverage_data[i].pos)].join(' ');
+		//else
+		//	line += ['M', XCS(pos), 200, 'H', XCS(coverage_data[i].pos)].join(' ');
+		pos = coverage_data[i].pos
+	}
+
+	var not_covered_line = '',
+		not_covered_width = Math.max(width / XCS.domain()[1], .1);
+
+	for (var i = 0; i < not_covered.length - 1; ++i) {
+		not_covered_line += ['M', XCS(not_covered[i]), YCS(1), 'H', XCS(not_covered[i]) + not_covered_width].join(' ');
+	}
+
+	coverage.append('g')
+			.append('path')
+			.attr('class', 'covered')
+			.attr('d', line);
+	coverage.append('g')
+			.append('path')
+			.attr('class', 'notCovered')
+			.attr('d', not_covered_line);
+	coverage.append('text')
+			.attr('transform', 'translate(' + (width / 2) + ',' +.7 * coverageHeight + ')')
+			.text('Genome, ' + miniTickValue);
+	coverage.append('text')
+			.text('Coverage')
+			.attr('transform', 'rotate(90 -60, -35)');
 </script>
 </body>
 </html>
