@@ -13,22 +13,23 @@ bedtools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'bedtools-2.17.0')
 lumpytools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'lumpy')
 
 
-def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, res_path, log_path, err_path, is_reference=False):
+def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpath, res_path, log_path, err_path):
     assembly_name = qutils.name_from_fpath(ref_fpath)
     res_fpath = os.path.join(res_path, assembly_name + '.res')
+    logger.info('  ' + qutils.index_to_str(index) + assembly_name)
 
     if os.path.isfile(res_fpath):
-        logger.info('  Using existing bwa alignments for ' + assembly_name)
+        logger.info('  ' + qutils.index_to_str(index) + 'Using existing BWA alignments...')
         return res_fpath
     sam_fpath = os.path.join(output_dirpath, assembly_name + '.sam')
     bam_fpath = os.path.join(output_dirpath, assembly_name + '.bam')
-
+    logger.info('  ' + qutils.index_to_str(index) + 'Running BWA...')
     qutils.call_subprocess([bin_fpath('bwa'), 'index', ref_fpath], stdout=open(log_path, 'a'),
                            stderr=open(err_path, 'a'))
     cmd = bin_fpath('bwa') + ' mem -t' + str(bwa_threads) + ' ' + ref_fpath + ' ' + ' '.join(reads_fpath)
     qutils.call_subprocess(shlex.split(cmd), stdout=open(sam_fpath, 'w'), stderr=open(err_path, 'a'))
     qutils.call_subprocess([samtools_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-bS', sam_fpath], stdout=open(bam_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(bwa_threads), '-bS', sam_fpath], stdout=open(bam_fpath, 'w'),
                            stderr=open(err_path, 'a'))
     qutils.assert_file_exists(bam_fpath, 'bam file')
     qutils.call_subprocess([samtools_fpath('samtools'), 'flagstat', bam_fpath], stdout=open(res_fpath, 'w'),
@@ -38,11 +39,12 @@ def process_single_file(ref_fpath, bwa_threads, reads_fpath, output_dirpath, res
 
 def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
-    logger.info('  Running lumpy')
     ref_name = qutils.name_from_fpath(ref_fpath)
+    logger.info('  Running LUMPY for %s...' % ref_name)
     bed_fpath = os.path.join(res_path, ref_name + '.bed')
+    logger.info('  ' + 'Logging to %s...' % (err_path))
     if os.path.isfile(bed_fpath):
-        logger.info('  Using existing bed-file for ' + ref_name)
+        logger.info('  Using existing bed-file for %s...' % ref_name)
         return bed_fpath
     bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
     ##preprocessing for lumpy
@@ -59,22 +61,22 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
     temp_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.temp')
 
-    cmd = samtools_fpath('samtools') + ' view -b -F 1294 ' + bam_fpath
+    cmd = samtools_fpath('samtools') + ' view -@ %s -b -F 1294 ' % qconfig.max_threads + bam_fpath
     qutils.call_subprocess(shlex.split(cmd), stdout=open(bamdiscordants_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-h', bam_fpath], stdout=open(splitreads_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-h', bam_fpath], stdout=open(splitreads_fpath, 'w'),
                            stderr=open(err_path, 'a'))
 
     qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/extractSplitReads_BwaMem'), '-i', splitreads_fpath],
                            stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-Sb', temp_fpath], stdout=open(bamsplitter_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-Sb', temp_fpath], stdout=open(bamsplitter_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', bamsplitter_fpath, splitsorted_fpath],
+    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', '-@', str(qconfig.max_threads), bamsplitter_fpath, splitsorted_fpath,],
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', bamdiscordants_fpath, discordsorted_fpath],
+    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', '-@', str(qconfig.max_threads), bamdiscordants_fpath, discordsorted_fpath],
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-r', 'readgroup1', bam_fpath],
+    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-r', 'readgroup1', bam_fpath],
                            stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
     qutils.call_subprocess(['tail', temp_fpath, '-n', '+100000'], stdout=open(readgroup_fpath, 'w'),
@@ -89,6 +91,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
         [os.path.join(lumpytools_dirpath, 'scripts/pairend_distro.py'), '-r', read_length, '-X', '4', '-N', '10000',
          '-o', histo_fpath],
         stdin=open(readgroup_fpath), stdout=open(temp_fpath, 'w'), stderr=open(err_path, 'a'))
+    read_length = 100
     bam_statistics = open(temp_fpath).readline()
     if len(bam_statistics) < 4:
         logger.info('  Failed searching structural variations.')
@@ -101,8 +104,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
     qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'bin/lumpy'), '-mw', '4', '-tt', '0', '-pe', pe_files, '-sr', sr_files],
                            stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess(
-        [os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_fpath, '-o', bed_fpath],
+    qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_fpath, '-o', bed_fpath],
         stderr=open(err_path, 'a'))
     logger.info('  Structural variations saved to ' + bed_fpath)
     return bed_fpath
@@ -138,14 +140,14 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
 
     if not all_required_binaries_exist(bwa_dirpath, 'bwa'):
         # making
-        logger.info('Compiling bwa (details are in ' + os.path.join(bwa_dirpath, 'make.log') + ' and make.err)')
+        logger.info('Compiling BWA (details are in ' + os.path.join(bwa_dirpath, 'make.log') + ' and make.err)')
         return_code = qutils.call_subprocess(
             ['make', '-C', bwa_dirpath],
             stdout=open(os.path.join(bwa_dirpath, 'make.log'), 'w'),
             stderr=open(os.path.join(bwa_dirpath, 'make.err'), 'w'), )
 
         if return_code != 0 or not all_required_binaries_exist(bwa_dirpath, 'bwa'):
-            logger.error('Failed to compile bwa (' + bwa_dirpath + ')! '
+            logger.error('Failed to compile BWA (' + bwa_dirpath + ')! '
                                                                    'Try to compile it manually. ' + (
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
@@ -155,14 +157,14 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     if not all_required_binaries_exist(samtools_dirpath, 'samtools'):
         # making
         logger.info(
-            'Compiling samtools (details are in ' + os.path.join(samtools_dirpath, 'make.log') + ' and make.err)')
+            'Compiling SAMtools (details are in ' + os.path.join(samtools_dirpath, 'make.log') + ' and make.err)')
         return_code = qutils.call_subprocess(
             ['make', '-C', samtools_dirpath],
             stdout=open(os.path.join(samtools_dirpath, 'make.log'), 'w'),
             stderr=open(os.path.join(samtools_dirpath, 'make.err'), 'w'), )
 
         if return_code != 0 or not all_required_binaries_exist(samtools_dirpath, 'samtools'):
-            logger.error('Failed to compile samtools (' + samtools_dirpath + ')! '
+            logger.error('Failed to compile SAMtools (' + samtools_dirpath + ')! '
                                                                              'Try to compile it manually. ' + (
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
@@ -172,14 +174,14 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     if not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
         # making
         logger.info(
-            'Compiling lumpy (details are in ' + os.path.join(lumpytools_dirpath, 'make.log') + ' and make.err)')
+            'Compiling LUMPY (details are in ' + os.path.join(lumpytools_dirpath, 'make.log') + ' and make.err)')
         return_code = qutils.call_subprocess(
             ['make', '-C', lumpytools_dirpath],
             stdout=open(os.path.join(lumpytools_dirpath, 'make.log'), 'w'),
             stderr=open(os.path.join(lumpytools_dirpath, 'make.err'), 'w'), )
 
         if return_code != 0 or not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
-            logger.error('Failed to compile lumpy (' + lumpytools_dirpath + ')! '
+            logger.error('Failed to compile LUMPY (' + lumpytools_dirpath + ')! '
                                                                                'Try to compile it manually. ' + (
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
@@ -208,21 +210,21 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
         proc_files.append(ref_fpath)
     n_jobs = min(qconfig.max_threads, len(proc_files))
     bwa_threads = qconfig.max_threads // n_jobs
-    log_path = os.path.join(temp_output_dir, 'bwa.log')
-    err_path = os.path.join(temp_output_dir, 'bwa.err')
-
+    log_path = os.path.join(temp_output_dir, 'align_reads.log')
+    err_path = os.path.join(temp_output_dir, 'align_reads.err')
+    logger.info('  ' + 'Logging to files %s and %s...' % (log_path, err_path))
     from joblib import Parallel, delayed
-    res_dirpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(fpath, bwa_threads,
+    res_fpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(index, fpath, bwa_threads,
                                                                         reads_fpaths, temp_output_dir, final_output_dir, log_path,
-                                                                        err_path) for fpath in proc_files)
+                                                                        err_path) for (index, fpath) in enumerate(proc_files))
     if ref_fpath:
         bed_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
     else:
         bed_fpath = None
     if ref_fpath:
         assembly_name = qutils.name_from_fpath(ref_fpath)
-        ref_dirpath = os.path.join(final_output_dir, assembly_name + '.res')
-        ref_results = open(ref_dirpath)
+        ref_respath = os.path.join(final_output_dir, assembly_name + '.res')
+        ref_results = open(ref_respath)
         for line in ref_results:
             if 'properly paired' in line:
                 ref_paired_reads = line.split()[0]
@@ -236,7 +238,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     # process all contigs files
     for index, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
-        results = open(res_dirpaths[index])
+        results = open(res_fpaths[index])
         for line in results:
             if 'total' in line:
                 report.add_field(reporting.Fields.TOTALREADS, line.split()[0])
@@ -263,7 +265,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
             report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
 
     if not qconfig.debug:
-        shutil.rmtree(temp_output_dir, ignore_errors=True)
+       shutil.rmtree(temp_output_dir, ignore_errors=True)
 
     reporting.save_reads(output_dir)
     logger.info('Done.')
