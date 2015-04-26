@@ -91,7 +91,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
         [os.path.join(lumpytools_dirpath, 'scripts/pairend_distro.py'), '-r', read_length, '-X', '4', '-N', '10000',
          '-o', histo_fpath],
         stdin=open(readgroup_fpath), stdout=open(temp_fpath, 'w'), stderr=open(err_path, 'a'))
-    read_length = 100
+
     bam_statistics = open(temp_fpath).readline()
     if len(bam_statistics) < 4:
         logger.info('  Failed searching structural variations.')
