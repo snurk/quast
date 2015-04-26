@@ -921,11 +921,11 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     if qconfig.search_snps:
         print >> planta_out_f, 'Analyzing coverage...'
         print >> planta_out_f, 'Writing SNPs into', nucmer_fpath + '.vcf'
-        for index, (ref, value) in enumerate(regions.iteritems()):
-            if index == 0:
+        for num, (ref, value) in enumerate(regions.iteritems()):
+            if num == 0:
                 vcf_snps_fpath = nucmer_fpath + '.vcf'
             else:
-                vcf_snps_fpath = nucmer_fpath + '_%s.vcf' % index
+                vcf_snps_fpath = nucmer_fpath + '_%s.vcf' % num
             vcf_snps_file = open(vcf_snps_fpath, 'w')
             vcf_template = open(vcf_temp_fpath, 'w')
             print >> vcf_template, '##fileformat=VCFv4.0'

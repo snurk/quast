@@ -377,7 +377,6 @@ def main(args):
                         ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
                                'test_data/contigs_2.fasta',]
-
             qconfig.test = True
 
         if opt.startswith('--help'):
@@ -575,6 +574,7 @@ def main(args):
         ref_fpath = ''
 
     contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
+    qconfig.assemblies_num = len(contigs_fpaths)
     bed_fpath = None
 
     if qconfig.reads:
@@ -591,8 +591,6 @@ def main(args):
     for contigs_fpath in contigs_fpaths:
         report = reporting.get(contigs_fpath)
         report.add_field(reporting.Fields.NAME, qutils.label_from_fpath(contigs_fpath))
-
-    qconfig.assemblies_num = len(contigs_fpaths)
 
     if not contigs_fpaths:
         logger.error("None of the assembly files contains correct contigs. "

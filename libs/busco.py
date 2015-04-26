@@ -48,15 +48,15 @@ def do(contigs_fpaths, out_dirpath, clade):
     if not os.path.isdir(out_dirpath):
         os.makedirs(out_dirpath)
 
-    n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
-    busco_threads = qconfig.max_threads//n_jobs
-
     from joblib import Parallel, delayed
     log_path = os.path.join(out_dirpath, 'busco.log')
     err_path = os.path.join(out_dirpath, 'busco.err')
     open(log_path, 'w').close()
     open(err_path, 'w').close()
-    results = Parallel(n_jobs=n_jobs)(delayed(busco_v1.do)(['-in', contigs_fpath,'-o', qutils.name_from_fpath(contigs_fpath), '-l', clade, '-m', 'genome', '-f', '-c', str(busco_threads)],
+    n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
+    busco_threads = qconfig.max_threads//n_jobs
+
+    results = Parallel(n_jobs=n_jobs)(delayed(busco_v1.do)(['-n', str(index), '-in', contigs_fpath,'-o', qutils.name_from_fpath(contigs_fpath), '-l', clade, '-m', 'genome', '-f', '-c', str(busco_threads)],
                                                          out_dirpath) for index, contigs_fpath in enumerate(contigs_fpaths))
     # saving results
     for i, contigs_fpath in enumerate(contigs_fpaths):
@@ -65,6 +65,5 @@ def do(contigs_fpaths, out_dirpath, clade):
         report.add_field(reporting.Fields.CORE_COMPLETE, ('%.2f' % (float(complete)*100.0/total)))
         report.add_field(reporting.Fields.CORE_PART, ('%.2f' % (float(part)*100.0/total)))
 
-    logger.print_timestamp()
     logger.info('Done.')
 

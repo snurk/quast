@@ -108,7 +108,7 @@ def add_genes_to_gff(genes, gff_fpath, prokaryote):
     if prokaryote:
         gff.write('##gff out for GeneMark.hmm PROKARYOTIC\n')
     else:
-        gff.write('##gff out for GeneMarkES EUKARYOTIC\n')
+        gff.write('##gff out for GeneMark-ES EUKARYOTIC\n')
     gff.write('##gff-version 3\n')
 
     for id, gene in enumerate(genes):
@@ -243,7 +243,7 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
         tool_dirname = 'genemark'
         gmhmm_p_function = gmhmm_p_everyGC
     else:
-        tool_name = 'GeneMarkES'
+        tool_name = 'GeneMark-ES'
         tool_dirname = 'genemark-es'
         gmhmm_p_function = gm_es
 
@@ -253,7 +253,7 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
     if not os.path.exists(tool_dirpath):
         logger.warning('  Sorry, can\'t use %s on this platform, skipping gene prediction.' % tool_name)
     else:
-        if tool_name != 'GeneMarkES':
+        if tool_name != 'GeneMark-ES':
             successful = install_genemark(tool_dirpath)
             if not successful:
                 return
