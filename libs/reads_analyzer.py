@@ -79,7 +79,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
     qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-r', 'readgroup1', bam_fpath],
                            stdout=open(temp_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess(['tail', temp_fpath, '-n', '+100000'], stdout=open(readgroup_fpath, 'w'),
+    qutils.call_subprocess(['tail', temp_fpath, '-n', '100000'], stdout=open(readgroup_fpath, 'w'),
                            stderr=open(err_path, 'a'))
 
     bam_info = open(temp_fpath).readline().split()
@@ -264,8 +264,8 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
             report.add_field(reporting.Fields.REFMAPPED_READS, ref_mapped_reads)
             report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
 
-    if not qconfig.debug:
-       shutil.rmtree(temp_output_dir, ignore_errors=True)
+    #if not qconfig.debug:
+       #shutil.rmtree(temp_output_dir, ignore_errors=True)
 
     reporting.save_reads(output_dir)
     logger.info('Done.')
