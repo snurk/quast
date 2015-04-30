@@ -30,9 +30,9 @@ THE SOFTWARE.
 	<script type="text/javascript" src="contig_alignment_plot_data.js"></script>
 	<style>
 
-        .coverage text {
-            font: 16px sans-serif;
-        }
+		.coverage text {
+			font: 16px sans-serif;
+		}
 
 		.coverage .x path, .x line, .y path, .y line {
 			fill: none;
@@ -210,7 +210,7 @@ THE SOFTWARE.
 			miniHeight = lanes.length * miniLanesHeight,
 			mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
 			coverageHeight = 250;
-			height = mainHeight + coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top;
+	height = mainHeight + coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top;
 
 	var x_mini = d3.scale.linear()
 			.domain([0, d3.max(items, function (d) {
@@ -542,110 +542,6 @@ THE SOFTWARE.
 		rects.exit().remove();
 	}
 
-	/*
-	 function display() {
-	 var rects, labels
-	 , minExtent = brush.extent()[0]
-	 , maxExtent = brush.extent()[1]
-	 , visItems = items.filter(function (d) {
-	 if (d.start < maxExtent && d.end > minExtent) {
-	 var drawLimit = 1;
-	 var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-	 if (visibleLength > drawLimit)
-	 return d;
-	 }
-	 });
-
-	 var getVisibleTextItem = function (d) {
-	 var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-
-	 if (visibleLength > getTextSize(d.name).width)
-	 return d;
-	 };
-
-	 mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
-
-	 x_main.domain([minExtent, maxExtent]);
-
-	 // shift the today line
-	 main.select('.main.curLine')
-	 .attr('x1', x_main(current) + 0.5)
-	 .attr('x2', x_main(current) + 0.5);
-
-	 // update the axis
-	 mainAxisUpdate();
-
-	 // update the item rects
-	 rects = itemRects.selectAll('rect')
-	 .data(visItems, function (d) {
-	 return d.id;
-	 })
-	 .attr('x', function (d) {
-	 return x_main(d.start);
-	 })
-	 .attr('width', function (d) {
-	 return x_main(d.end) - x_main(d.start);
-	 });
-
-	 rects.enter().append('rect')
-	 .attr('x', function (d) {
-	 return x_main(d.start);
-	 })
-	 .attr('y', function (d) {
-	 var y = y_main(d.lane) + .25 * lanesInterval;
-	 if (d.class.search("misassembled") != -1)
-	 y += .25 * lanesInterval;
-	 if (d.class.search("odd") != -1)
-	 y += .25 * lanesInterval;
-
-	 return y;
-	 })
-	 .attr('width', function (d) {
-	 return x_main(d.end) - x_main(d.start);
-	 })
-	 .attr('height', function (d) {
-	 return mainLanesHegiht;
-	 })
-	 .attr('class', function (d) {
-	 return 'mainItem ' + d.class;
-	 })
-	 .on('click', function (d, i) {
-	 if (info_open == true) {
-	 closeInfo();
-	 }
-	 showInfo(d, i, d3.mouse(this));
-	 })
-	 .on('mouseenter', glow)
-	 .on('mouseleave', disglow);
-
-	 rects.exit().remove();
-
-	 // update the item labels
-	 labels = itemRects.selectAll('text')
-	 .data(visItems.filter(getVisibleTextItem), function (d) {
-	 return d.id;
-	 })
-	 .attr('x', function (d) {
-	 return x_main(Math.max(d.start, minExtent)) + 2;
-	 });
-
-	 labels.enter().append('text')
-	 .text(function (d) {
-	 return d.name;
-	 })
-	 .attr('x', function (d) {
-	 return x_main(Math.max(d.start, minExtent)) + 2;
-	 })
-	 .attr('y', function (d) {
-	 return y_main(d.lane) + .5 * y_main(1);
-	 })
-	 .attr('text-anchor', 'start')
-	 .attr('class', 'itemLabel');
-
-	 labels.exit().remove();
-	 }
-	 */
-
 	function moveBrush() {
 		var origin = d3.mouse(this)
 				, point = x_mini.invert(origin[0])
@@ -695,7 +591,7 @@ THE SOFTWARE.
 		var domain = x_main.domain()[1] - x_main.domain()[0];
 
 		mainTickValue = 'bp';
-		if (domain > 10)
+		if (domain > 100)
 			mainTickValue = 'kbp';
 		if (domain > 10000)
 			mainTickValue = 'Mbp';
@@ -709,17 +605,30 @@ THE SOFTWARE.
 		if (x_main.domain()[1] != mainTicksValues[mainTicksValues.length - 1])
 			mainTicksValues.push(x_main.domain()[1]);
 
+		var format = function (d) {
+			if (mainTickValue == 'Gbp')
+				return d3.round(d / 1000000000, 2);
+			else if (mainTickValue == 'Mbp')
+				return d3.round(d / 1000000, 2);
+			else if (mainTickValue == 'kbp')
+				return d3.round(d / 1000, 2);
+			else
+				return d3.round(d, 2);
+		};
+
 		xMainAxis.tickValues(mainTicksValues)
-				.tickFormat(function (d) {
-					if (mainTickValue == 'Gbp')
-						return d3.round(d / 1000000000, 2);
-					else if (mainTickValue == 'Mbp')
-						return d3.round(d / 1000000, 2);
-					else if (mainTickValue == 'kbp')
-						return d3.round(d / 1000, 2);
-					else
-						return d;
-				});
+				.tickFormat(format);
+
+		var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0])).width,
+									   getTextSize(format(mainTicksValues[1])).width);
+
+		if (x_main(mainTicksValues[1]) - x_main(mainTicksValues[0]) < min_ticks_delta) {
+			mainTicksValues.splice(1, 1)
+		}
+
+		if (x_main(mainTicksValues.slice(-1)[0]) - x_main(mainTicksValues.slice(-2)[0]) < min_ticks_delta) {
+			mainTicksValues.splice(-2, 1)
+		}
 
 		main.select('.main.axis')
 				.call(xMainAxis);
@@ -812,7 +721,7 @@ THE SOFTWARE.
 
 			tmp = info.append('text')
 					.text('Position: [' + pos_val_transform(d.start) + ', '
-										+ pos_val_transform(d.end) + '] ' + mainTickValue)
+					+ pos_val_transform(d.end) + '] ' + mainTickValue)
 					.attr('transform', 'translate(5,' + y(3) + ')');
 
 			width = Math.max(width, getTextSize(tmp.text()).width);
@@ -827,7 +736,7 @@ THE SOFTWARE.
 				if (d.structure[i].type == "A") {
 					tmp = info.append('text')
 							.text('Alignment: [' + pos_val_transform(d.structure[i].start) + ', '
-									       		 + pos_val_transform(d.structure[i].end) + '] ' + mainTickValue)
+							+ pos_val_transform(d.structure[i].end) + '] ' + mainTickValue)
 							.attr('transform', 'translate(20,' + y(5 + i) + ')');
 				} else {
 					tmp = info.append('text')
@@ -872,18 +781,18 @@ THE SOFTWARE.
 
 
 	var XCS = x_mini,		// x coverage scale
-		YCS = d3.scale.log()
-            .domain([Math.max(d3.max(coverage_data, function (d) {return d.sum}), 100) + 100, 1])
-			.range([0, .5 * coverageHeight]),
-		XCA = xMiniAxis,
-		YCA = d3.svg.axis()
-			.scale(YCS)
-			.orient('left')
-			.ticks(4)
-			.tickSize(2, 0),
-		coverage = chart.append('g')
-			.attr('class', 'coverage')
-			.attr('transform', 'translate(' + margin.left + ', ' + (mainHeight + miniHeight + lanesInterval + miniScale + mainScale) + ')');
+			YCS = d3.scale.log()
+					.domain([Math.max(d3.max(coverage_data, function (d) {return d.sum}), 100) + 100, 1])
+					.range([0, .5 * coverageHeight]),
+			XCA = xMiniAxis,
+			YCA = d3.svg.axis()
+					.scale(YCS)
+					.orient('left')
+					.ticks(4)
+					.tickSize(2, 0),
+			coverage = chart.append('g')
+					.attr('class', 'coverage')
+					.attr('transform', 'translate(' + margin.left + ', ' + (mainHeight + miniHeight + lanesInterval + miniScale + mainScale) + ')');
 
 	coverage.append('g')
 			.attr('class', 'y')
@@ -895,7 +804,7 @@ THE SOFTWARE.
 			.call(XCA);
 
 	var line = '',
-		pos = 0;
+			pos = 0;
 	for (var i = 0; i < coverage_data.length - 1; ++i) {
 		if (coverage_data[i].sum > 0)
 			line += ['M', XCS(pos), YCS(coverage_data[i].sum), 'H', XCS(coverage_data[i].pos)].join(' ');
@@ -905,7 +814,7 @@ THE SOFTWARE.
 	}
 
 	var not_covered_line = '',
-		not_covered_width = Math.max(width / XCS.domain()[1], .1);
+			not_covered_width = Math.max(width / XCS.domain()[1], .1);
 
 	for (var i = 0; i < not_covered.length - 1; ++i) {
 		not_covered_line += ['M', XCS(not_covered[i]), YCS(1), 'H', XCS(not_covered[i]) + not_covered_width].join(' ');
