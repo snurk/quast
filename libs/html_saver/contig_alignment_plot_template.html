@@ -779,61 +779,62 @@ THE SOFTWARE.
 		info.transition().attr('opacity', .5);
 	}
 
+    if (typeof coverage_data != 'undefined') {
+        var XCS = x_mini,		// x coverage scale
+                YCS = d3.scale.log()
+                        .domain([Math.max(d3.max(coverage_data, function (d) {return d.sum}), 100) + 100, 1])
+                        .range([0, .5 * coverageHeight]),
+                XCA = xMiniAxis,
+                YCA = d3.svg.axis()
+                        .scale(YCS)
+                        .orient('left')
+                        .ticks(4)
+                        .tickSize(2, 0),
+                coverage = chart.append('g')
+                        .attr('class', 'coverage')
+                        .attr('transform', 'translate(' + margin.left + ', ' + (mainHeight + miniHeight + lanesInterval + miniScale + mainScale) + ')');
 
-	var XCS = x_mini,		// x coverage scale
-			YCS = d3.scale.log()
-					.domain([Math.max(d3.max(coverage_data, function (d) {return d.sum}), 100) + 100, 1])
-					.range([0, .5 * coverageHeight]),
-			XCA = xMiniAxis,
-			YCA = d3.svg.axis()
-					.scale(YCS)
-					.orient('left')
-					.ticks(4)
-					.tickSize(2, 0),
-			coverage = chart.append('g')
-					.attr('class', 'coverage')
-					.attr('transform', 'translate(' + margin.left + ', ' + (mainHeight + miniHeight + lanesInterval + miniScale + mainScale) + ')');
+        coverage.append('g')
+                .attr('class', 'y')
+                .call(YCA);
 
-	coverage.append('g')
-			.attr('class', 'y')
-			.call(YCA);
+        coverage.append('g')
+                .attr('transform', 'translate(0, ' + (.5 * coverageHeight) + ')')
+                .attr('class', 'x')
+                .call(XCA);
 
-	coverage.append('g')
-			.attr('transform', 'translate(0, ' + (.5 * coverageHeight) + ')')
-			.attr('class', 'x')
-			.call(XCA);
+        var line = '',
+                pos = 0;
+        for (var i = 0; i < coverage_data.length - 1; ++i) {
+            if (coverage_data[i].sum > 0)
+                line += ['M', XCS(pos), YCS(coverage_data[i].sum), 'H', XCS(coverage_data[i].pos)].join(' ');
+            //else
+            //	line += ['M', XCS(pos), 200, 'H', XCS(coverage_data[i].pos)].join(' ');
+            pos = coverage_data[i].pos
+        }
 
-	var line = '',
-			pos = 0;
-	for (var i = 0; i < coverage_data.length - 1; ++i) {
-		if (coverage_data[i].sum > 0)
-			line += ['M', XCS(pos), YCS(coverage_data[i].sum), 'H', XCS(coverage_data[i].pos)].join(' ');
-		//else
-		//	line += ['M', XCS(pos), 200, 'H', XCS(coverage_data[i].pos)].join(' ');
-		pos = coverage_data[i].pos
-	}
+        var not_covered_line = '',
+                not_covered_width = Math.max(width / XCS.domain()[1], .1);
 
-	var not_covered_line = '',
-			not_covered_width = Math.max(width / XCS.domain()[1], .1);
+        for (var i = 0; i < not_covered.length - 1; ++i) {
+            not_covered_line += ['M', XCS(not_covered[i]), YCS(1), 'H', XCS(not_covered[i]) + not_covered_width].join(' ');
+        }
 
-	for (var i = 0; i < not_covered.length - 1; ++i) {
-		not_covered_line += ['M', XCS(not_covered[i]), YCS(1), 'H', XCS(not_covered[i]) + not_covered_width].join(' ');
-	}
-
-	coverage.append('g')
-			.append('path')
-			.attr('class', 'covered')
-			.attr('d', line);
-	coverage.append('g')
-			.append('path')
-			.attr('class', 'notCovered')
-			.attr('d', not_covered_line);
-	coverage.append('text')
-			.attr('transform', 'translate(' + (width / 2) + ',' +.7 * coverageHeight + ')')
-			.text('Genome, ' + miniTickValue);
-	coverage.append('text')
-			.text('Coverage')
-			.attr('transform', 'rotate(90 -60, -35)');
+        coverage.append('g')
+                .append('path')
+                .attr('class', 'covered')
+                .attr('d', line);
+        coverage.append('g')
+                .append('path')
+                .attr('class', 'notCovered')
+                .attr('d', not_covered_line);
+        coverage.append('text')
+                .attr('transform', 'translate(' + (width / 2) + ',' +.7 * coverageHeight + ')')
+                .text('Genome, ' + miniTickValue);
+        coverage.append('text')
+                .text('Coverage')
+                .attr('transform', 'rotate(90 -60, -35)');
+    }
 </script>
 </body>
 </html>

@@ -570,7 +570,7 @@ def make_output_dir(output_dir_path):
 
 
 def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
-       ref_fpath, cov_fpath, arcs=False, similar=False, coverage_hist=None):
+       ref_fpath, cov_fpath=None, arcs=False, similar=False, coverage_hist=None):
     make_output_dir(output_dirpath)
 
     lists_of_aligned_blocks = []
@@ -706,41 +706,42 @@ var assemblies_num = {};\n\
 \n'.format(len(assemblies.assemblies)))
 
         # adding coverage data
-        with open(cov_fpath, 'r') as coverage:
-            cov_data = list(coverage.read().split())
+        if cov_fpath:
+            with open(cov_fpath, 'r') as coverage:
+                cov_data = list(coverage.read().split())
 
-        POINTS_COUNT = 350
-        not_covered = []
+            POINTS_COUNT = 350
+            not_covered = []
 
-        cov_data = cov_data[2 : -2]
-        block_size = cov_data.__len__() // POINTS_COUNT
-        block_counter = 0
-        res_data = []
-        sm = 0
+            cov_data = cov_data[2: -2]
+            block_size = cov_data.__len__() // POINTS_COUNT
+            block_counter = 0
+            res_data = []
+            sm = 0
 
-        for pos, count in enumerate(cov_data):
-            if pos % 2:
-                pos = pos // 2 + 1
-                if count == '0':
-                    not_covered.append(pos)
-                block_counter = (block_counter + 1) % block_size
-                sm += int(count)
-                if block_counter == 0:
-                    res_data.append([pos, sm / block_size])
-                    sm = 0
+            for pos, count in enumerate(cov_data):
+                if pos % 2:
+                    pos = pos // 2 + 1
+                    if count == '0':
+                        not_covered.append(pos)
+                    block_counter = (block_counter + 1) % block_size
+                    sm += int(count)
+                    if block_counter == 0:
+                        res_data.append([pos, sm / block_size])
+                        sm = 0
 
-        if block_counter != 0:
-            res_data.append([pos, sm / block_counter])
+            if block_counter != 0:
+                res_data.append([pos, sm / block_counter])
 
-        result.write('var coverage_data = [\n')
-        for e in res_data:
-            result.write('{{pos: {e[0]}, sum: {e[1]}}},\n'.format(**locals()))
-        result.write('{pos: 0, sum: 0}];\n\n')
+            result.write('var coverage_data = [\n')
+            for e in res_data:
+                result.write('{{pos: {e[0]}, sum: {e[1]}}},\n'.format(**locals()))
+            result.write('{pos: 0, sum: 0}];\n\n')
 
-        result.write('var not_covered = [\n')
-        for e in not_covered:
-            result.write('{e},\n'.format(**locals()))
-        result.write('0];\n')
+            result.write('var not_covered = [\n')
+            for e in not_covered:
+                result.write('{e},\n'.format(**locals()))
+            result.write('0];\n')
 
         with open(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_data_template.js')), 'r') \
                 as template:
