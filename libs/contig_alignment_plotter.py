@@ -710,7 +710,7 @@ var assemblies_num = {};\n\
             with open(cov_fpath, 'r') as coverage:
                 cov_data = list(coverage.read().split())
 
-            POINTS_COUNT = 350
+            POINTS_COUNT = 500
             not_covered = []
 
             cov_data = cov_data[2: -2]

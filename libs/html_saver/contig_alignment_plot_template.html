@@ -25,764 +25,829 @@ THE SOFTWARE.
 
 <html>
 <head>
-	<script type="text/javascript" src="d3.js"></script>
-	<!-- <script type="text/javascript" src="http://mbostock.github.com/d3/d3.v2.js"></script> -->
-	<script type="text/javascript" src="contig_alignment_plot_data.js"></script>
-	<style>
+    <script type="text/javascript" src="d3.js"></script>
+    <!-- <script type="text/javascript" src="http://mbostock.github.com/d3/d3.v2.js"></script> -->
+    <script type="text/javascript" src="contig_alignment_plot_data.js"></script>
+    <style>
+        .menu {
+            fill: rgb(100, 200, 200);
+            stroke: rgb(200, 200, 200);
+            stroke-width: 10px;
+        }
 
-		.coverage text {
-			font: 16px sans-serif;
-		}
+        .forText {
+            fill: white;
+            background-color: white;
+            stroke-width: 0;
+        }
 
-		.coverage .x path, .x line, .y path, .y line {
-			fill: none;
-			stroke: black;
-			stroke-width: 1px;
-		}
+        .menu .T text {
+            font: 26px sans-serif;
+            fill: rgb(100, 100, 100);
+            font-weight: bold;
+        }
 
-		.coverage .y text, .x text {
-			font: 12px sans-serif;
-		}
+        .menu .info text {
+            font: 10px sans-serif;
+            fill: rgb(100, 100, 100)
+        }
 
-		.coverage .covered {
-			stroke: rgb(240, 10, 10);
-			stroke-width: 3px;
-			fill: none;
-		}
+        .coverage text {
+            font: 16px sans-serif;
+        }
 
-		.coverage .notCovered {
-			stroke: rgb(10, 10, 240);
-			stroke-width: 3px;
-			fill: none;
-		}
+        .coverage .x path, .x line, .y path, .y line {
+            fill: none;
+            stroke: black;
+            stroke-width: 1px;
+        }
 
-		#info > g > text {
-			font: 14px arial;
-			font-weight: bolder;
-			fill: white;
-			stroke-width: 0px;
-		}
+        .coverage .y text, .x text {
+            font: 12px sans-serif;
+        }
 
-		#info {
-			fill: rgb(240, 240, 240);
-			stroke-width: 1px;
-			stroke: black
-		}
+        .coverage .covered {
+            stroke: rgb(240, 10, 10);
+            stroke-width: 3px;
+            fill: none;
+        }
 
-		#info text {
-			fill: black;
-			stroke-width: 0px;
-			font: 12px arial;
-		}
+        .coverage .notCovered {
+            stroke: rgb(10, 10, 240);
+            stroke-width: 3px;
+            fill: none;
+        }
 
-		.chart {
-			shape-rendering: crispEdges;
-		}
+        #info > g > text {
+            font: 14px arial;
+            font-weight: bolder;
+            fill: white;
+            stroke-width: 0px;
+        }
 
-		.mini text {
-			font: 9px sans-serif;
-		}
+        #info {
+            fill: rgb(240, 240, 240);
+            stroke-width: 1px;
+            stroke: black
+        }
 
-		.main text {
-			font: 12px sans-serif;
-		}
+        #info text {
+            fill: black;
+            stroke-width: 0px;
+            font: 12px arial;
+        }
 
-		.mainItem text {
-			fill: black;
-			stroke-width: 0;
-		}
+        .chart {
+            shape-rendering: crispEdges;
+        }
 
-		.axis line, .axis path {
-			stroke: black;
-		}
+        .mini text {
+            font: 9px sans-serif;
+        }
 
-		.mainItem {
-			stroke-width: .2;
-			stroke: white;
-		}
+        .main text {
+            font: 12px sans-serif;
+        }
 
-		.mainItem.correct.similar.odd {
-			fill: #377eb8;
-		}
+        .mainItem text {
+            fill: black;
+            stroke-width: 0;
+        }
 
-		.mainItem.correct.similar {
-			fill: #576e88;
-		}
+        .axis line, .axis path {
+            stroke: black;
+        }
 
-		.mainItem.correct.odd {
-			fill: #4daf4a;
-		}
+        .mainItem {
+            stroke-width: .2;
+            stroke: white;
+        }
 
-		.mainItem.correct {
-			fill: #40cf40;
-		}
+        .mainItem .S {
+            fill: white;
+        }
 
-		.mainItem.misassembled.similar.odd {
-			fill: #ff7500;
-		}
+        .mainItem.correct.similar.odd {
+            fill: #377eb8;
+        }
 
-		.mainItem.misassembled.similar {
-			fill: #e09110;
-		}
+        .mainItem.correct.similar {
+            fill: #576e88;
+        }
 
-		.mainItem.misassembled.odd {
-			fill: #e41a1c;
-		}
+        .mainItem.correct.odd {
+            fill: #4daf4a;
+        }
 
-		.mainItem.misassembled {
-			fill: #b82525;
-		}
+        .mainItem.correct {
+            fill: #40cf40;
+        }
 
-		.miniItem.correct.similar.odd {
-			stroke-width: 10;
-			stroke: #377eb8;
-			fill: #377eb8;
-		}
+        .mainItem.misassembled.similar.odd {
+            fill: #ff7500;
+        }
 
-		.miniItem.correct.similar {
-			stroke-width: 10;
-			stroke: #576e88;
-			fill: #576e88;
-		}
+        .mainItem.misassembled.similar {
+            fill: #e09110;
+        }
 
-		.miniItem.correct.odd {
-			stroke-width: 10;
-			stroke: #4daf4a;
-			fill: #4daf4a;
-		}
+        .mainItem.misassembled.odd .R {
+            fill: #e41a1c;
+        }
 
-		.miniItem.correct {
-			stroke-width: 10;
-			stroke: #40cf40;
-			fill: #40cf40;
-		}
+        .mainItem.misassembled {
+            fill: #b82525;
+        }
 
-		.miniItem.misassembled.similar.odd {
-			stroke-width: 10;
-			stroke: #ff7500;
-			fill: #ff7500;
-		}
+        .miniItem.correct.similar.odd {
+            stroke-width: 10;
+            stroke: #377eb8;
+            fill: #377eb8;
+        }
 
-		.miniItem.misassembled.similar {
-			stroke-width: 10;
-			stroke: #e09110;
-			fill: #e09110;
-		}
+        .miniItem.correct.similar {
+            stroke-width: 10;
+            stroke: #576e88;
+            fill: #576e88;
+        }
 
-		.miniItem.misassembled.odd {
-			stroke-width: 10;
-			stroke: #e41a1c;
-			fill: #e41a1c;
-		}
+        .miniItem.correct.odd {
+            stroke-width: 10;
+            stroke: #4daf4a;
+            fill: #4daf4a;
+        }
 
-		.miniItem.misassembled {
-			stroke-width: 10;
-			stroke: #b82525;
-			fill: #b82525;
-		}
+        .miniItem.correct {
+            stroke-width: 10;
+            stroke: #40cf40;
+            fill: #40cf40;
+        }
 
-		.brush .extent {
-			stroke: gray;
-			fill: yellow;
-			fill-opacity: .165;
-		}
-	</style>
+        .miniItem.misassembled.similar.odd {
+            stroke-width: 10;
+            stroke: #ff7500;
+            fill: #ff7500;
+        }
+
+        .miniItem.misassembled.similar {
+            stroke-width: 10;
+            stroke: #e09110;
+            fill: #e09110;
+        }
+
+        .miniItem.misassembled.odd {
+            stroke-width: 10;
+            stroke: #e41a1c;
+            fill: #e41a1c;
+        }
+
+        .miniItem.misassembled {
+            stroke-width: 10;
+            stroke: #b82525;
+            fill: #b82525;
+        }
+
+        .brush .extent {
+            stroke: gray;
+            fill: yellow;
+            fill-opacity: .165;
+        }
+    </style>
+    <link href="contig_alignment_plot.css" rel="stylesheet"/>
+
 </head>
 <body>
 
 <script type="text/javascript">
 
-	var data = contigData(),
-			lanes = data.lanes,
-			items = data.items;
-
-	var margin = {
-				top: 20, right: 15, bottom: 15, left: Math.max(d3.max(lanes, function (d) {
-					return getTextSize(d.label).width;
-				}), 120)
-			},
-			mainLanesHegiht = 40,
-			miniLanesHeight = 18,
-			lanesInterval = 20,
-			miniScale = 50,
-			mainScale = 50,
-			width = 1024 - margin.left - margin.right,
-			miniHeight = lanes.length * miniLanesHeight,
-			mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
-			coverageHeight = 250;
-	height = mainHeight + coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top;
-
-	var x_mini = d3.scale.linear()
-			.domain([0, d3.max(items, function (d) {
-				return d.end;
-			})])
-			.range([0, width]);
-	var x_main = d3.scale.linear()
-			.range([0, width]);
-
-	var ext = d3.extent(lanes, function (d) {
-		return d.id;
-	});
-	var y_main = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, mainHeight]);
-	var y_mini = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, miniHeight]);
-
-	var chart = d3.select('body')
-			.append('svg:svg')
-			.attr('width', width + margin.right + margin.left)
-			.attr('height', height + margin.top + margin.bottom)
-			.attr('class', 'chart');
-
-	chart.append('defs').append('clipPath')
-			.attr('id', 'clip')
-			.append('rect')
-			.attr('width', width)
-			.attr('height', mainHeight);
-
-	var main = chart.append('g')
-			.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
-			.attr('width', width)
-			.attr('height', mainHeight + mainScale)
-			.attr('class', 'main');
-
-	var mini = chart.append('g')
-			.attr('transform', 'translate(' + margin.left + ',' + (mainHeight + 50) + ')')
-			.attr('width', width)
-			.attr('height', miniHeight + miniScale)
-			.attr('class', 'mini');
-
-	// draw the lanes for the main chart
-	main.append('g').selectAll('.laneLines')
-			.data(lanes)
-			.enter().append('line')
-			.attr('x1', 0)
-			.attr('y1', function (d) {
-				return d3.round(y_main(d.id)) + .5;
-			})
-			.attr('x2', width)
-			.attr('y2', function (d) {
-				return d3.round(y_main(d.id)) + .5;
-			})
-			.attr('stroke', function (d) {
-				return d.label === '' ? 'white' : 'lightgray'
-			});
-
-	main.append('g').selectAll('.laneText')
-			.data(lanes)
-			.enter().append('text')
-			.text(function (d) {
-				return d.label;
-			})
-			.attr('x', -10)
-			.attr('y', function (d) {
-				return y_main(d.id + .5);
-			})
-			.attr('dy', '.5ex')
-			.attr('text-anchor', 'end')
-			.attr('class', 'laneText');
-
-	// draw the lanes for the mini chart
-	mini.append('g').selectAll('.laneLines')
-			.data(lanes)
-			.enter().append('line')
-			.attr('x1', 0)
-			.attr('y1', function (d) {
-				return d3.round(y_mini(d.id)) + .5;
-			})
-			.attr('x2', width)
-			.attr('y2', function (d) {
-				return d3.round(y_mini(d.id)) + .5;
-			})
-			.attr('stroke', function (d) {
-				return d.label === '' ? 'white' : 'lightgray'
-			});
-
-	mini.append('g').selectAll('.laneText')
-			.data(lanes)
-			.enter().append('text')
-			.text(function (d) {
-				return d.label;
-			})
-			.attr('x', -10)
-			.attr('y', function (d) {
-				return y_mini(d.id + .5);
-			})
-			.attr('dy', '.5ex')
-			.attr('text-anchor', 'end')
-			.attr('class', 'laneText');
-
-	// draw the x axis
-	var miniTickValue;
-
-	if (x_mini.domain()[1] > 1000000000)
-		miniTickValue = 'Gbp';
-	else if (x_mini.domain()[1] > 1000000)
-		miniTickValue = 'Mbp';
-	else if (x_mini.domain()[1] > 1000)
-		miniTickValue = 'kbp';
-	else
-		miniTickValue = 'bp';
-
-	var miniTicksValues = x_mini.ticks(5);
-	miniTicksValues.push(x_mini.domain()[1]);
-
-	var xMiniAxis = d3.svg.axis()
-			.scale(x_mini)
-			.orient('bottom')
-			.tickSize(6, 0, 0)
-			.tickValues(miniTicksValues)
-			.tickFormat(function (d) {
-				if (miniTickValue == 'Gbp')
-					return d3.round(d / 1000000000, 2);
-				else if (miniTickValue == 'Mbp')
-					return d3.round(d / 1000000, 2);
-				else if (miniTickValue == 'kbp')
-					return d3.round(d / 1000, 2);
-				else
-					return d;
-			});
-
-	var mainTickValue;
-
-	var xMainAxis = d3.svg.axis()
-			.scale(x_main)
-			.orient('bottom')
-			.tickSize(6, 0, 0);
-
-	main.append('g')
-			.attr('transform', 'translate(0,' + mainHeight + ')')
-			.attr('class', 'main axis')
-			.call(xMainAxis);
-
-	var scaleText = main.append('g')
-			.attr('class', 'scaleText');
-
-	scaleText.append('text')
-			.attr('x', -45)
-			.attr('y', mainHeight + 5)
-			.attr('dy', '.5ex')
-			.attr('text-anchor', 'end')
-			.text('Tick value: ');
-
-	scaleText.append('text')
-			.attr('x', -40)
-			.attr('y', mainHeight + 5)
-			.attr('dy', '.5ex')
-			.attr('class', 'val')
-			.text(mainTickValue);
-
-	mini.append('g')
-			.attr('transform', 'translate(0,' + miniHeight + ')')
-			.attr('class', 'axis')
-			.call(xMiniAxis).append('text')
-			.text('Genome, ' + miniTickValue)
-			.attr('transform', 'translate(' + x_mini(x_mini.domain()[1] / 2) + ',' + (miniScale / 2 + 2) + ')');
-
-	// draw a line representing today's date
-	main.append('line')
-			.attr('y1', 0)
-			.attr('y2', mainHeight)
-			.attr('class', 'main curSegment')
-			.attr('clip-path', 'url(#clip)');
-
-	var current = x_mini.domain()[1] / 2;
-
-	mini.append('line')
-			.attr('x1', x_mini(current) + .5)
-			.attr('y1', 0)
-			.attr('x2', x_mini(current) + .5)
-			.attr('y2', miniHeight)
-			.attr('class', 'curSegment');
-
-	// draw the items
-	var itemRects = main.append('g')
-			.attr('clip-path', 'url(#clip)');
-
-	mini.append('g').selectAll('miniItems')
-			.data(getPaths(items))
-			.enter().append('path')
-			.attr('class', function (d) {
-				return 'miniItem ' + d.class;
-			})
-			.attr('d', function (d) {
-				return d.path;
-			});
-
-	// invisible hit area to move around the selection window
-	mini.append('rect')
-			.attr('pointer-events', 'painted')
-			.attr('width', width)
-			.attr('height', miniHeight)
-			.attr('visibility', 'hidden')
-			.on('mouseup', moveBrush);
-
-	// draw the selection area
-	var delta = current * .25;
-
-	var brush = d3.svg.brush()
-			.x(x_mini)
-			.extent([current - delta, current + delta])
-			.on("brush", display);
-
-	mini.append('g')
-			.attr('class', 'x brush')
-			.call(brush)
-			.selectAll('rect')
-			.attr('y', 1)
-			.attr('height', miniHeight - 1);
-
-	mini.selectAll('rect.background').remove();
-	display();
-
-	function display() {
-		var rects
-				, minExtent = brush.extent()[0]
-				, maxExtent = brush.extent()[1]
-				, visItems = items.filter(function (d) {
-					if (d.start < maxExtent && d.end > minExtent) {
-						var drawLimit = 1;
-						var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-						if (visibleLength > drawLimit)
-							return d;
-					}
-				});
-
-		mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
-
-		x_main.domain([minExtent, maxExtent]);
-
-		// shift the today line
-		main.select('.main.curLine')
-				.attr('x1', x_main(current) + .5)
-				.attr('x2', x_main(current) + .5);
-
-		// update the axis
-		mainAxisUpdate();
-
-		// update the item rects
-
-		rects = itemRects.selectAll('g')
-				.data(visItems, function (d) {
-					return d.id;
-				})
-				.attr('transform', function (d) {
-					var x = x_main(Math.max(minExtent, d.start));
-					var y = y_main(d.lane) + .25 * lanesInterval;
-					d.class.search("misassembled") != -1 ? y += .25 * lanesInterval : 0;
-					d.class.search("odd") != -1 ? y += .25 * lanesInterval : 0;
-
-					return 'translate(' + x + ', ' + y + ')'; })
-				.attr('width', function (d) {
-					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-				});
-
-		rects.select('rect')
-				.attr('width', function (d) {
-					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-				});
-
-		rects.select('text')
-				.text(function (d) {
-					var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-					return (visibleLength > getTextSize(d.name).width + 10 ? d.name : '');
-				});
-
-		var other = rects.enter().append('g')
-				.attr('class', function (d) {
-					return 'mainItem ' + d.class;
-				})
-				.attr('transform', function (d) {
-					var x = x_main(Math.max(minExtent, d.start));
-					var y = y_main(d.lane) + .25 * lanesInterval;
-					d.class.search("misassembled") != -1 ? y += .25 * lanesInterval : 0;
-					d.class.search("odd") != -1 ? y += .25 * lanesInterval : 0;
-
-					return 'translate(' + x + ', ' + y + ')'; })
-				.attr('width', function (d) {
-					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-				})
-				.on('click', function A(d, i) {
-					chart.select('#info')
-							.transition()
-							.attr('opacity', 0)
-							.remove();
-					d3.select('#infoglow')
-							.transition()
-							.style({'opacity': 0})
-							.remove();
-					d3.select(this).append('rect')
-							.attr('id', 'infoglow')
-							.attr('transform', 'translate(2, 2)')
-							.attr('width', d3.select(this).select('rect').attr('width') - 4)
-							.attr('height', d3.select(this).select('rect').attr('height') - 4)
-							.style({'fill': 'white', 'opacity': '0', 'stroke-width': 1, 'stroke': 'white', 'stroke-opacity': .5})
-							.transition()
-							.style({'opacity': '.5'});
-					showInfo(d, i, d3.select(this).attr('transform'));
-				})
-				.on('mouseenter', glow)
-				.on('mouseleave', disglow);
-
-		other.append('rect')
-				.attr('width', function (d) {
-					return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-				})
-				.attr('height', function (d) {
-					return mainLanesHegiht;
-				});
-
-		other.append('text')
-				.text(function (d) {
-					var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-					return (visibleLength > getTextSize(d.name).width ? d.name : '');
-				})
-				.attr('text-anchor', 'start')
-				.attr('class', 'itemLabel')
-				.attr('transform', 'translate(10, ' + 20 + ')');
-
-		rects.exit().remove();
-	}
-
-	function moveBrush() {
-		var origin = d3.mouse(this)
-				, point = x_mini.invert(origin[0])
-				, halfExtent = (brush.extent()[1] - brush.extent()[0]) / 2
-				, begin = point - halfExtent
-				, end = point + halfExtent;
-
-		brush.extent([begin, end]);
-		display();
-	}
-
-	// generates a single path for each item class in the mini display
-	// ugly - but draws mini 2x faster than append lines or line generator
-	// is there a better way to do a bunch of lines as a single path with d3?
-	function getPaths(items) {
-		var paths = {}, d, result = [];
-		for (var c, i = 0; i < items.length; i++) {
-			d = items[i];
-
-			c = (d.misassembled == "False" ? "correct" : "misassembled");
-			c += (d.similar == "True" ? " similar" : "");
-			c += (d.order == 0 ? " odd" : "");
-
-			items[i].class = c;
-
-			if (!paths[c]) paths[c] = '';
-
-			var y = y_mini(d.lane);
-			y += .5 * miniLanesHeight;
-			if (d.class.search("misassembled") != -1)
-				y += .08 * miniLanesHeight;
-			if (d.class.search("odd") != -1)
-				y += .04 * miniLanesHeight;
-
-			paths[c] += ['M', x_mini(d.start), (y), 'H', x_mini(d.end)].join(' ');
-		}
-
-		for (var className in paths) {
-			result.push({class: className, path: paths[className]});
-		}
-
-		return result;
-	}
-
-
-	function mainAxisUpdate() {
-		var domain = x_main.domain()[1] - x_main.domain()[0];
-
-		mainTickValue = 'bp';
-		if (domain > 100)
-			mainTickValue = 'kbp';
-		if (domain > 10000)
-			mainTickValue = 'Mbp';
-		if (domain > 100000000)
-			mainTickValue = 'Gbp';
-
-		var mainTicksValues = [];
-		if (x_main.domain()[0] != x_main.ticks(5)[0])
-			mainTicksValues = [x_main.domain()[0]];
-		mainTicksValues = mainTicksValues.concat(x_main.ticks(5));
-		if (x_main.domain()[1] != mainTicksValues[mainTicksValues.length - 1])
-			mainTicksValues.push(x_main.domain()[1]);
-
-		var format = function (d) {
-			if (mainTickValue == 'Gbp')
-				return d3.round(d / 1000000000, 2);
-			else if (mainTickValue == 'Mbp')
-				return d3.round(d / 1000000, 2);
-			else if (mainTickValue == 'kbp')
-				return d3.round(d / 1000, 2);
-			else
-				return d3.round(d, 2);
-		};
-
-		xMainAxis.tickValues(mainTicksValues)
-				.tickFormat(format);
-
-		var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0])).width,
-									   getTextSize(format(mainTicksValues[1])).width);
-
-		if (x_main(mainTicksValues[1]) - x_main(mainTicksValues[0]) < min_ticks_delta) {
-			mainTicksValues.splice(1, 1)
-		}
-
-		if (x_main(mainTicksValues.slice(-1)[0]) - x_main(mainTicksValues.slice(-2)[0]) < min_ticks_delta) {
-			mainTicksValues.splice(-2, 1)
-		}
-
-		main.select('.main.axis')
-				.call(xMainAxis);
-		scaleText.select('.val')
-				.text(mainTickValue);
-	}
-
-	function getTextSize(text) {
-		var tmp = document.createElement("span");
-		var size = {};
-
-		tmp.innerHTML = text;
-		tmp.style.visibility = "hidden";
-		tmp.style.whiteSpace = "nowrap";
-		document.body.appendChild(tmp);
-		size.width = tmp.offsetWidth;
-		size.heght = tmp.offsetHeight;
-		document.body.removeChild(tmp);
-
-		return size;
-	}
-
-	function glow (d, i) {
-		d3.select(this)
-				.transition()
-				.style({'opacity': .5})
-				.select('rect');
-	}
-
-	function disglow () {
-		d3.select(this)
-				.transition()
-				.style({'opacity': 1})
-				.select('rect');
-	}
-
-	function closeInfo() {
-		d3.select('#infoglow')
-				.transition()
-				.style({'opacity': 0})
-				.remove();
-
-		d3.select(this).transition()
-				.attr('opacity', 0)
-				.remove();
-	}
-
-	function showInfo(d, i, origin) {
-		var info = chart.append('g')
-				.attr('opacity', 0)
-				.attr('transform', origin)
-				.attr('id', 'info')
-				.on('click', closeInfo)
-				.on('mouseenter', function () {d3.select(this).transition().attr('opacity', 1);})
-				.on('mouseleave', function () {d3.select(this).transition().attr('opacity',.5);});
-
-		var width = 200;
-
-		info.append('rect')
-				.attr('class', 'block');
-
-		var y = d3.scale.linear()
-				.domain([1, 3])
-				.range([40, 90]);
-
-		var tmp = info.append('text')
-				.text('Name: ' + d.name)
-				.attr('transform', 'translate(5,' + y(1) + ')');
-
-		width = Math.max(width, getTextSize(tmp.text()).width);
-
-		var pos_val_transform = function (d) {
-			if (mainTickValue == 'Gbp')
-				return d3.round(d / 1000000000, 2);
-			else if (mainTickValue == 'Mbp')
-				return d3.round(d / 1000000, 2);
-			else if (mainTickValue == 'kbp')
-				return d3.round(d / 1000, 2);
-			else
-				return d;
-		};
-
-		if (d.misassembled == "True") {
-			info.select('rect').attr('height', y(4 + d.structure.length));
-			tmp = info.append('text')
-					.text('Type: misassembled')
-					.attr('transform', 'translate(5,' + y(2) + ')');
-
-			width = Math.max(width, getTextSize(tmp.text()).width);
-
-			tmp = info.append('text')
-					.text('Position: [' + pos_val_transform(d.start) + ', '
-					+ pos_val_transform(d.end) + '] ' + mainTickValue)
-					.attr('transform', 'translate(5,' + y(3) + ')');
-
-			width = Math.max(width, getTextSize(tmp.text()).width);
-
-			tmp = info.append('text')
-					.text('Structure:')
-					.attr('transform', 'translate(5,' + y(4) + ')');
-
-			width = Math.max(width, getTextSize(tmp.text()).width);
-
-			for (var i = 0; i < d.structure.length - 1; ++i) {
-				if (d.structure[i].type == "A") {
-					tmp = info.append('text')
-							.text('Alignment: [' + pos_val_transform(d.structure[i].start) + ', '
-							+ pos_val_transform(d.structure[i].end) + '] ' + mainTickValue)
-							.attr('transform', 'translate(20,' + y(5 + i) + ')');
-				} else {
-					tmp = info.append('text')
-							.text('Misasembly:' + d.structure[i].mstype)
-							.attr('transform', 'translate(20,' + y(5 + i) + ')');
-				}
-				width = Math.max(width, getTextSize(tmp.text()).width);
-			}
-		} else {
-			info.select('rect').attr('height', 100);
-			tmp = info.append('text')
-					.text('Type: correct')
-					.attr('transform', 'translate(5,' + y(2) + ')');
-
-			width = Math.max(width, getTextSize(tmp.text()).width);
-
-			tmp = info.append('text')
-					.text('Position: [' + pos_val_transform(d.start) + ', '
-					+ pos_val_transform(d.end) + '] ' + mainTickValue)
-					.attr('transform', 'translate(5,' + y(3) + ')');
-
-			width = Math.max(width, getTextSize(tmp.text()).width);
-		}
-
-		info.select('rect').attr('width', width);
-
-		var title = info.append('g')
-				.attr('transform', 'translate(5, 5)');
-
-		title.append('rect')
-				.attr('transform', 'translate(0, 0)')
-				.attr('width', width - 10)
-				.attr('height', 20 )
-				.style( {'fill': 'gray', 'stroke-width': '1px', 'stroke': 'black'});
-
-		tmp = title.append('text')
-				.text('CONTIG INFO')
-				.attr('transform', 'translate(' + (width - getTextSize('CONTIG INFO').width) / 2+ ', 15)');
-
-		info.transition().attr('opacity', .5);
-	}
+    var data = contigData(),
+            lanes = data.lanes,
+            items = data.items;
+
+    var margin = {
+                top: 20, right: 15, bottom: 15, left: /*Math.max(d3.max(lanes, function (d) {
+                 return getTextSize(d.label).width;
+                 }), 120)*/ 145
+            },
+            mainLanesHegiht = 40,
+            miniLanesHeight = 18,
+            lanesInterval = 20,
+            miniScale = 50,
+            mainScale = 50,
+            width = 800 + 240 + 50
+            chartWidth = 800,
+            miniHeight = lanes.length * miniLanesHeight,
+            mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
+            coverageHeight = 250;
+    height = Math.max(mainHeight + coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top, 500);
+
+    var x_mini = d3.scale.linear()
+            .domain([0, d3.max(items, function (d) {
+                return d.end;
+            })])
+            .range([0, chartWidth]);
+    var x_main = d3.scale.linear()
+            .range([0, chartWidth]);
+
+    var ext = d3.extent(lanes, function (d) {
+        return d.id;
+    });
+    var y_main = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, mainHeight]);
+    var y_mini = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, miniHeight]);
+
+    var chart = d3.select('body')
+            .append('svg:svg')
+            .attr('width', width + margin.right + margin.left)
+            .attr('height', height + margin.top + margin.bottom)
+            .attr('class', 'chart');
+
+    chart.append('defs').append('clipPath')
+            .attr('id', 'clip')
+            .append('rect')
+            .attr('width', width)
+            .attr('height', mainHeight);
+
+    var main = chart.append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+            .attr('width', chartWidth)
+            .attr('height', mainHeight + mainScale)
+            .attr('class', 'main');
+
+    var mini = chart.append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + (mainHeight + 50) + ')')
+            .attr('width', chartWidth)
+            .attr('height', miniHeight + miniScale)
+            .attr('class', 'mini');
+
+    // draw the lanes for the main chart
+    main.append('g').selectAll('.laneLines')
+            .data(lanes)
+            .enter().append('line')
+            .attr('x1', 0)
+            .attr('y1', function (d) {
+                return d3.round(y_main(d.id)) + .5;
+            })
+            .attr('x2', chartWidth)
+            .attr('y2', function (d) {
+                return d3.round(y_main(d.id)) + .5;
+            })
+            .attr('stroke', function (d) {
+                return d.label === '' ? 'white' : 'lightgray'
+            });
+
+    main.append('g').selectAll('.laneText')
+            .data(lanes)
+            .enter().append('text')
+            .text(function (d) {
+                return getVisibleText(d.label, 130);
+            })
+            .attr('x', -10)
+            .attr('y', function (d) {
+                return y_main(d.id + .5);
+            })
+            .attr('dy', '.5ex')
+            .attr('text-anchor', 'end')
+            .attr('class', 'laneText');
+
+    // draw the lanes for the mini chart
+    mini.append('g').selectAll('.laneLines')
+            .data(lanes)
+            .enter().append('line')
+            .attr('x1', 0)
+            .attr('y1', function (d) {
+                return d3.round(y_mini(d.id)) + .5;
+            })
+            .attr('x2', chartWidth)
+            .attr('y2', function (d) {
+                return d3.round(y_mini(d.id)) + .5;
+            })
+            .attr('stroke', function (d) {
+                return d.label === '' ? 'white' : 'lightgray'
+            });
+
+    mini.append('g').selectAll('.laneText')
+            .data(lanes)
+            .enter().append('text')
+            .text(function (d) {
+                return d.label;
+            })
+            .attr('x', -10)
+            .attr('y', function (d) {
+                return y_mini(d.id + .5);
+            })
+            .attr('dy', '.5ex')
+            .attr('text-anchor', 'end')
+            .attr('class', 'laneText');
+
+    // draw the x axis
+    var miniTickValue;
+
+    if (x_mini.domain()[1] > 1000000000)
+        miniTickValue = 'Gbp';
+    else if (x_mini.domain()[1] > 1000000)
+        miniTickValue = 'Mbp';
+    else if (x_mini.domain()[1] > 1000)
+        miniTickValue = 'kbp';
+    else
+        miniTickValue = 'bp';
+
+    var miniTicksValues = x_mini.ticks(5);
+    miniTicksValues.push(x_mini.domain()[1]);
+
+    var xMiniAxis = d3.svg.axis()
+            .scale(x_mini)
+            .orient('bottom')
+            .tickSize(6, 0, 0)
+            .tickValues(miniTicksValues)
+            .tickFormat(function (d) {
+                if (miniTickValue == 'Gbp')
+                    return d3.round(d / 1000000000, 2);
+                else if (miniTickValue == 'Mbp')
+                    return d3.round(d / 1000000, 2);
+                else if (miniTickValue == 'kbp')
+                    return d3.round(d / 1000, 2);
+                else
+                    return d;
+            });
+
+    var mainTickValue;
+
+    var xMainAxis = d3.svg.axis()
+            .scale(x_main)
+            .orient('bottom')
+            .tickSize(6, 0, 0);
+
+    main.append('g')
+            .attr('transform', 'translate(0,' + mainHeight + ')')
+            .attr('class', 'main axis')
+            .call(xMainAxis);
+
+    var scaleText = main.append('g')
+            .attr('class', 'scaleText');
+
+    scaleText.append('text')
+            .attr('x', -45)
+            .attr('y', mainHeight + 5)
+            .attr('dy', '.5ex')
+            .attr('text-anchor', 'end')
+            .text('Tick value: ');
+
+    scaleText.append('text')
+            .attr('x', -40)
+            .attr('y', mainHeight + 5)
+            .attr('dy', '.5ex')
+            .attr('class', 'val')
+            .text(mainTickValue);
+
+    mini.append('g')
+            .attr('transform', 'translate(0,' + miniHeight + ')')
+            .attr('class', 'axis')
+            .call(xMiniAxis).append('text')
+            .text('Genome, ' + miniTickValue)
+            .attr('transform', 'translate(' + x_mini(x_mini.domain()[1] / 2) + ',' + (miniScale / 2 + 2) + ')');
+
+    // draw a line representing today's date
+    main.append('line')
+            .attr('y1', 0)
+            .attr('y2', mainHeight)
+            .attr('class', 'main curSegment')
+            .attr('clip-path', 'url(#clip)');
+
+    var current = x_mini.domain()[1] / 2;
+
+    mini.append('line')
+            .attr('x1', x_mini(current) + .5)
+            .attr('y1', 0)
+            .attr('x2', x_mini(current) + .5)
+            .attr('y2', miniHeight)
+            .attr('class', 'curSegment');
+
+    // draw the items
+    var itemRects = main.append('g')
+            .attr('clip-path', 'url(#clip)');
+
+    mini.append('g').selectAll('miniItems')
+            .data(getPaths(items))
+            .enter().append('path')
+            .attr('class', function (d) {
+                return 'miniItem ' + d.class;
+            })
+            .attr('d', function (d) {
+                return d.path;
+            });
+
+    // invisible hit area to move around the selection window
+    mini.append('rect')
+            .attr('pointer-events', 'painted')
+            .attr('width', chartWidth)
+            .attr('height', miniHeight)
+            .attr('visibility', 'hidden')
+            .on('mouseup', moveBrush);
+
+    // draw the selection area
+    var delta = current * .25;
+
+    var brush = d3.svg.brush()
+            .x(x_mini)
+            .extent([current - delta, current + delta])
+            .on("brush", display);
+
+    mini.append('g')
+            .attr('class', 'x brush')
+            .call(brush)
+            .selectAll('rect')
+            .attr('y', 1)
+            .attr('height', miniHeight - 1);
+
+    mini.selectAll('rect.background').remove();
+
+    // draw contig info menu
+    var menu_w = 240;
+    var menu = chart.append('g')
+            .attr('class', 'menu')
+            .attr('transform', 'translate(' + (margin.left + chartWidth + 50) + ', 10)');
+    menu.append('rect')
+            .attr('width', menu_w)
+            .attr('height', Math.max(mainHeight + miniHeight, 500))
+            .attr('class', 'block');
+    menu.append('g')
+            .attr('transform', 'translate(5, 5)')
+            .attr('class', 'forText T M')
+            .append('rect')
+            .attr('width', menu_w - 10)
+            .attr('height', 40);
+    menu.select('g')
+            .append('text')
+            .attr('transform', 'translate(30, 30)')
+            .text('Contig info');
+
+    contig_info = menu.append('g')
+            .attr('class', 'info forText')
+            .attr('transform', 'translate(10, 50)');
+
+    var contig_info_h = 40;
+
+    var contig_info_y = d3.scale.linear()
+            .domain([1, 2, 3])
+            .range([20, 30]);
+
+    contig_info.append('rect')
+            .attr('width', menu_w - 20)
+            .attr('height', contig_info_h);
+
+    text = contig_info.append('g')
+            .attr('class', 'text');
+    text.append('text')
+            .attr('transform', 'translate(10, ' + contig_info_y(1) + ')')
+            .text('<SELECT CONTIG>');
+
+    var selected_id;
+    var prev = undefined;
+
+    display();
+
+    function display() {
+        var rects
+                , minExtent = Math.max(brush.extent()[0], 0)
+                , maxExtent = Math.min(brush.extent()[1], x_mini.domain()[1])
+                , visItems = items.filter(function (d) {
+                    if (d.start < maxExtent && d.end > minExtent) {
+                        var drawLimit = 1;
+                        var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                        if (visibleLength > drawLimit)
+                            return d;
+                    }
+                }),
+                visibleText = function (d) {
+                    var visibleLength = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 10;
+                    return getVisibleText(d.name, visibleLength);
+                };
+
+        mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
+
+        x_main.domain([minExtent, maxExtent]);
+
+        // shift the today line
+        main.select('.main.curLine')
+                .attr('x1', x_main(current) + .5)
+                .attr('x2', x_main(current) + .5);
+
+        // update the axis
+        mainAxisUpdate();
+
+        // update the item rects
+
+        rects = itemRects.selectAll('g')
+                .data(visItems, function (d) {
+                    return d.id;
+                })
+                .attr('transform', function (d) {
+                    var x = x_main(Math.max(minExtent, d.start));
+                    var y = y_main(d.lane) + .25 * lanesInterval;
+                    d.class.search("misassembled") != -1 ? y += .25 * lanesInterval : 0;
+                    d.class.search("odd") != -1 ? y += .25 * lanesInterval : 0;
+
+                    return 'translate(' + x + ', ' + y + ')';
+                })
+                .attr('width', function (d) {
+                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                });
+
+        rects.select('.S')
+                .attr('width', function (d) {
+                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4;
+                });
+
+        rects.select('.R')
+                .attr('width', function (d) {
+                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                });
+
+        rects.select('.S')
+                .attr('opacity', function (d) {
+                    return (d.id == selected_id ? .5 : 0);
+                });
+
+        rects.select('text')
+                .text(visibleText);
+
+        var other = rects.enter().append('g')
+                .attr('class', function (d) {
+                    return 'mainItem ' + d.class;
+                })
+                .attr('transform', function (d) {
+                    var x = x_main(Math.max(minExtent, d.start));
+                    var y = y_main(d.lane) + .25 * lanesInterval;
+                    d.class.search("misassembled") != -1 ? y += .25 * lanesInterval : 0;
+                    d.class.search("odd") != -1 ? y += .25 * lanesInterval : 0;
+
+                    return 'translate(' + x + ', ' + y + ')';
+                })
+                .attr('width', function (d) {
+                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                });
+
+        other.append('rect')
+                .attr('class', 'R')
+                .attr('width', function (d) {
+                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                })
+                .attr('height', function (d) {
+                    return mainLanesHegiht;
+                });
+
+        other.append('rect')
+                .attr('transform', 'translate(2, 2)')
+                .attr('class', 'S')
+                .attr('width', function (d) {
+                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4;
+                })
+                .attr('height', function (d) {
+                    return mainLanesHegiht - 4;
+                })
+                .attr('opacity', function (d) {
+                    return (d.id == selected_id ?.5 : 0);
+                });
+
+        other.on('click', function A(d, i) {
+            if (prev) prev.transition().attr('opacity', 0);
+            selected_id = d.id;
+            prev = d3.select(this).select('.S').transition().attr('opacity', .5);
+            changeInfo(d);
+        })
+                .on('mouseenter', glow)
+                .on('mouseleave', disglow);
+
+        other.append('text')
+                .text(visibleText)
+                .attr('text-anchor', 'start')
+                .attr('class', 'itemLabel')
+                .attr('transform', 'translate(10, ' + 20 + ')');
+
+        rects.exit().remove();
+    }
+
+    function moveBrush() {
+        var origin = d3.mouse(this)
+                , point = x_mini.invert(origin[0])
+                , halfExtent = (brush.extent()[1] - brush.extent()[0]) / 2
+                , begin = point - halfExtent
+                , end = point + halfExtent;
+
+        brush.extent([begin, end]);
+        display();
+    }
+
+    // generates a single path for each item class in the mini display
+    // ugly - but draws mini 2x faster than append lines or line generator
+    // is there a better way to do a bunch of lines as a single path with d3?
+    function getPaths(items) {
+        var paths = {}, d, result = [];
+        for (var c, i = 0; i < items.length; i++) {
+            d = items[i];
+
+            c = (d.misassembled == "False" ? "correct" : "misassembled");
+            c += (d.similar == "True" ? " similar" : "");
+            c += (d.order == 0 ? " odd" : "");
+
+            items[i].class = c;
+
+            if (!paths[c]) paths[c] = '';
+
+            var y = y_mini(d.lane);
+            y += .5 * miniLanesHeight;
+            if (d.class.search("misassembled") != -1)
+                y += .08 * miniLanesHeight;
+            if (d.class.search("odd") != -1)
+                y += .04 * miniLanesHeight;
+
+            paths[c] += ['M', x_mini(d.start), (y), 'H', x_mini(d.end)].join(' ');
+        }
+
+        for (var className in paths) {
+            result.push({class: className, path: paths[className]});
+        }
+
+        return result;
+    }
+
+
+    function mainAxisUpdate() {
+        var domain = x_main.domain()[1] - x_main.domain()[0];
+
+        mainTickValue = 'bp';
+        if (domain > 100)
+            mainTickValue = 'kbp';
+        if (domain > 10000)
+            mainTickValue = 'Mbp';
+        if (domain > 100000000)
+            mainTickValue = 'Gbp';
+
+        var mainTicksValues = [];
+        if (x_main.domain()[0] != x_main.ticks(5)[0])
+            mainTicksValues = [x_main.domain()[0]];
+        mainTicksValues = mainTicksValues.concat(x_main.ticks(5));
+        if (x_main.domain()[1] != mainTicksValues[mainTicksValues.length - 1])
+            mainTicksValues.push(x_main.domain()[1]);
+
+        var format = function (d) {
+            if (mainTickValue == 'Gbp')
+                return d3.round(d / 1000000000, 2);
+            else if (mainTickValue == 'Mbp')
+                return d3.round(d / 1000000, 2);
+            else if (mainTickValue == 'kbp')
+                return d3.round(d / 1000, 2);
+            else
+                return d3.round(d, 2);
+        };
+
+        xMainAxis.tickValues(mainTicksValues)
+                .tickFormat(format);
+
+        var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0])).width,
+                getTextSize(format(mainTicksValues[1])).width);
+
+        if (x_main(mainTicksValues[1]) - x_main(mainTicksValues[0]) < min_ticks_delta) {
+            mainTicksValues.splice(1, 1)
+        }
+
+        if (x_main(mainTicksValues.slice(-1)[0]) - x_main(mainTicksValues.slice(-2)[0]) < min_ticks_delta) {
+            mainTicksValues.splice(-2, 1)
+        }
+
+        main.select('.main.axis')
+                .call(xMainAxis);
+        scaleText.select('.val')
+                .text(mainTickValue);
+    }
+
+    function getTextSize(text) {
+        var tmp = document.createElement("span");
+        var size = {};
+
+        tmp.innerHTML = text;
+        tmp.style.visibility = "hidden";
+        tmp.style.whiteSpace = "nowrap";
+        document.body.appendChild(tmp);
+        size.width = tmp.offsetWidth;
+        size.heght = tmp.offsetHeight;
+        document.body.removeChild(tmp);
+
+        return size;
+    }
+
+    function glow(d, i) {
+        d3.select(this)
+                .transition()
+                .style({'opacity': .5})
+                .select('rect');
+    }
+
+    function disglow() {
+        d3.select(this)
+                .transition()
+                .style({'opacity': 1})
+                .select('rect');
+    }
+
+    function getVisibleText(s, l) {
+        var t = s;
+
+        if (getTextSize(t).width > l) {
+            while (t.length > 2 && getTextSize(t + '...').width > l)
+                t = t.slice(0, t.length - 1);
+            return (t.length < 3 ? '' : t + '...');
+        } else return t;
+    }
+
+    function changeInfo(d) {
+        text.attr('opacity', .7)
+                .selectAll('text')
+                .remove();
+
+        var get_position = function (start, end) {
+            if (start.length == end.length) {
+                var l = start.length;
+                var eq = '';
+                for (var i = 0; start[i] == end[i]; ++i)
+                    eq += start[i];
+                var pos = [eq, ' ', '[', d3.round(start.slice(i, Math.min(i + 3, l)) / 100, 2), ', ',
+                    d3.round(end.slice(i, Math.min(i + 3, l)) / 100, 2), ']'].join('');
+                if (l - i - 1 == 3) pos += ' kbp';
+                else if (l - i - 1 == 6) pos += ' Mbp';
+                else pos += [' e', l - i - 1, ' bp'].join('');
+                return pos;
+            } else return ['[', pos_val_transform(start), ', ', pos_val_transform(end), ']', ' ', miniTickValue].join('');
+        };
+
+        n = 4 + (d.type == "Misassembled" ? 1 + d.structure.length : 0);
+        contig_info_y.domain([1, n]);
+        contig_info_y.range([20, n * 20]);
+
+        h = (d.misassembled == "True" ? contig_info_y(4 + d.structure.length) : contig_info_y(4));
+        contig_info.select('rect').transition()
+                .attr('height', h);
+
+        contig_info.append('rect')
+                .attr('class', 'block');
+
+        text.append('text')
+                .text('Name: ' + getVisibleText(d.name, 280))
+                .attr('transform', 'translate(5,' + contig_info_y(1) + ')');
+
+        var pos_val_transform = function (d) {
+            if (mainTickValue == 'Gbp')
+                return d3.round(d / 1000000000, 2);
+            else if (mainTickValue == 'Mbp')
+                return d3.round(d / 1000000, 2);
+            else if (mainTickValue == 'kbp')
+                return d3.round(d / 1000, 2);
+            else
+                return d;
+        };
+
+        if (d.misassembled == "True") {
+            text.append('text')
+                    .text('Type: misassembled')
+                    .attr('transform', 'translate(5,' + contig_info_y(2) + ')');
+
+            text.append('text')
+                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()))
+                    .attr('transform', 'translate(5,' + contig_info_y(3) + ')');
+
+            text.append('text')
+                    .text('Structure:')
+                    .attr('transform', 'translate(5,' + contig_info_y(4) + ')');
+
+            for (var i = 0; i < d.structure.length - 1; ++i) {
+                if (d.structure[i].type == "A") {
+                    text.append('text')
+                            .text('A: ' + get_position(d.structure[i].start.toString(), d.structure[i].end.toString()))
+                            .attr('transform', 'translate(20,' + contig_info_y(5 + i) + ')');
+                } else {
+                    text.append('text')
+                            .text('M:' + d.structure[i].mstype)
+                            .attr('transform', 'translate(20,' + contig_info_y(5 + i) + ')');
+                }
+            }
+        } else {
+            text.append('text')
+                    .text('Type: correct')
+                    .attr('transform', 'translate(5,' + contig_info_y(2) + ')');
+
+            text.append('text')
+                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()))
+                    .attr('transform', 'translate(5,' + contig_info_y(3) + ')');
+        }
+        text.transition().attr('opacity', 1);
+    }
 
     if (typeof coverage_data != 'undefined') {
         var XCS = x_mini,		// x coverage scale
                 YCS = d3.scale.log()
-                        .domain([Math.max(d3.max(coverage_data, function (d) {return d.sum}), 100) + 100, 1])
+                        .domain([Math.max(d3.max(coverage_data, function (d) {
+                            return d.sum
+                        }), 100) + 100, 1])
                         .range([0, .5 * coverageHeight]),
                 XCA = xMiniAxis,
                 YCA = d3.svg.axis()
@@ -808,13 +873,11 @@ THE SOFTWARE.
         for (var i = 0; i < coverage_data.length - 1; ++i) {
             if (coverage_data[i].sum > 0)
                 line += ['M', XCS(pos), YCS(coverage_data[i].sum), 'H', XCS(coverage_data[i].pos)].join(' ');
-            //else
-            //	line += ['M', XCS(pos), 200, 'H', XCS(coverage_data[i].pos)].join(' ');
             pos = coverage_data[i].pos
         }
 
         var not_covered_line = '',
-                not_covered_width = Math.max(width / XCS.domain()[1], .1);
+                not_covered_width = Math.max(chartWidth / XCS.domain()[1], .1);
 
         for (var i = 0; i < not_covered.length - 1; ++i) {
             not_covered_line += ['M', XCS(not_covered[i]), YCS(1), 'H', XCS(not_covered[i]) + not_covered_width].join(' ');
@@ -829,11 +892,11 @@ THE SOFTWARE.
                 .attr('class', 'notCovered')
                 .attr('d', not_covered_line);
         coverage.append('text')
-                .attr('transform', 'translate(' + (width / 2) + ',' +.7 * coverageHeight + ')')
+                .attr('transform', 'translate(' + (chartWidth / 2) + ',' + .7 * coverageHeight + ')')
                 .text('Genome, ' + miniTickValue);
         coverage.append('text')
                 .text('Coverage')
-                .attr('transform', 'rotate(90 -60, -35)');
+                .attr('transform', 'rotate(-90 20, 80)');
     }
 </script>
 </body>
