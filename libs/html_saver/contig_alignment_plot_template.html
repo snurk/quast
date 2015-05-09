@@ -320,7 +320,7 @@ THE SOFTWARE.
     var prev = undefined;
 
     if (typeof coverage_data != 'undefined') {
-        var x_cov_mini_S = x_mini,		// x coverage scale
+        var x_cov_mini_S = x_mini,      // x coverage scale
                 y_cov_mini_S = d3.scale.log()
                         .domain([Math.max(d3.max(coverage_data, function (d) {
                             return d;
@@ -350,9 +350,9 @@ THE SOFTWARE.
                 .call(x_cov_mini_A);
 
         var line = '',
-                l = coverage_data.length;
-        cov_mini_dots_amount = Math.min(500, l)
-        pos = 0,
+                l = coverage_data.length,
+                cov_mini_dots_amount = Math.min(500, l),
+                pos = 0,
                 step = l / cov_mini_dots_amount;
 
         for (var s, i = step; i < l; i += step) {
@@ -459,7 +459,7 @@ THE SOFTWARE.
 
         rects.select('.S')
                 .attr('width', function (d) {
-                    return x_main(Math.max(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
+                    return Math.max(x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
                 });
 
         rects.select('.R')
@@ -504,7 +504,7 @@ THE SOFTWARE.
                 .attr('transform', 'translate(2, 2)')
                 .attr('class', 'S')
                 .attr('width', function (d) {
-                    return x_main(Math.max(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
+                    return Math.max(x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
                 })
                 .attr('height', function (d) {
                     return mainLanesHegiht - 4;
@@ -737,7 +737,7 @@ THE SOFTWARE.
         contig_info_y.domain([1, n]);
         contig_info_y.range([20, n * 20]);
 
-        h = (d.misassembled == "True" ? contig_info_y(4 + d.structure.length) : contig_info_y(4));
+        h = (d.misassembled == "True" ? contig_info_y(5 + d.structure.length) : contig_info_y(4));
         contig_info.select('rect').transition()
                 .attr('height', h);
 
@@ -760,6 +760,8 @@ THE SOFTWARE.
         };
 
         if (d.misassembled == "True") {
+            showArrows(d);
+
             text.append('text')
                     .text('Type: misassembled')
                     .attr('transform', 'translate(5,' + contig_info_y(2) + ')');
@@ -772,7 +774,7 @@ THE SOFTWARE.
                     .text('Structure:')
                     .attr('transform', 'translate(5,' + contig_info_y(4) + ')');
 
-            for (var i = 0; i < d.structure.length - 1; ++i) {
+            for (var i = 0; i < d.structure.length; ++i) {
                 if (d.structure[i].type == "A") {
                     text.append('text')
                             .text('A: ' + get_position(d.structure[i].start.toString(), d.structure[i].end.toString()))
@@ -784,6 +786,7 @@ THE SOFTWARE.
                 }
             }
         } else {
+            showArrows(d);
             text.append('text')
                     .text('Type: correct')
                     .attr('transform', 'translate(5,' + contig_info_y(2) + ')');
@@ -793,6 +796,36 @@ THE SOFTWARE.
                     .attr('transform', 'translate(5,' + contig_info_y(3) + ')');
         }
         text.transition().attr('opacity', 1);
+    }
+
+    function showArrows(d) {
+        var arrow = "M0,101.08h404.308L202.151,303.229L0,101.08z";
+
+        mini.selectAll('.arrow').remove();
+        var y = y_mini(d.lane) - 1;
+
+        if (d.misassembled == "True") {
+            for (var i = 0; i < d.structure.length; ++i) {
+                var e = d.structure[i];
+                if (e.type == "A" && !(e.start == d.start && e.end == d.end)) {
+                    mini.append('g')
+                            .attr('transform', 'translate(' + (x_mini(e.end + e.start) / 2 - 4.03) + ',' + y + ')')
+                            .attr('class', 'arrow')
+                            .append('path')
+                            .attr('d', arrow)
+                            .attr('transform', 'scale(0.02)')
+                            .attr('fill', 'cyan');
+                }
+            }
+        }
+
+        mini.append('g')
+                .attr('transform', 'translate(' + (x_mini(d.end + d.start) / 2 - 4.03) + ',' + y + ')')
+                .attr('class', 'arrow')
+                .append('path')
+                .attr('d', arrow)
+                .attr('transform', 'scale(0.02)');
+
     }
 
 </script>

@@ -1,4 +1,9 @@
-.COV .COV .y {
+.mini .arrow {
+    stroke: black;
+    stroke-width: 50;
+}
+
+.COV .y {
     font: 12px sans-serif;
 }
 
