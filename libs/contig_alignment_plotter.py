@@ -682,66 +682,65 @@ def javascript_generator(assemblies, output_dir_path, cov_fpath):
         result.write('"use strict";\n')
 
         # adding assembly data
-        result.write('var contig_data = [')
+        # print('adding assembly data')
 
+        data_str = 'var contig_data = ['
         for assembly in assemblies.assemblies:
             for alignment in assembly.alignments:
-                data = '{{name: "{alignment.name}", start: {alignment.start}, end: {alignment.end}, assembly: "{assembly.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}", order: {alignment.order}'.format(**locals())
+                data_str += '{{name: "{alignment.name}", start: {alignment.start}, end: {alignment.end}, assembly: "{assembly.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}", order: {alignment.order} '.format(**locals())
                 if alignment.misassembled:
-                    data += ', structure: ['
+                    data_str += ', structure: ['
                     for el in alignment.misassembled_structure:
                         if type(el) == list:
-                            data += '{{ type: "A", start: {el[0]}, end: {el[1]} }}, '.format(**locals())
+                            data_str += '{{type: "A", start: {el[0]}, end: {el[1]}}},'.format(**locals())
                         elif type(el) == str:
-                            data += '{{ type: "M", mstype: "{el}" }}, '.format(**locals())
-                    data +='{}]'
+                            data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
+                    data_str = data_str[: -1] + ']' + '.'
+                data_str = data_str[: -1] + '},'
+        data_str = data_str[: -1] + '];\n\n'
 
-                data += '},\n'
-                result.write(data)
-
-        result.write('\
-{{}}];\n\
-\n\
-var assemblies_num = {};\n\
-\n'.format(len(assemblies.assemblies)))
+        result.write(data_str)
 
         # adding coverage data
+        #print('adding coverage data')
+
         if cov_fpath:
+            data_str = str()
             with open(cov_fpath, 'r') as coverage:
-                cov_data = list(coverage.read().split())
+                cov_data = []
+                not_covered = []
+                for line in coverage:
+                    c = list(line.split())
+                    cov_data.append(c[1])
+                    if c[1] == '0':
+                        not_covered.append(c[0])
 
-            POINTS_COUNT = 500
-            not_covered = []
+            cov_data = cov_data[1: -1]
+            not_covered = not_covered[1: -1]
 
-            cov_data = cov_data[2: -2]
-            block_size = cov_data.__len__() // POINTS_COUNT
-            block_counter = 0
-            res_data = []
-            sm = 0
+            #print('step 1')
+            data_str = 'var coverage_data = ['
+            for e in cov_data:
+                data_str += '{e},'.format(**locals())
+                if len(data_str) > 10000 and e != cov_data[-1]:
+                    result.write(data_str)
+                    data_str = ''
+            data_str = data_str[:-1] + '];\n'
 
-            for pos, count in enumerate(cov_data):
-                if pos % 2:
-                    pos = pos // 2 + 1
-                    if count == '0':
-                        not_covered.append(pos)
-                    block_counter = (block_counter + 1) % block_size
-                    sm += int(count)
-                    if block_counter == 0:
-                        res_data.append([pos, sm / block_size])
-                        sm = 0
+            result.write(data_str)
 
-            if block_counter != 0:
-                res_data.append([pos, sm / block_counter])
+            # print('step 2')
+            data_str = 'var not_covered = ['
+            if (len(not_covered) > 0):
+                for e in not_covered:
+                    data_str += '{e},'.format(**locals())
+                    if len(data_str) > 10000 and e != cov_data[-1]:
+                        result.write(data_str)
+                        data_str = ''
+                data_str = data_str[:-1]
+            data_str += '];\n'
 
-            result.write('var coverage_data = [\n')
-            for e in res_data:
-                result.write('{{pos: {e[0]}, sum: {e[1]}}},\n'.format(**locals()))
-            result.write('{pos: 0, sum: 0}];\n\n')
-
-            result.write('var not_covered = [\n')
-            for e in not_covered:
-                result.write('{e},\n'.format(**locals()))
-            result.write('0];\n')
+            result.write(data_str)
 
         with open(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_data_template.js')), 'r') \
                 as template:
@@ -749,5 +748,7 @@ var assemblies_num = {};\n\
 
     copyfile(html_saver.get_real_path('contig_alignment_plot_template.html'),
              os.path.join(output_dir_path, 'contig_alignment_plot.html'))
+    copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),
+             os.path.join(output_dir_path, 'contig_alignment_plot.css'))
     copyfile(html_saver.get_real_path(os.path.join('static', 'd3.js')),
              os.path.join(output_dir_path, 'd3.js'))

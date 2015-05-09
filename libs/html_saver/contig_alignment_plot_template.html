@@ -28,191 +28,6 @@ THE SOFTWARE.
     <script type="text/javascript" src="d3.js"></script>
     <!-- <script type="text/javascript" src="http://mbostock.github.com/d3/d3.v2.js"></script> -->
     <script type="text/javascript" src="contig_alignment_plot_data.js"></script>
-    <style>
-        .menu {
-            fill: rgb(100, 200, 200);
-            stroke: rgb(200, 200, 200);
-            stroke-width: 10px;
-        }
-
-        .forText {
-            fill: white;
-            background-color: white;
-            stroke-width: 0;
-        }
-
-        .menu .T text {
-            font: 26px sans-serif;
-            fill: rgb(100, 100, 100);
-            font-weight: bold;
-        }
-
-        .menu .info text {
-            font: 10px sans-serif;
-            fill: rgb(100, 100, 100)
-        }
-
-        .coverage text {
-            font: 16px sans-serif;
-        }
-
-        .coverage .x path, .x line, .y path, .y line {
-            fill: none;
-            stroke: black;
-            stroke-width: 1px;
-        }
-
-        .coverage .y text, .x text {
-            font: 12px sans-serif;
-        }
-
-        .coverage .covered {
-            stroke: rgb(240, 10, 10);
-            stroke-width: 3px;
-            fill: none;
-        }
-
-        .coverage .notCovered {
-            stroke: rgb(10, 10, 240);
-            stroke-width: 3px;
-            fill: none;
-        }
-
-        #info > g > text {
-            font: 14px arial;
-            font-weight: bolder;
-            fill: white;
-            stroke-width: 0px;
-        }
-
-        #info {
-            fill: rgb(240, 240, 240);
-            stroke-width: 1px;
-            stroke: black
-        }
-
-        #info text {
-            fill: black;
-            stroke-width: 0px;
-            font: 12px arial;
-        }
-
-        .chart {
-            shape-rendering: crispEdges;
-        }
-
-        .mini text {
-            font: 9px sans-serif;
-        }
-
-        .main text {
-            font: 12px sans-serif;
-        }
-
-        .mainItem text {
-            fill: black;
-            stroke-width: 0;
-        }
-
-        .axis line, .axis path {
-            stroke: black;
-        }
-
-        .mainItem {
-            stroke-width: .2;
-            stroke: white;
-        }
-
-        .mainItem .S {
-            fill: white;
-        }
-
-        .mainItem.correct.similar.odd {
-            fill: #377eb8;
-        }
-
-        .mainItem.correct.similar {
-            fill: #576e88;
-        }
-
-        .mainItem.correct.odd {
-            fill: #4daf4a;
-        }
-
-        .mainItem.correct {
-            fill: #40cf40;
-        }
-
-        .mainItem.misassembled.similar.odd {
-            fill: #ff7500;
-        }
-
-        .mainItem.misassembled.similar {
-            fill: #e09110;
-        }
-
-        .mainItem.misassembled.odd .R {
-            fill: #e41a1c;
-        }
-
-        .mainItem.misassembled {
-            fill: #b82525;
-        }
-
-        .miniItem.correct.similar.odd {
-            stroke-width: 10;
-            stroke: #377eb8;
-            fill: #377eb8;
-        }
-
-        .miniItem.correct.similar {
-            stroke-width: 10;
-            stroke: #576e88;
-            fill: #576e88;
-        }
-
-        .miniItem.correct.odd {
-            stroke-width: 10;
-            stroke: #4daf4a;
-            fill: #4daf4a;
-        }
-
-        .miniItem.correct {
-            stroke-width: 10;
-            stroke: #40cf40;
-            fill: #40cf40;
-        }
-
-        .miniItem.misassembled.similar.odd {
-            stroke-width: 10;
-            stroke: #ff7500;
-            fill: #ff7500;
-        }
-
-        .miniItem.misassembled.similar {
-            stroke-width: 10;
-            stroke: #e09110;
-            fill: #e09110;
-        }
-
-        .miniItem.misassembled.odd {
-            stroke-width: 10;
-            stroke: #e41a1c;
-            fill: #e41a1c;
-        }
-
-        .miniItem.misassembled {
-            stroke-width: 10;
-            stroke: #b82525;
-            fill: #b82525;
-        }
-
-        .brush .extent {
-            stroke: gray;
-            fill: yellow;
-            fill-opacity: .165;
-        }
-    </style>
     <link href="contig_alignment_plot.css" rel="stylesheet"/>
 
 </head>
@@ -234,12 +49,12 @@ THE SOFTWARE.
             lanesInterval = 20,
             miniScale = 50,
             mainScale = 50,
-            width = 800 + 240 + 50
+            width = 800 + 240 + 50,
             chartWidth = 800,
             miniHeight = lanes.length * miniLanesHeight,
             mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
             coverageHeight = 250;
-    height = Math.max(mainHeight + coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top, 500);
+    height = Math.max(mainHeight + 2 * coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top, 500);
 
     var x_mini = d3.scale.linear()
             .domain([0, d3.max(items, function (d) {
@@ -504,6 +319,95 @@ THE SOFTWARE.
     var selected_id;
     var prev = undefined;
 
+    if (typeof coverage_data != 'undefined') {
+        var x_cov_mini_S = x_mini,		// x coverage scale
+                y_cov_mini_S = d3.scale.log()
+                        .domain([Math.max(d3.max(coverage_data, function (d) {
+                            return d;
+                        }), 100) + 100, 1])
+                        .range([0, .5 * coverageHeight]),
+                x_cov_mini_A = xMiniAxis,
+                y_cov_mini_A = d3.svg.axis()
+                        .scale(y_cov_mini_S)
+                        .orient('left')
+                        .ticks(4)
+                        .tickSize(2, 0),
+                mini_cov = chart.append('g')
+                        .attr('class', 'coverage')
+                        .attr('transform', 'translate(' + margin.left + ', ' + (mainHeight +
+                        miniHeight +
+                        lanesInterval +
+                        miniScale +
+                        mainScale) + ')');
+
+        mini_cov.append('g')
+                .attr('class', 'y')
+                .call(y_cov_mini_A);
+
+        mini_cov.append('g')
+                .attr('transform', 'translate(0, ' + (.5 * coverageHeight) + ')')
+                .attr('class', 'x')
+                .call(x_cov_mini_A);
+
+        var line = '',
+                l = coverage_data.length;
+        cov_mini_dots_amount = Math.min(500, l)
+        pos = 0,
+                step = l / cov_mini_dots_amount;
+
+        for (var s, i = step; i < l; i += step) {
+            s = d3.sum(coverage_data.slice(pos, i), function (d) { return d }) / step;
+            if (s >= 1)
+                line += ['M', x_cov_mini_S(pos), y_cov_mini_S(s), 'H', x_cov_mini_S(i)].join(' ');
+            pos = i;
+        }
+
+        var not_covered_line = '',
+                not_covered_width = Math.max(chartWidth / x_cov_mini_S.domain()[1], .1);
+
+        for (var i = 0; i < not_covered.length; ++i) {
+            not_covered_line += ['M', x_cov_mini_S(not_covered[i]), y_cov_mini_S(1), 'H', x_cov_mini_S(not_covered[i]) + not_covered_width].join(' ');
+        }
+
+        mini_cov.append('g')
+                .append('path')
+                .attr('class', 'covered')
+                .attr('d', line);
+        mini_cov.append('g')
+                .append('path')
+                .attr('class', 'notCovered')
+                .attr('d', not_covered_line);
+        mini_cov.append('text')
+                .attr('transform', 'translate(' + (chartWidth / 2) + ',' + .7 * coverageHeight + ')')
+                .text('Genome, ' + miniTickValue);
+        mini_cov.append('text')
+                .text('Coverage')
+                .attr('transform', 'rotate(-90 20, 80)');
+
+// draw main coverage
+        var y_cov_main_S = y_cov_mini_S;
+
+        var y_cov_main_A = y_cov_mini_A;
+
+        var x_cov_main_A = xMainAxis;
+
+        main_cov = chart.append('g')
+                .attr('class', 'COV')
+                .attr('transform', 'translate(' + margin.left + ', ' + (mainHeight +
+                miniHeight +
+                lanesInterval +
+                miniScale +
+                mainScale + 200) + ')');
+        main_cov.append('g')
+                .attr('class', 'x')
+                .attr('transform', 'translate(0, ' +.5 * coverageHeight + ')')
+                .call(x_cov_main_A);
+        main_cov.append('g')
+                .attr('class', 'y')
+                .attr('transform', 'translate(0, 0)')
+                .call(y_cov_main_A);
+    }
+
     display();
 
     function display() {
@@ -555,7 +459,7 @@ THE SOFTWARE.
 
         rects.select('.S')
                 .attr('width', function (d) {
-                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4;
+                    return x_main(Math.max(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
                 });
 
         rects.select('.R')
@@ -600,13 +504,13 @@ THE SOFTWARE.
                 .attr('transform', 'translate(2, 2)')
                 .attr('class', 'S')
                 .attr('width', function (d) {
-                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4;
+                    return x_main(Math.max(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
                 })
                 .attr('height', function (d) {
                     return mainLanesHegiht - 4;
                 })
                 .attr('opacity', function (d) {
-                    return (d.id == selected_id ?.5 : 0);
+                    return (d.id == selected_id ? .5 : 0);
                 });
 
         other.on('click', function A(d, i) {
@@ -625,6 +529,55 @@ THE SOFTWARE.
                 .attr('transform', 'translate(10, ' + 20 + ')');
 
         rects.exit().remove();
+
+        // upd coverage
+        if (typeof coverage_data != 'undefined') {
+            main_cov.select('.covered').remove();
+            main_cov.select('.notCovered').remove();
+
+            x_cov_main_A = xMainAxis;
+            main_cov.select('.x').call(x_cov_main_A);
+
+            var line = '',
+                    l = maxExtent - minExtent,
+                    cov_main_dots_amount = Math.min(500, l),
+                    step = Math.ceil(l / cov_main_dots_amount);
+
+            var y_max = 1;
+            for (var s, i = minExtent; i + step <= maxExtent; i += step) {
+                s = d3.sum(coverage_data.slice(i, i + step), function (d) { return d }) / step;
+                y_max = Math.max(y_max, s);
+            }
+
+            y_cov_main_S.domain([y_max + 100, 1]);
+            y_cov_main_A.scale(y_cov_main_S);
+            main_cov.select('.y').call(y_cov_main_A);
+
+            for (var s, i = minExtent; i + step <= maxExtent; i += step) {
+                s = d3.sum(coverage_data.slice(i, i + step), function (d) { return d }) / step;
+                if (s >= 1)
+                    line += ['M', x_main(i), y_cov_main_S(s), 'H', x_main(i + step)].join(' ');
+            }
+
+            var not_covered_line = '',
+                    not_covered_width = Math.max(chartWidth / (maxExtent - minExtent + 1), .1);
+
+            var vnc = not_covered.filter(function (d) {
+                    if (minExtent <= d  && d <= maxExtent) return d;
+            });
+            for (var i = 0; i < vnc.length; ++i) {
+                not_covered_line += ['M', x_main(vnc[i]), y_cov_main_S(1), 'H', x_main(vnc[i]) + not_covered_width].join(' ');
+            }
+
+            main_cov.append('g')
+                    .attr('class', 'covered')
+                    .append('path')
+                    .attr('d', line);
+            main_cov.append('g')
+                    .attr('class', 'notCovered')
+                    .append('path')
+                    .attr('d', not_covered_line);
+        }
     }
 
     function moveBrush() {
@@ -736,7 +689,7 @@ THE SOFTWARE.
         return size;
     }
 
-    function glow(d, i) {
+    function glow() {
         d3.select(this)
                 .transition()
                 .style({'opacity': .5})
@@ -842,62 +795,6 @@ THE SOFTWARE.
         text.transition().attr('opacity', 1);
     }
 
-    if (typeof coverage_data != 'undefined') {
-        var XCS = x_mini,		// x coverage scale
-                YCS = d3.scale.log()
-                        .domain([Math.max(d3.max(coverage_data, function (d) {
-                            return d.sum
-                        }), 100) + 100, 1])
-                        .range([0, .5 * coverageHeight]),
-                XCA = xMiniAxis,
-                YCA = d3.svg.axis()
-                        .scale(YCS)
-                        .orient('left')
-                        .ticks(4)
-                        .tickSize(2, 0),
-                coverage = chart.append('g')
-                        .attr('class', 'coverage')
-                        .attr('transform', 'translate(' + margin.left + ', ' + (mainHeight + miniHeight + lanesInterval + miniScale + mainScale) + ')');
-
-        coverage.append('g')
-                .attr('class', 'y')
-                .call(YCA);
-
-        coverage.append('g')
-                .attr('transform', 'translate(0, ' + (.5 * coverageHeight) + ')')
-                .attr('class', 'x')
-                .call(XCA);
-
-        var line = '',
-                pos = 0;
-        for (var i = 0; i < coverage_data.length - 1; ++i) {
-            if (coverage_data[i].sum > 0)
-                line += ['M', XCS(pos), YCS(coverage_data[i].sum), 'H', XCS(coverage_data[i].pos)].join(' ');
-            pos = coverage_data[i].pos
-        }
-
-        var not_covered_line = '',
-                not_covered_width = Math.max(chartWidth / XCS.domain()[1], .1);
-
-        for (var i = 0; i < not_covered.length - 1; ++i) {
-            not_covered_line += ['M', XCS(not_covered[i]), YCS(1), 'H', XCS(not_covered[i]) + not_covered_width].join(' ');
-        }
-
-        coverage.append('g')
-                .append('path')
-                .attr('class', 'covered')
-                .attr('d', line);
-        coverage.append('g')
-                .append('path')
-                .attr('class', 'notCovered')
-                .attr('d', not_covered_line);
-        coverage.append('text')
-                .attr('transform', 'translate(' + (chartWidth / 2) + ',' + .7 * coverageHeight + ')')
-                .text('Genome, ' + miniTickValue);
-        coverage.append('text')
-                .text('Coverage')
-                .attr('transform', 'rotate(-90 20, 80)');
-    }
 </script>
 </body>
 </html>

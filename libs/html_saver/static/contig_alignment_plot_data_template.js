@@ -7,7 +7,7 @@
 		var parseData = function (data) {
 			chart = { assemblies: {} };
 
-			for (var i = 0; i < data.length - 1; i++) {
+			for (var i = 0; i < data.length; i++) {
 				if (!chart.assemblies[data[i].assembly])
 					chart.assemblies[data[i].assembly] = [];
 

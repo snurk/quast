@@ -1,0 +1,202 @@
+.COV .COV .y {
+    font: 12px sans-serif;
+}
+
+.COV .x path {
+    stroke: black;
+    stroke-width: 1px;
+}
+
+.COV .covered path {
+    fill: none;
+    stroke: rgb(240, 10, 10);
+    stroke-width: 3px;
+}
+
+.COV .notCovered path {
+    stroke: blue;
+    stroke-width: 5px;
+}
+.menu {
+    fill: rgb(100, 200, 200);
+    stroke: rgb(200, 200, 200);
+    stroke-width: 10px;
+}
+
+.forText {
+    fill: white;
+    background-color: white;
+    stroke-width: 0;
+}
+
+.menu .T text {
+    font: 26px sans-serif;
+    fill: rgb(100, 100, 100);
+    font-weight: bold;
+}
+
+.menu .info text {
+    font: 10px sans-serif;
+    fill: rgb(100, 100, 100)
+}
+
+.coverage text {
+    font: 16px sans-serif;
+}
+
+.coverage .x path, .x line, .y path, .y line {
+    fill: none;
+    stroke: black;
+    stroke-width: 1px;
+}
+
+.coverage .y text, .x text {
+    font: 12px sans-serif;
+}
+
+.coverage .covered {
+    stroke: rgb(240, 10, 10);
+    stroke-width: 3px;
+    fill: none;
+}
+
+.coverage .notCovered {
+    stroke: rgb(10, 10, 240);
+    stroke-width: 3px;
+    fill: none;
+}
+
+#info > g > text {
+    font: 14px arial;
+    font-weight: bolder;
+    fill: white;
+    stroke-width: 0px;
+}
+
+#info {
+    fill: rgb(240, 240, 240);
+    stroke-width: 1px;
+    stroke: black
+}
+
+#info text {
+    fill: black;
+    stroke-width: 0px;
+    font: 12px arial;
+}
+
+.chart {
+    shape-rendering: crispEdges;
+}
+
+.mini text {
+    font: 9px sans-serif;
+}
+
+.main text {
+    font: 12px sans-serif;
+}
+
+.mainItem text {
+    fill: black;
+    stroke-width: 0;
+}
+
+.axis line, .axis path {
+    stroke: black;
+}
+
+.mainItem {
+    stroke-width: .2;
+    stroke: white;
+}
+
+.mainItem .S {
+    fill: white;
+}
+
+.mainItem.correct.similar.odd {
+    fill: #377eb8;
+}
+
+.mainItem.correct.similar {
+    fill: #576e88;
+}
+
+.mainItem.correct.odd {
+    fill: #4daf4a;
+}
+
+.mainItem.correct {
+    fill: #40cf40;
+}
+
+.mainItem.misassembled.similar.odd {
+    fill: #ff7500;
+}
+
+.mainItem.misassembled.similar {
+    fill: #e09110;
+}
+
+.mainItem.misassembled.odd .R {
+    fill: #e41a1c;
+}
+
+.mainItem.misassembled {
+    fill: #b82525;
+}
+
+.miniItem.correct.similar.odd {
+    stroke-width: 10;
+    stroke: #377eb8;
+    fill: #377eb8;
+}
+
+.miniItem.correct.similar {
+    stroke-width: 10;
+    stroke: #576e88;
+    fill: #576e88;
+}
+
+.miniItem.correct.odd {
+    stroke-width: 10;
+    stroke: #4daf4a;
+    fill: #4daf4a;
+}
+
+.miniItem.correct {
+    stroke-width: 10;
+    stroke: #40cf40;
+    fill: #40cf40;
+}
+
+.miniItem.misassembled.similar.odd {
+    stroke-width: 10;
+    stroke: #ff7500;
+    fill: #ff7500;
+}
+
+.miniItem.misassembled.similar {
+    stroke-width: 10;
+    stroke: #e09110;
+    fill: #e09110;
+}
+
+.miniItem.misassembled.odd {
+    stroke-width: 10;
+    stroke: #e41a1c;
+    fill: #e41a1c;
+}
+
+.miniItem.misassembled {
+    stroke-width: 10;
+    stroke: #b82525;
+    fill: #b82525;
+}
+
+.brush .extent {
+    stroke: gray;
+    fill: yellow;
+    fill-opacity: .165;
+}
