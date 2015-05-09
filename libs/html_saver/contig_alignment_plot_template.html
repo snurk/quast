@@ -330,7 +330,11 @@ THE SOFTWARE.
                 y_cov_mini_A = d3.svg.axis()
                         .scale(y_cov_mini_S)
                         .orient('left')
-                        .ticks(4)
+                        .tickValues(y_cov_mini_S.ticks().filter(function (d) {
+                            var i = 0;
+                            for (; Math.pow(10, i) < d; ++i);
+                            if (d == Math.pow(10, i) && d <= y_cov_mini_S.domain()[0]) return d;
+                        }))
                         .tickSize(2, 0),
                 mini_cov = chart.append('g')
                         .attr('class', 'coverage')
@@ -387,7 +391,17 @@ THE SOFTWARE.
 // draw main coverage
         var y_cov_main_S = y_cov_mini_S;
 
-        var y_cov_main_A = y_cov_mini_A;
+        var y_cov_main_vals = function (d) {
+            var i = 0;
+            for (; Math.pow(10, i) < d; ++i);
+            if (d == Math.pow(10, i) && d <= y_cov_main_S.domain()[0]) return d;
+        };
+
+        var y_cov_main_A = y_cov_mini_A = d3.svg.axis()
+                .scale(y_cov_main_S)
+                .orient('left')
+                .tickValues(y_cov_main_S.ticks().filter(y_cov_main_vals))
+                .tickSize(2, 0);
 
         var x_cov_main_A = xMainAxis;
 
@@ -551,6 +565,7 @@ THE SOFTWARE.
 
             y_cov_main_S.domain([y_max + 100, 1]);
             y_cov_main_A.scale(y_cov_main_S);
+            y_cov_main_A.tickValues(y_cov_main_S.ticks().filter(y_cov_main_vals));
             main_cov.select('.y').call(y_cov_main_A);
 
             for (var s, i = minExtent; i + step <= maxExtent; i += step) {
