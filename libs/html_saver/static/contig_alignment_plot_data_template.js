@@ -2,7 +2,7 @@
 
 (function() {
 
-	var ContigData = function() {
+	var ContigData = function(chromosome) {
 
 		var parseData = function (data) {
 			chart = { assemblies: {} };
@@ -50,11 +50,13 @@
 					});
 
 					for (var j = 0; j < subLane.length; j++) {
-						var item = subLane[j];
-						item.lane = laneId;
-						item.id = itemId;
-						items.push(item);
-						itemId++;
+					    var item = subLane[j];
+						if (item.name != 'FICTIVE') {
+						    item.lane = laneId;
+						    item.id = itemId;
+						    items.push(item);
+						    itemId++;
+						}
 					}
 
 					laneId++;
@@ -65,7 +67,7 @@
 		};
 
 		// return parseData(generateRandomWorkItems());
-		return parseData(contig_data);
+		return parseData(contig_data[chromosome]);
 	};
 
 	/**

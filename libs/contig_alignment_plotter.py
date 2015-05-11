@@ -561,7 +561,7 @@ def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, s
 
     v = Visualizer(assemblies, coverage_hist, settings, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift)
     v.visualize()
-    return (v.save(output_fpath), assemblies)
+    return v.save(output_fpath), assemblies
 
 
 def make_output_dir(output_dir_path):
@@ -577,8 +577,10 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
 
     total_genome_size = 0
     reference_chromosomes = dict()
+    chr_names = []
     for name, seq in fastaparser.read_fasta(ref_fpath):
         chr_name = name.split()[0]
+        chr_names.append(chr_name)
         chr_len = len(seq)
         total_genome_size += chr_len
         reference_chromosomes[chr_name] = chr_len
@@ -595,13 +597,15 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
         aligned_blocks = parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_lengths)
         if aligned_blocks is None:
             return None
+        for block in aligned_blocks:
+            block.label = qutils.name_from_fpath(contigs_fpath)
         lists_of_aligned_blocks.append(aligned_blocks)
 
     plot_fpath, assemblies = draw_alignment_plot(
         contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift, output_dirpath,
         lists_of_aligned_blocks, arcs, similar, coverage_hist)
 
-    javascript_generator(assemblies, output_dirpath, cov_fpath)
+    js_data_gen(assemblies, contigs_fpaths, chr_names, reference_chromosomes, output_dirpath, cov_fpath)
 
     return plot_fpath
 
@@ -657,8 +661,10 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                     logger.warning('reference name ' + ref_name + ' not found in file with reference!\nCannot draw contig alignment plot!')
                     return None
             elif split_line and split_line[0] == 'Align':
-                start = int(split_line[2]) + cur_shift
-                end = int(split_line[3]) + cur_shift
+                unshifted_start = int(split_line[2])
+                unshifted_end = int(split_line[3])
+                start = unshifted_start + cur_shift
+                end = unshifted_end + cur_shift
                 contig_id = split_line[4]
                 start_in_contig = int(split_line[5])
                 end_in_contig = int(split_line[6])
@@ -667,6 +673,9 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 block = Alignment(
                     contig_id, start, end, is_rc,
                     position_in_conitg = min(start_in_contig, end_in_contig))
+                block.unshifted_start = unshifted_start
+                block.unshifted_end = unshifted_end
+                block.ref_name = ref_name
 
                 if contig_id in misassembled_contigs_ids:
                     block.misassembled = True
@@ -677,77 +686,132 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
     return aligned_blocks
 
 
-def javascript_generator(assemblies, output_dir_path, cov_fpath):
+def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, output_dir_path, cov_fpath):
     with open(os.path.join(output_dir_path, 'contig_alignment_plot_data.js'), 'w') as result:
         result.write('"use strict";\n')
 
-        # adding assembly data
-        # print('adding assembly data')
-
-        data_str = 'var contig_data = ['
-        for assembly in assemblies.assemblies:
-            for alignment in assembly.alignments:
-                data_str += '{{name: "{alignment.name}", start: {alignment.start}, end: {alignment.end}, assembly: "{assembly.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}", order: {alignment.order} '.format(**locals())
-                if alignment.misassembled:
-                    data_str += ', structure: ['
-                    for el in alignment.misassembled_structure:
-                        if type(el) == list:
-                            data_str += '{{type: "A", start: {el[0]}, end: {el[1]}}},'.format(**locals())
-                        elif type(el) == str:
-                            data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
-                    data_str = data_str[: -1] + ']' + '.'
-                data_str = data_str[: -1] + '},'
-        data_str = data_str[: -1] + '];\n\n'
-
+        data_str = 'var chromosomes_len = {};\n'
+        for chr in chr_names:
+            l = chromosomes_length[chr]
+            data_str += 'chromosomes_len["{chr}"] = {l};\n'.format(**locals())
         result.write(data_str)
 
+        # adding assembly data
+        chr_to_aligned_blocks = dict()
+        for chr in chr_names:
+            chr_init = []
+            for fpath in contigs_fpaths:
+                f = Alignment('FICTIVE', 0, 0, False, 0)
+                f.label = qutils.label_from_fpath(fpath)
+                f.unshifted_start = 0
+                f.unshifted_end = 0
+                chr_init.append(f)
+            chr_to_aligned_blocks.setdefault(chr, chr_init)
+        for assembly in assemblies.assemblies:
+            for align in assembly.alignments:
+                chr_to_aligned_blocks[align.ref_name].append(align)
+
+        data_str = 'var contig_data = {};\n'
+        for chr in chr_names:
+            data_str += 'contig_data["{chr}"] = ['.format(**locals())
+            if (len(chr_to_aligned_blocks[chr]) > 0):
+                for alignment in chr_to_aligned_blocks[chr]:
+                    data_str += '{{name: "{alignment.name}", start: {alignment.unshifted_start}, end: {alignment.unshifted_end}, assembly: "{alignment.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}", order: {alignment.order} '.format(**locals())
+                    if alignment.misassembled:
+                        data_str += ', structure: ['
+                        for el in alignment.misassembled_structure:
+                            if type(el) == list:
+                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}}},'.format(**locals())
+                            elif type(el) == str:
+                                data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
+                        data_str = data_str[: -1] + ']' + '.'
+                    data_str = data_str[: -1] + '},'
+                data_str = data_str[: -1] + '];\n\n'
+                result.write(data_str)
+                data_str = ''
+            else:
+                data_str = data_str + '];\n\n'
+                result.write(data_str)
+
         # adding coverage data
-        #print('adding coverage data')
 
         if cov_fpath:
-            data_str = str()
             with open(cov_fpath, 'r') as coverage:
-                cov_data = []
-                not_covered = []
+                name = chr_names[0]
+                cov_data = dict()
+                not_covered = dict()
+                for chr in chr_names:
+                    cov_data.setdefault(chr, [])
+                    not_covered.setdefault(chr, [])
+
                 for line in coverage:
-                    c = list(line.split())
-                    cov_data.append(c[1])
-                    if c[1] == '0':
-                        not_covered.append(c[0])
+                    if line[0] == '>':
+                        if (name != chr_names[0]):
+                            cov_data[name] = cov_data[name][1: -1]
+                            not_covered[name] = not_covered[name][1: -1]
+                        name = qutils.correct_name(line[1:])
+                    else:
+                        c = list(line.split())
+                        cov_data[name].append(c[1])
+                        if c[1] == '0':
+                            not_covered[name].append(c[0])
+            cov_data[name] = cov_data[name][1: -1]
+            not_covered[name] = not_covered[name][1: -1]
 
-            cov_data = cov_data[1: -1]
-            not_covered = not_covered[1: -1]
-
-            #print('step 1')
-            data_str = 'var coverage_data = ['
-            for e in cov_data:
-                data_str += '{e},'.format(**locals())
-                if len(data_str) > 10000 and e != cov_data[-1]:
-                    result.write(data_str)
-                    data_str = ''
-            data_str = data_str[:-1] + '];\n'
-
-            result.write(data_str)
-
-            # print('step 2')
-            data_str = 'var not_covered = ['
-            if (len(not_covered) > 0):
-                for e in not_covered:
+            data_str = 'var coverage_data = {};\n'
+            for chr in chr_names:
+                data_str += 'coverage_data["{chr}"] = ['.format(**locals())
+                for e in cov_data[chr]:
                     data_str += '{e},'.format(**locals())
-                    if len(data_str) > 10000 and e != cov_data[-1]:
+                    if len(data_str) > 10000 and e != cov_data[chr][-1]:
                         result.write(data_str)
                         data_str = ''
-                data_str = data_str[:-1]
-            data_str += '];\n'
+                data_str = data_str[:-1] + '];\n'
+                result.write(data_str)
+                data_str = ''
 
-            result.write(data_str)
+            data_str = 'var not_covered = {};\n'
+            for chr in chr_names:
+                data_str += 'not_covered["{chr}"] = ['.format(**locals())
+                if (len(not_covered[chr]) > 0):
+                    for e in not_covered[chr]:
+                        data_str += '{e},'.format(**locals())
+                        if len(data_str) > 10000 and e != cov_data[chr][-1]:
+                            result.write(data_str)
+                            data_str = ''
+                    data_str = data_str[:-1]
+                data_str += '];\n'
+                result.write(data_str)
+                data_str = ''
 
         with open(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_data_template.js')), 'r') \
                 as template:
             result.write(template.read())
 
-    copyfile(html_saver.get_real_path('contig_alignment_plot_template.html'),
-             os.path.join(output_dir_path, 'contig_alignment_plot.html'))
+        for i, chr in enumerate(chr_names):
+            with open(html_saver.get_real_path('_chr_templ.html'), 'r') as template:
+                with open(os.path.join(output_dir_path, '_chr{i}.html'.format(**locals())), 'w') as result:
+                    for line in template:
+                        if line.find('</body>') != -1:
+                            p = os.path.join(output_dir_path, 'alignment_summary.html')
+                            result.write('<a href="{p}"><div class="ref back">BACK</div></a>'.format(**locals()))
+                        result.write(line)
+                        if line.find('<body>') != -1:
+                            t = str(chr).replace('_', ' ')
+                            result.write('<div id = "title">{t}</div>\n'.format(**locals()))
+                        if line.find('<script type="text/javascript">') != -1:
+                            result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))
+
+        with open(html_saver.get_real_path('alignment_summary_templ.html'), 'r') as template:
+            with open(os.path.join(output_dir_path, 'alignment_summary.html'), 'w') as result:
+                for line in template:
+                    result.write(line)
+                    if line.find('<!--- references: ---->') != -1:
+                        for i, chr in enumerate(chr_names):
+                            p = os.path.join(output_dir_path, '_chr{i}.html'.format(**locals()))
+                            t = str(chr).replace('_', ' ')
+                            result.write('<a href="{p}" target="_blank"><div class="ref">{t}</div></a>'.format(**locals()))
+
     copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),
              os.path.join(output_dir_path, 'contig_alignment_plot.css'))
     copyfile(html_saver.get_real_path(os.path.join('static', 'd3.js')),

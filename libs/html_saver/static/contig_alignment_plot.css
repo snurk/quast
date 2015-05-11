@@ -1,3 +1,40 @@
+#title {
+    text-align: center;
+    font: 20px sans-serif;
+    font-weight: bold;
+    color: white;
+
+    padding: 5px;
+    margin: 5px;
+    border: 10px rgb(200, 200, 200) solid;
+    background: darkcyan;
+}
+
+#subtitle {
+    font: 10px sans-serif;
+}
+
+.ref {
+    font: 14px sans-serif;
+    color: white;
+    width: 80%;
+    padding: 5px;
+    padding-left: 10px;
+    margin: 15px;
+    border: 5px rgb(200, 200, 200) solid;
+    background: darkcyan;
+}
+
+a {
+    text-decoration: none;
+}
+
+.ref.back {
+  text-align: center;
+  width: 50px;
+  padding: 5px;
+}
+
 .mini .arrow {
     stroke: black;
     stroke-width: 50;
@@ -23,7 +60,7 @@
     stroke-width: 5px;
 }
 .menu {
-    fill: rgb(100, 200, 200);
+    fill: darkcyan;
     stroke: rgb(200, 200, 200);
     stroke-width: 10px;
 }
@@ -144,7 +181,7 @@
     fill: #e09110;
 }
 
-.mainItem.misassembled.odd .R {
+.mainItem.misassembled.odd {
     fill: #e41a1c;
 }
 
