@@ -4,6 +4,8 @@ import sys
 import os
 import shutil
 import math
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 if len(sys.argv) != 3:
