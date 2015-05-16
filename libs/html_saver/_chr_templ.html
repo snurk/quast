@@ -219,7 +219,7 @@ THE SOFTWARE.
             .attr('class', 'axis')
             .call(xMiniAxis).append('text')
             .text('Genome, ' + miniTickValue)
-            .attr('transform', 'translate(' + x_mini((x_mini.domain()[1] - x_mini.domain()[0])/ 2) + ',' + (miniScale / 2 + 2) + ')');
+            .attr('transform', 'translate(' + x_mini((x_mini.domain()[1] - x_mini.domain()[0]) / 2) + ',' + (miniScale / 2 + 2) + ')');
 
     // draw a line representing today's date
     main.append('line')
@@ -266,6 +266,7 @@ THE SOFTWARE.
             .x(x_mini)
             .extent([current - delta, current + delta])
             .on("brush", display);
+    d3.select('body').on("keydown", keyDownAnswer);
 
     mini.append('g')
             .attr('class', 'x brush')
@@ -333,7 +334,9 @@ THE SOFTWARE.
                 step = l / cov_mini_dots_amount;
 
         for (var s, i = step; i < l; i += step) {
-            s = d3.sum(coverage_data[CHROMOSOME].slice(pos, i), function (d) { return d }) / step;
+            s = d3.sum(coverage_data[CHROMOSOME].slice(pos, i), function (d) {
+                        return d
+                    }) / step;
             if (s >= 1)
                 line += ['M', x_cov_mini_S(pos), y_cov_mini_S(s), 'H', x_cov_mini_S(i)].join(' ');
             pos = i;
@@ -557,7 +560,9 @@ THE SOFTWARE.
 
             var y_max = 1;
             for (var s, i = minExtent; i + step <= maxExtent; i += step) {
-                s = d3.sum(coverage_data[CHROMOSOME].slice(i, i + step), function (d) { return d }) / step;
+                s = d3.sum(coverage_data[CHROMOSOME].slice(i, i + step), function (d) {
+                            return d
+                        }) / step;
                 y_max = Math.max(y_max, s);
             }
 
@@ -567,7 +572,9 @@ THE SOFTWARE.
             main_cov.select('.y').call(y_cov_main_A);
 
             for (var s, i = minExtent; i + step <= maxExtent; i += step) {
-                s = d3.sum(coverage_data[CHROMOSOME].slice(i, i + step), function (d) { return d }) / step;
+                s = d3.sum(coverage_data[CHROMOSOME].slice(i, i + step), function (d) {
+                            return d
+                        }) / step;
                 if (s >= 1)
                     line += ['M', x_main(i), y_cov_main_S(s), 'H', x_main(i + step)].join(' ');
             }
@@ -576,7 +583,7 @@ THE SOFTWARE.
                     not_covered_width = Math.max(chartWidth / (maxExtent - minExtent + 1), .1);
 
             var vnc = not_covered[CHROMOSOME].filter(function (d) {
-                    if (minExtent <= d  && d <= maxExtent) return d;
+                if (minExtent <= d && d <= maxExtent) return d;
             });
             for (var i = 0; i < vnc.length; ++i) {
                 not_covered_line += ['M', x_main(vnc[i]), y_cov_main_S(.1), 'H', x_main(vnc[i]) + not_covered_width].join(' ');
@@ -591,6 +598,23 @@ THE SOFTWARE.
                     .append('path')
                     .attr('d', not_covered_line);
         }
+    }
+
+
+    function keyDownAnswer() {
+        var key = d3.event.keyCode;
+        var ext = brush.extent();
+        var delta = .01 * (ext[1] - ext[0]);
+        if (key == 109) // +
+            brush.extent([ext[0] - delta, ext[1] + delta]);
+        if (key == 107 && ext[1] - ext[0] > 0) // -
+            brush.extent([ext[0] + delta, ext[1] - delta]);
+        if (key == 39) // >
+            brush.extent([ext[0] + delta, ext[1] + delta]);
+        if (key == 37) // <
+            brush.extent([ext[0] - delta, ext[1] - delta]);
+
+        display();
     }
 
 
