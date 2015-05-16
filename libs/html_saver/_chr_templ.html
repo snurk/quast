@@ -53,8 +53,8 @@ THE SOFTWARE.
             chartWidth = 800,
             miniHeight = lanes.length * miniLanesHeight,
             mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
-            coverageHeight = 250;
-    height = Math.max(mainHeight + 2 * coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top, 500);
+            coverageHeight = 125;
+    height = Math.max(mainHeight + 4 * coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top, 500);
 
     var x_mini = d3.scale.linear()
             .domain([0, chromosomes_len[CHROMOSOME]])
@@ -87,7 +87,7 @@ THE SOFTWARE.
             .attr('class', 'main');
 
     var mini = chart.append('g')
-            .attr('transform', 'translate(' + margin.left + ',' + (mainHeight + 50) + ')')
+            .attr('transform', 'translate(' + margin.left + ',' + (mainHeight + mainScale + coverageHeight + 50) + ')')
             .attr('width', chartWidth)
             .attr('height', miniHeight + miniScale)
             .attr('class', 'mini');
@@ -291,12 +291,13 @@ THE SOFTWARE.
     var prev = undefined;
 
     if (typeof coverage_data != 'undefined') {
+// draw mini coverage
         var x_cov_mini_S = x_mini,      // x coverage scale
                 y_cov_mini_S = d3.scale.log()
                         .domain([Math.max(d3.max(coverage_data[CHROMOSOME], function (d) {
                             return d;
                         }), 100) + 100, .1])
-                        .range([0, .5 * coverageHeight]),
+                        .range([0, coverageHeight]),
                 x_cov_mini_A = xMiniAxis,
                 y_cov_mini_A = d3.svg.axis()
                         .scale(y_cov_mini_S)
@@ -312,15 +313,16 @@ THE SOFTWARE.
                         .attr('transform', 'translate(' + margin.left + ', ' + (mainHeight +
                         miniHeight +
                         lanesInterval +
+                        coverageHeight +
                         miniScale +
-                        mainScale) + ')');
+                        mainScale + 50) + ')');
 
         mini_cov.append('g')
                 .attr('class', 'y')
                 .call(y_cov_mini_A);
 
         mini_cov.append('g')
-                .attr('transform', 'translate(0, ' + (.5 * coverageHeight) + ')')
+                .attr('transform', 'translate(0, ' + (coverageHeight) + ')')
                 .attr('class', 'x')
                 .call(x_cov_mini_A);
 
@@ -353,11 +355,36 @@ THE SOFTWARE.
                 .attr('class', 'notCovered')
                 .attr('d', not_covered_line);
         mini_cov.append('text')
-                .attr('transform', 'translate(' + (chartWidth / 2) + ',' + .7 * coverageHeight + ')')
+                .attr('transform', 'translate(' + (chartWidth / 2) + ',' + (coverageHeight + 50) + ')')
                 .text('Genome, ' + miniTickValue);
         mini_cov.append('text')
                 .text('Coverage')
                 .attr('transform', 'rotate(-90 20, 80)');
+
+//invisible area for events
+        mini_cov.append('rect')
+                .attr('pointer-events', 'painted')
+                .attr('width', chartWidth)
+                .attr('height', coverageHeight)
+                .attr('visibility', 'hidden')
+                .on('mouseup', moveCovBrush);
+
+// draw the selection area
+        var delta = (x_cov_mini_S.domain()[1] - x_cov_mini_S.domain()[0]) / 8;
+
+        var brush_cov = d3.svg.brush()
+                .x(x_cov_mini_S)
+                .extent([current - delta, current + delta])
+                .on("brush", sync);
+
+        mini_cov.append('g')
+                .attr('class', 'x brush')
+                .call(brush_cov)
+                .selectAll('rect')
+                .attr('y', 1)
+                .attr('height', coverageHeight - 1);
+
+        mini_cov.selectAll('rect.background').remove();
 
 // draw main coverage
         var y_cov_main_S = y_cov_mini_S;
@@ -376,16 +403,14 @@ THE SOFTWARE.
 
         var x_cov_main_A = xMainAxis;
 
-        main_cov = chart.append('g')
+        var main_cov = chart.append('g')
                 .attr('class', 'COV')
                 .attr('transform', 'translate(' + margin.left + ', ' + (mainHeight +
-                miniHeight +
                 lanesInterval +
-                miniScale +
-                mainScale + 200) + ')');
+                mainScale) + ')');
         main_cov.append('g')
                 .attr('class', 'x')
-                .attr('transform', 'translate(0, ' +.5 * coverageHeight + ')')
+                .attr('transform', 'translate(0, ' + coverageHeight + ')')
                 .call(x_cov_main_A);
         main_cov.append('g')
                 .attr('class', 'y')
@@ -413,6 +438,8 @@ THE SOFTWARE.
                 };
 
         mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
+        if (typeof coverage_data != "undefined")
+            mini_cov.select('.brush').call(brush_cov.extent([minExtent, maxExtent]));
 
         x_main.domain([minExtent, maxExtent]);
 
@@ -566,6 +593,28 @@ THE SOFTWARE.
         }
     }
 
+
+    function sync() {
+        var minExtent = Math.max(brush_cov.extent()[0], x_cov_mini_S.domain()[0]),
+                maxExtent = Math.min(brush_cov.extent()[1], x_cov_mini_S.domain()[1])
+        brush.extent([minExtent, maxExtent]);
+        display();
+    }
+
+
+    function moveCovBrush() {
+        var origin = d3.mouse(this)
+                , point = x_cov_mini_S.invert(origin[0])
+                , halfExtent = (brush_cov.extent()[1] - brush_cov.extent()[0]) / 2
+                , begin = point - halfExtent
+                , end = point + halfExtent;
+
+        brush_cov.extent([begin, end]);
+        brush.extent([begin, end]);
+        display();
+    }
+
+
     function moveBrush() {
         var origin = d3.mouse(this)
                 , point = x_mini.invert(origin[0])
@@ -574,6 +623,9 @@ THE SOFTWARE.
                 , end = point + halfExtent;
 
         brush.extent([begin, end]);
+        if (typeof coverage_data != "undefined") {
+            brush_cov.extent([begin, end]);
+        }
         display();
     }
 
@@ -660,6 +712,7 @@ THE SOFTWARE.
                 .text(mainTickValue);
     }
 
+
     function getTextSize(text) {
         var tmp = document.createElement("span");
         var size = {};
@@ -675,6 +728,7 @@ THE SOFTWARE.
         return size;
     }
 
+
     function glow() {
         d3.select(this)
                 .transition()
@@ -682,12 +736,14 @@ THE SOFTWARE.
                 .select('rect');
     }
 
+
     function disglow() {
         d3.select(this)
                 .transition()
                 .style({'opacity': 1})
                 .select('rect');
     }
+
 
     function getVisibleText(s, l) {
         var t = s;
@@ -698,6 +754,7 @@ THE SOFTWARE.
             return (t.length < 3 ? '' : t + '...');
         } else return t;
     }
+
 
     function changeInfo(d) {
         info.selectAll('p')
@@ -762,6 +819,7 @@ THE SOFTWARE.
                     .text('Position: ' + get_position(d.start.toString(), d.end.toString()));
         }
     }
+
 
     function showArrows(d) {
         var arrow = "M0,101.08h404.308L202.151,303.229L0,101.08z";
