@@ -788,29 +788,28 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 as template:
             result.write(template.read())
 
+        summary_path = os.path.join(output_dir_path, 'alignment_summary.html')
+
         for i, chr in enumerate(chr_names):
             with open(html_saver.get_real_path('_chr_templ.html'), 'r') as template:
                 with open(os.path.join(output_dir_path, '_chr{i}.html'.format(**locals())), 'w') as result:
                     for line in template:
-                        if line.find('</body>') != -1:
-                            p = os.path.join(output_dir_path, 'alignment_summary.html')
-                            result.write('<a href="{p}"><div class="ref back">BACK</div></a>'.format(**locals()))
                         result.write(line)
                         if line.find('<body>') != -1:
-                            t = str(chr).replace('_', ' ')
-                            result.write('<div id = "title">{t}</div>\n'.format(**locals()))
+                            title = str(chr).replace('_', ' ')
+                            result.write('<div class = "block title">{title}<a href="{summary_path}"><div class = "subtitle">(BACK TO MAIN MENU)</div></a></div>\n'.format(**locals()))
                         if line.find('<script type="text/javascript">') != -1:
                             result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))
 
         with open(html_saver.get_real_path('alignment_summary_templ.html'), 'r') as template:
-            with open(os.path.join(output_dir_path, 'alignment_summary.html'), 'w') as result:
+            with open(summary_path, 'w') as result:
                 for line in template:
                     result.write(line)
                     if line.find('<!--- references: ---->') != -1:
                         for i, chr in enumerate(chr_names):
                             p = os.path.join(output_dir_path, '_chr{i}.html'.format(**locals()))
                             t = str(chr).replace('_', ' ')
-                            result.write('<a href="{p}" target="_blank"><div class="ref">{t}</div></a>'.format(**locals()))
+                            result.write('<a href="{p}" target="_blank"><div class="block">{t}</div></a>'.format(**locals()))
 
     copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),
              os.path.join(output_dir_path, 'contig_alignment_plot.css'))

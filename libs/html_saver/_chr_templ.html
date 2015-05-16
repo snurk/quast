@@ -49,7 +49,7 @@ THE SOFTWARE.
             lanesInterval = 20,
             miniScale = 50,
             mainScale = 50,
-            width = 800 + 240 + 50,
+            width = 800,
             chartWidth = 800,
             miniHeight = lanes.length * miniLanesHeight,
             mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
@@ -68,7 +68,7 @@ THE SOFTWARE.
     var y_main = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, mainHeight]);
     var y_mini = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, miniHeight]);
 
-    var chart = d3.select('body')
+    var chart = d3.select('body').append('div').attr('id', 'chart')
             .append('svg:svg')
             .attr('width', width + margin.right + margin.left)
             .attr('height', height + margin.top + margin.bottom)
@@ -277,43 +277,14 @@ THE SOFTWARE.
     mini.selectAll('rect.background').remove();
 
     // draw contig info menu
-    var menu_w = 240;
-    var menu = chart.append('g')
-            .attr('class', 'menu')
-            .attr('transform', 'translate(' + (margin.left + chartWidth + 50) + ', 10)');
-    menu.append('rect')
-            .attr('width', menu_w)
-            .attr('height', Math.max(mainHeight + miniHeight, 500))
-            .attr('class', 'block');
-    menu.append('g')
-            .attr('transform', 'translate(5, 5)')
-            .attr('class', 'forText T M')
-            .append('rect')
-            .attr('width', menu_w - 10)
-            .attr('height', 40);
-    menu.select('g')
-            .append('text')
-            .attr('transform', 'translate(30, 30)')
+    var menu = d3.select('body').append('div')
+            .attr('id', 'menu');
+    menu.append('div')
+            .attr('class', ' block title')
             .text('Contig info');
-
-    contig_info = menu.append('g')
-            .attr('class', 'info forText')
-            .attr('transform', 'translate(10, 50)');
-
-    var contig_info_h = 40;
-
-    var contig_info_y = d3.scale.linear()
-            .domain([1, 2, 3])
-            .range([20, 30]);
-
-    contig_info.append('rect')
-            .attr('width', menu_w - 20)
-            .attr('height', contig_info_h);
-
-    text = contig_info.append('g')
-            .attr('class', 'text');
-    text.append('text')
-            .attr('transform', 'translate(10, ' + contig_info_y(1) + ')')
+    info = menu.append('div')
+            .attr('class', 'block');
+    info.append('p')
             .text('<SELECT CONTIG>');
 
     var selected_id;
@@ -729,8 +700,7 @@ THE SOFTWARE.
     }
 
     function changeInfo(d) {
-        text.attr('opacity', .7)
-                .selectAll('text')
+        info.selectAll('p')
                 .remove();
 
         var get_position = function (start, end) {
@@ -748,20 +718,8 @@ THE SOFTWARE.
             } else return ['[', pos_val_transform(start), ', ', pos_val_transform(end), ']', ' ', miniTickValue].join('');
         };
 
-        n = 4 + (d.type == "Misassembled" ? 1 + d.structure.length : 0);
-        contig_info_y.domain([1, n]);
-        contig_info_y.range([20, n * 20]);
-
-        h = (d.misassembled == "True" ? contig_info_y(5 + d.structure.length) : contig_info_y(4));
-        contig_info.select('rect').transition()
-                .attr('height', h);
-
-        contig_info.append('rect')
-                .attr('class', 'block');
-
-        text.append('text')
-                .text('Name: ' + getVisibleText(d.name, 280))
-                .attr('transform', 'translate(5,' + contig_info_y(1) + ')');
+        info.append('p')
+                .text('Name: ' + d.name, 280);
 
         var pos_val_transform = function (d) {
             if (mainTickValue == 'Gbp')
@@ -777,40 +735,32 @@ THE SOFTWARE.
         if (d.misassembled == "True") {
             showArrows(d);
 
-            text.append('text')
-                    .text('Type: misassembled')
-                    .attr('transform', 'translate(5,' + contig_info_y(2) + ')');
+            info.append('p')
+                    .text('Type: misassembled');
 
-            text.append('text')
-                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()))
-                    .attr('transform', 'translate(5,' + contig_info_y(3) + ')');
+            info.append('p')
+                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()));
 
-            text.append('text')
-                    .text('Structure:')
-                    .attr('transform', 'translate(5,' + contig_info_y(4) + ')');
+            var structure = info.append('p')
+                    .text('Structure:');
 
             for (var i = 0; i < d.structure.length; ++i) {
                 if (d.structure[i].type == "A") {
-                    text.append('text')
-                            .text('A: ' + get_position(d.structure[i].start.toString(), d.structure[i].end.toString()))
-                            .attr('transform', 'translate(20,' + contig_info_y(5 + i) + ')');
+                    structure.append('p')
+                            .text('A: ' + get_position(d.structure[i].start.toString(), d.structure[i].end.toString()));
                 } else {
-                    text.append('text')
-                            .text('M:' + d.structure[i].mstype)
-                            .attr('transform', 'translate(20,' + contig_info_y(5 + i) + ')');
+                    structure.append('p')
+                            .text('M:' + d.structure[i].mstype);
                 }
             }
         } else {
             showArrows(d);
-            text.append('text')
-                    .text('Type: correct')
-                    .attr('transform', 'translate(5,' + contig_info_y(2) + ')');
+            info.append('p')
+                    .text('Type: correct');
 
-            text.append('text')
-                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()))
-                    .attr('transform', 'translate(5,' + contig_info_y(3) + ')');
+            info.append('p')
+                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()));
         }
-        text.transition().attr('opacity', 1);
     }
 
     function showArrows(d) {

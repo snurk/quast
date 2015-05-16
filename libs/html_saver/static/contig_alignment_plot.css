@@ -1,39 +1,49 @@
-#title {
-    text-align: center;
-    font: 20px sans-serif;
-    font-weight: bold;
-    color: white;
+body {
+    min-width: 1250px;
+    max-width: 1250px;
+}
 
-    padding: 5px;
+#chart {
+    float: left;
+}
+
+#menu {
+    float: right;
+    width: 240px;
+}
+
+.block {
+    font-family: sans-serif;
+    color: white;
+    background: darkcyan;
     margin: 5px;
-    border: 10px rgb(200, 200, 200) solid;
-    background: darkcyan;
-}
-
-#subtitle {
-    font: 10px sans-serif;
-}
-
-.ref {
-    font: 14px sans-serif;
-    color: white;
-    width: 80%;
     padding: 5px;
-    padding-left: 10px;
-    margin: 15px;
     border: 5px rgb(200, 200, 200) solid;
-    background: darkcyan;
+    overflow: hidden;
+}
+
+p {
+    font-size: 10px;
+    text-align: left;
+    padding-left: 10px;
+}
+
+.title {
+    font-size: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.subtitle {
+    font-size: 10px;
 }
 
 a {
+    color: white;
     text-decoration: none;
-}
-
-.ref.back {
-  text-align: center;
-  width: 50px;
-  padding: 5px;
-}
+} :hover {
+      text-decoration: underline;
+  }
 
 .mini .arrow {
     stroke: black;
@@ -58,28 +68,6 @@ a {
 .COV .notCovered path {
     stroke: blue;
     stroke-width: 5px;
-}
-.menu {
-    fill: darkcyan;
-    stroke: rgb(200, 200, 200);
-    stroke-width: 10px;
-}
-
-.forText {
-    fill: white;
-    background-color: white;
-    stroke-width: 0;
-}
-
-.menu .T text {
-    font: 26px sans-serif;
-    fill: rgb(100, 100, 100);
-    font-weight: bold;
-}
-
-.menu .info text {
-    font: 10px sans-serif;
-    fill: rgb(100, 100, 100)
 }
 
 .coverage text {
@@ -106,25 +94,6 @@ a {
     stroke: rgb(10, 10, 240);
     stroke-width: 3px;
     fill: none;
-}
-
-#info > g > text {
-    font: 14px arial;
-    font-weight: bolder;
-    fill: white;
-    stroke-width: 0px;
-}
-
-#info {
-    fill: rgb(240, 240, 240);
-    stroke-width: 1px;
-    stroke: black
-}
-
-#info text {
-    fill: black;
-    stroke-width: 0px;
-    font: 12px arial;
 }
 
 .chart {
