@@ -45,9 +45,20 @@ a {
       text-decoration: underline;
   }
 
-.mini .arrow {
+.arrow path {
     stroke: black;
     stroke-width: 50;
+    transform: scale(0.02);
+    fill: cyan;
+}
+
+.arrow.selected path {
+    fill: yellow;
+}
+
+.main .arrow path {
+    fill: black;
+    stroke-width: 100;
 }
 
 .COV .y {
