@@ -22,6 +22,25 @@ body {
     overflow: hidden;
 }
 
+.head {
+    padding: 5px;
+    border: 1px rgb(200, 200, 200) solid;
+}
+
+
+.head:hover {
+    cursor: pointer;
+    border: 1px rgb(250, 250, 250) solid;
+}
+
+.open {
+    display: block;
+}
+
+.close {
+    display: none;
+}
+
 p {
     font-size: 10px;
     text-align: left;

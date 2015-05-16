@@ -630,11 +630,11 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
             if last_contig_id not in misassembled_id_to_structure:
                 misassembled_id_to_structure[last_contig_id] = [False]
 
-            if line.find('Real Alignment') != -1:
-                misassembled_id_to_structure[last_contig_id].append(line.split(' ')[3:5])
+            if line.find('Alignment') != -1 or line.find('most') != -1:
+                l = line.split(':')[1].split(' ')
+                misassembled_id_to_structure[last_contig_id].append([l[1], l[2], l[4], l[5], l[10], qutils.correct_name(l[12])])
 
             if line.find('Extensive misassembly') != -1:
-                misassembled_id_to_structure[last_contig_id][0] = True
                 misassembled_id_to_structure[last_contig_id].append(line.split('(')[1].split(')')[0])
 
             if (line.find('Extensive misassembly') != -1) and (cur_contig_id != ''):
@@ -644,11 +644,6 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
             if line.startswith('Analyzing coverage...'):
                 break
 
-        for el in misassembled_id_to_structure.keys():
-            if not misassembled_id_to_structure[el][0]:
-                misassembled_id_to_structure.pop(el)
-            else:
-                misassembled_id_to_structure[el] = misassembled_id_to_structure[el][1:]
 
         cur_shift = 0
         for line in report_file:
@@ -675,11 +670,12 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                     position_in_conitg = min(start_in_contig, end_in_contig))
                 block.unshifted_start = unshifted_start
                 block.unshifted_end = unshifted_end
-                block.ref_name = ref_name
+                block.ref_name = ref_name;
 
                 if contig_id in misassembled_contigs_ids:
                     block.misassembled = True
-                    block.misassembled_structure = misassembled_id_to_structure[contig_id]
+
+                block.misassembled_structure = misassembled_id_to_structure[contig_id]
 
                 aligned_blocks.append(block)
 
@@ -714,24 +710,30 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
         data_str = 'var contig_data = {};\n'
         for chr in chr_names:
             data_str += 'contig_data["{chr}"] = ['.format(**locals())
-            if (len(chr_to_aligned_blocks[chr]) > 0):
+            if len(chr_to_aligned_blocks[chr]) > 0:
                 for alignment in chr_to_aligned_blocks[chr]:
                     data_str += '{{name: "{alignment.name}", start: {alignment.unshifted_start}, end: {alignment.unshifted_end}, assembly: "{alignment.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}", order: {alignment.order} '.format(**locals())
-                    if alignment.misassembled:
+                    if alignment.name != 'FICTIVE':
                         data_str += ', structure: ['
                         for el in alignment.misassembled_structure:
                             if type(el) == list:
-                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}}},'.format(**locals())
+                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}, chr: "{el[5]}"}},'.format(**locals())
                             elif type(el) == str:
                                 data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
-                        data_str = data_str[: -1] + ']' + '.'
-                    data_str = data_str[: -1] + '},'
+                        data_str = data_str[: -1] + ']},'
+                    else: data_str += '},'
                 data_str = data_str[: -1] + '];\n\n'
                 result.write(data_str)
                 data_str = ''
             else:
                 data_str = data_str + '];\n\n'
                 result.write(data_str)
+
+        #add chr -> int
+        data_str = 'var chr_to_int = {};\n'
+        for i, el in enumerate(chr_names):
+            data_str += 'chr_to_int["{el}"] = {i};\n'.format(**locals())
+        result.write(data_str)
 
         # adding coverage data
 
@@ -796,7 +798,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     for line in template:
                         result.write(line)
                         if line.find('<body>') != -1:
-                            title = str(chr).replace('_', ' ')
+                            title = chr.replace('_', ' ')
                             result.write('<div class = "block title">{title}<a href="{summary_path}"><div class = "subtitle">(BACK TO MAIN MENU)</div></a></div>\n'.format(**locals()))
                         if line.find('<script type="text/javascript">') != -1:
                             result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))
@@ -808,7 +810,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     if line.find('<!--- references: ---->') != -1:
                         for i, chr in enumerate(chr_names):
                             p = os.path.join(output_dir_path, '_chr{i}.html'.format(**locals()))
-                            t = str(chr).replace('_', ' ')
+                            t = chr.replace('_', ' ')
                             result.write('<a href="{p}" target="_blank"><div class="block">{t}</div></a>'.format(**locals()))
 
     copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),

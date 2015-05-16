@@ -818,63 +818,81 @@ THE SOFTWARE.
         info.selectAll('p')
                 .remove();
 
-        var get_position = function (start, end) {
-            if (start.length == end.length) {
-                var l = start.length;
-                var eq = '';
-                for (var i = 0; start[i] == end[i]; ++i)
-                    eq += start[i];
-                var pos = [eq, ' ', '[', d3.round(start.slice(i, Math.min(i + 3, l)) / 100, 2), ', ',
-                    d3.round(end.slice(i, Math.min(i + 3, l)) / 100, 2), ']'].join('');
-                if (l - i - 1 == 3) pos += ' kbp';
-                else if (l - i - 1 == 6) pos += ' Mbp';
-                else pos += [' e', l - i - 1, ' bp'].join('');
-                return pos;
-            } else return ['[', pos_val_transform(start), ', ', pos_val_transform(end), ']', ' ', miniTickValue].join('');
-        };
-
         info.append('p')
                 .text('Name: ' + d.name, 280);
 
-        var pos_val_transform = function (d) {
-            if (mainTickValue == 'Gbp')
-                return d3.round(d / 1000000000, 2);
-            else if (mainTickValue == 'Mbp')
-                return d3.round(d / 1000000, 2);
-            else if (mainTickValue == 'kbp')
-                return d3.round(d / 1000, 2);
-            else
+        info.append('p')
+                .text('Type: ' + (d.misassembled == "True" ? 'misassembled' : 'correct'));
+
+
+        var appendPositionElement = function(data, start, end, whereAppend) {
+            var posVal = function (d) {
+                if (mainTickValue == 'Gbp')
+                    return d3.round(d / 1000000000, 2);
+                else if (mainTickValue == 'Mbp')
+                    return d3.round(d / 1000000, 2);
+                else if (mainTickValue == 'kbp')
+                    return d3.round(d / 1000, 2);
+                else
+                    return d;
+            };
+            var format = function (d) {
+                d = d.toString();
+                for (var i = 3; i < d.length; i += 4 )
+                    d = d.slice(0 , d.length - i) + ' ' + d.slice(length - i, d.length);
                 return d;
+            };
+
+            var e = data.filter(function (d) {
+                if (d.type == 'A' && d.start <= start && end <= d.end) return d;
+            })[0];
+
+            var ndash = String.fromCharCode(8211);
+            var d = whereAppend.append('p')
+                    .attr('class', 'head')
+                    .on('click', openClose)
+                    .text(['Position:', posVal(e.start), ndash, posVal(e.end), mainTickValue, ' '].join(' '));
+            if (e.chr != CHROMOSOME) {
+                d.append('a')
+                        .attr('href', '_chr' + chr_to_int[e.chr] + '.html')
+                        .attr('target', '_blank')
+                        .text('(' + e.chr + ')');
+            }
+            d = d.append('p')
+                    .attr('class', 'close');
+            d.append('p')
+                    .text(['reference:',
+                        format(e.start), ndash, format(e.end),
+                        '(' + format(Math.abs(e.end - e.start) + 1) + ')', 'bp'].join(' '));
+            d.append('p')
+                    .text(['contig:',
+                        format(e.start_in_contig), ndash,  format(e.end_in_contig),
+                        '(' + format(Math.abs(e.end_in_contig - e.start_in_contig) + 1) + ')', 'bp'].join(' '));
+            d.append('p')
+                    .text(['IDY:', e.IDY, '%'].join(' '));
         };
 
+        appendPositionElement(d.structure, d.start, d.end, info);
+
+        showArrows(d);
         if (d.misassembled == "True") {
-            showArrows(d);
+            var blocks = info.append('p')
+                    .attr('class', 'head')
+                    .text('Blocks: ' + d.structure.filter(function(d) { if (d.type == "A") return d;}).length)
+                    .on('click', openClose)
+                    .append('p')
+                    .attr('class', 'close');
 
-            info.append('p')
-                    .text('Type: misassembled');
-
-            info.append('p')
-                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()));
-
-            var structure = info.append('p')
-                    .text('Structure:');
 
             for (var i = 0; i < d.structure.length; ++i) {
-                if (d.structure[i].type == "A") {
-                    structure.append('p')
-                            .text('A: ' + get_position(d.structure[i].start.toString(), d.structure[i].end.toString()));
+                var e = d.structure[i];
+                if (e.type == "A") {
+                    appendPositionElement(d.structure, e.start, e.end, blocks);
                 } else {
-                    structure.append('p')
-                            .text('M:' + d.structure[i].mstype);
+                    blocks.append('p')
+                            .text(e.mstype);
                 }
             }
-        } else {
-            showArrows(d);
-            info.append('p')
-                    .text('Type: correct');
-
-            info.append('p')
-                    .text('Position: ' + get_position(d.start.toString(), d.end.toString()));
         }
     }
 
@@ -889,7 +907,7 @@ THE SOFTWARE.
             for (var i = 0; i < d.structure.length; ++i) {
                 var e = d.structure[i];
                 if (e.type == "A") {
-                    if (!(e.start == d.start && e.end == d.end)) { // warning: adds translocated
+                    if (!(e.start <= d.start && d.end <= e.end) && e.chr == CHROMOSOME) {
                         arrows.push({start: e.start, end: e.end, lane: d.lane, selected: false});
                         mini.append('g')
                                 .attr('transform', 'translate(' + (x_mini((e.end + e.start) / 2) - shift) + ',' + y + ')')
@@ -908,6 +926,12 @@ THE SOFTWARE.
                 .append('path')
                 .attr('d', arrow);
         display();
+    }
+
+    function openClose() {
+        c = d3.select(this).select('p');
+        c.attr('class', c.attr('class') == 'open' ? 'close' : 'open');
+        d3.event.stopPropagation();
     }
 
 </script>
