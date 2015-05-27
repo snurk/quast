@@ -512,6 +512,7 @@ def draw_meta_summary_plot(labels, ref_names, all_rows, results, plot_fpath, tit
     matplotlib.pyplot.title(title)
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height * 1.0])
+    ax.yaxis.grid(with_grid)
 
     color_id = 0
     for j in range(contigs_num):
@@ -524,8 +525,10 @@ def draw_meta_summary_plot(labels, ref_names, all_rows, results, plot_fpath, tit
         ax.plot(arr, to_plot, 'ro', color=colors[j])
     matplotlib.pyplot.xlim([0, ref_num + 1])
     ymax = 0
-    for j in range(contigs_num):
-        ymax = max(ymax, float(all_rows[j + 1]['values'][j]))
+    for i in range(ref_num):
+        for j in range(contigs_num):
+            if all_rows[j + 1]['values'][i] is not None:
+                ymax = max(ymax, float(all_rows[j + 1]['values'][i]))
     if ymax == 0:
         matplotlib.pyplot.ylim([0, 0.1])
     else:
@@ -609,5 +612,7 @@ def fill_all_pdf_file(all_pdf):
     except AttributeError:
         pass
     all_pdf.close()
+    import matplotlib.pyplot
+    matplotlib.pyplot.close('all')  # closing all open figures
 
 
