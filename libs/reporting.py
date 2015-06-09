@@ -1,5 +1,5 @@
 ############################################################################
-# Copyright (c) 2011-2014 Saint-Petersburg Academic University
+# Copyright (c) 2011-2015 Saint-Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -58,9 +58,11 @@ class Fields:
     MIS_RELOCATION = TAB + '# relocations'
     MIS_TRANSLOCATION = TAB + '# translocations'
     MIS_INVERTION = TAB + '# inversions'
+    MIS_ISTRANSLOCATIONS = TAB + '# interspecies translocations'
     MIS_EXTENSIVE_CONTIGS = '# misassembled contigs'
     MIS_EXTENSIVE_BASES = 'Misassembled contigs length'
     MIS_LOCAL = '# local misassemblies'
+    CONTIGS_WITH_ISTRANSLOCATIONS = '# possibly misassembled contigs'
     STRUCT_VARIATIONS_EXTENSIVE = '# structural variants'
     MIS_MATCHED_SV = '# misassemblies matched with SVs'
 
@@ -131,8 +133,7 @@ class Fields:
     REFNOCOVER = 'Number of no-coverage regions of reference'
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):
-    order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS,
-             CONTIGS, CHAFFCONTIG_PERCENT, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
+    order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS, CONTIGS, CHAFFCONTIG_PERCENT, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
              N50, NG50, N75, NG75, L50, LG50, L75, LG75, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISLOCAL, UNALIGNED, UNALIGNEDBASES, MAPPEDGENOME, DUPLICATION_RATIO,
              UNCALLED_PERCENT, SUBSERROR, INDELSERROR, GENES, OPERONS, CORE_COMPLETE, CORE_PART, PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
              LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75,
@@ -146,8 +147,10 @@ class Fields:
 
     # content and order of metrics in DETAILED MISASSEMBLIES REPORT (<quast_output_dir>/contigs_reports/misassemblies_report.txt, .tex, .tsv)
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
+                           MIS_ISTRANSLOCATIONS, CONTIGS_WITH_ISTRANSLOCATIONS,
                            MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES, MIS_LOCAL, STRUCT_VARIATIONS_EXTENSIVE, MIS_MATCHED_SV,
-                           MISMATCHES, INDELS, MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES]
+                           MIS_LOCAL, MISMATCHES,
+                           INDELS, MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES]
 
     # content and order of metrics in DETAILED UNALIGNED REPORT (<quast_output_dir>/contigs_reports/unaligned_report.txt, .tex, .tsv)
     unaligned_order = [NAME, UNALIGNED_FULL_CNTGS, UNALIGNED_FULL_LENGTH, UNALIGNED_PART_CNTGS,
@@ -197,6 +200,7 @@ class Fields:
 
         ('Misassemblies', [MIS_ALL_EXTENSIVE,
                            MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
+                           MIS_ISTRANSLOCATIONS, CONTIGS_WITH_ISTRANSLOCATIONS,
                            MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES,
                            MIS_LOCAL, STRUCT_VARIATIONS_EXTENSIVE, MIS_MATCHED_SV]),
 
@@ -244,6 +248,7 @@ class Fields:
         Quality.LESS_IS_BETTER:
             [CONTIGS, CONTIGS__FOR_THRESHOLDS, L50, LG50, L75, LG75,
              MISLOCAL, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISINTERNALOVERLAP,
+             CONTIGS_WITH_ISTRANSLOCATIONS,
              UNALIGNED, UNALIGNEDBASES, AMBIGUOUS, AMBIGUOUSEXTRABASES,
              UNCALLED, UNCALLED_PERCENT, SINGLETONS, READS_DIFFCHROM, NO_COVERAGE,
              LA50, LGA50, LA75, LGA75, DUPLICATION_RATIO, INDELS, INDELSERROR, MISMATCHES, SUBSERROR,
@@ -335,6 +340,7 @@ def get(assembly_fpath):
     if assembly_fpath not in assembly_fpaths:
         assembly_fpaths.append(assembly_fpath)
     return reports.setdefault(assembly_fpath, Report(qutils.label_from_fpath(assembly_fpath)))
+
 
 def delete(assembly_fpath):
     if assembly_fpath in assembly_fpaths:
@@ -611,7 +617,7 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
             for i in range(len(all_rows[0]['values'])):
                 values = []
                 for j in range(1, len(all_rows)):
-                    if j<len(all_rows[j]):
+                    if j < len(all_rows[j]):
                         values.append(all_rows[j]['values'][i])
                     transposed_table.append({'metricName': all_rows[0]['values'][i], # name of assembly, assuming the first line is assemblies names
                                          'values': values,})
@@ -642,7 +648,7 @@ def save_total(output_dirpath, silent=True):
 
 
 def save_misassemblies(output_dirpath):
-    save(output_dirpath, "misassemblies_report", "", Fields.misassemblies_order)
+    save(output_dirpath, "misassemblies_report", qconfig.transposed_report_prefix + "_misassemblies", Fields.misassemblies_order, silent=True)
 
 
 def save_unaligned(output_dirpath):

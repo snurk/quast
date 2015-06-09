@@ -40,6 +40,7 @@ def gmhmm_p(tool_exec, fasta_fpath, heu_fpath, out_fpath, err_file, index):
 
     return return_code == 0 and os.path.isfile(out_fpath)
 
+
 def install_genemark(tool_dirpath):
     """Installation instructions for GeneMark Suite.
 
@@ -102,7 +103,6 @@ def parse_gtf_out(out_fpath):
                 yield contig_id, strand, left_index, right_index, gene
 
 
-
 def add_genes_to_gff(genes, gff_fpath, prokaryote):
     gff = open(gff_fpath, 'w')
     if prokaryote:
@@ -163,6 +163,7 @@ def gmhmm_p_everyGC(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath):
 
     return genes
 
+
 def gmhmm_p_metagenomic(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath=None):
     tool_exec_fpath = os.path.join(tool_dirpath, 'gmhmmp')
     heu_fpath = os.path.join(tool_dirpath, '../MetaGeneMark_v1.mod')
@@ -173,6 +174,7 @@ def gmhmm_p_metagenomic(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath
             return list(parse_gmhmm_out(gmhmm_fpath))
         else:
             return None
+
 
 def gm_es(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath):
 
@@ -196,6 +198,7 @@ def gm_es(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath):
         if fname.endswith('gtf'):
             genes.extend(parse_gtf_out(os.path.join(tmp_dirpath, fname)))
     return genes
+
 
 def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath, tmp_dirpath, gmhmm_p_function, prokaryote):
     assembly_name = qutils.name_from_fpath(contigs_fpath)

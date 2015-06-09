@@ -20,7 +20,7 @@ Output
     report.tex     Latex version
     report.pdf     PDF version, includes all tables and plots for some statistics
     report.html    everything in an interactive HTML file
-    alignment.svg  visualized alignement of contigs to reference
+    alignment.svg  visualized alignment of contigs to reference
 
 
 <br>
@@ -28,13 +28,13 @@ Output
 
 * Number of large contigs (i.e., longer than 500 bp) and total length of them.  
 * Length of the largest contig.  
-* N50 (length of a contig, such that all the contigs ofat least the same length together cover at least 50% of the assembly).  
-* Number of predicted genes, discovered either by GeneMark.hmm (for prokaryotes), GeneMark-ES (for eukaryotes) or MetaGeneMark (for metagenomes).
+* N50 (length of a contig, such that all the contigs of at least the same length together cover at least 50% of the assembly).  
+* Number of predicted genes, discovered either by GeneMark.hmm (for prokaryotes), GeneMark-ES or GlimmerHMM (for eukaryotes) or MetaGeneMark (for metagenomes).
 * Percent of conserved orthologs, found by BUSCO.
 
 **When a reference is given:**  
 
-* Numbers of misassemblies of different kinds (inversions, relocations, translocations or local).  
+* Numbers of misassemblies of different kinds (inversions, relocations, translocations, interspecies translocations (--meta only) or local).  
 * Number and total length of unaligned contigs.  
 * Numbers of mismatches and indels, over the assembly and per 100 kb.  
 * Genome fraction %, assembled part of the reference.  

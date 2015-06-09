@@ -1,5 +1,5 @@
 ############################################################################
-# Copyright (c) 2011-2014 Saint-Petersburg Academic University
+# Copyright (c) 2011-2015 Saint-Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -14,6 +14,7 @@ LIBS_LOCATION = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 SUPPORTED_PYTHON_VERSIONS = ['2.5', '2.6', '2.7']
 
 LOGGER_DEFAULT_NAME = 'quast'
+LOGGER_META_NAME = 'metaquast'
 # error_log_fpath = os.path.join(LIBS_LOCATION, '..', 'error.log')
 
 if platform.system() == 'Darwin':
@@ -28,12 +29,13 @@ else:
 # support of large genomes
 MAX_REFERENCE_LENGTH = 536870908  # Nucmer's max length of a reference file
 splitted_ref = []
+MAX_REFERENCE_FILE_LENGTH = 50000000  # Max length of one part of reference
 
 # available options
 long_options = "output-dir= save-json-to= genes= operons= reference= reads1= reads2= contig-thresholds= min-contig= "\
-               "gene-thresholds= save-json gage eukaryote archaea glimmer no-snps no-plots no-html help debug "\
+               "gene-thresholds= save-json gage eukaryote archaea glimmer no-plots no-html help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
-               "find-conserved-genes strict-NA meta labels= test help-hidden".split()
+               "find-conserved-genes strict-NA meta labels= test help-hidden no-snps".split()
 short_options = "o:G:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
 
 # default values for options
@@ -59,7 +61,10 @@ save_json = False
 meta = False
 debug = False
 test = False
+no_check = False
 busco = False
+no_gc = False
+show_snps = True
 glimmer = False
 archaea = False
 
@@ -71,11 +76,14 @@ default_json_dirname = "json"
 
 # names of reports, log, etc.
 corrected_dirname = "quast_corrected_input"
+downloaded_dirname = "quast_downloaded_references"
 plots_fname = "report.pdf"
 report_prefix = "report"
 transposed_report_prefix = "transposed_report"
 gage_report_prefix = "gage_"
 html_aux_dir = "report_html_aux"
+meta_summary_dir = "summary"
+not_aligned_name = "not_aligned"
 
 # other settings (mostly constants). Can't be changed by command-line options
 
@@ -100,6 +108,12 @@ assembly_labels_by_fpath = {}
 list_of_broken_scaffolds = []
 Ns_break_threshold = 10
 
+# for searching references in NCBI
+downloaded_refs = False
+identity_threshold = 90 #  min % identity
+min_length = 300
+min_bitscore = 1000
+max_references = 20
 
 def check_python_version():
     if sys.version[0:3] not in SUPPORTED_PYTHON_VERSIONS:
@@ -159,9 +173,9 @@ def usage(show_hidden=False, meta=False):
     if meta:
         print >> sys.stderr, "-f  --gene-finding                    Predict genes using MetaGeneMark"
     else:
-        print >> sys.stderr, "-f  --gene-finding                    Predict genes (with GeneMark.hmm for prokaryotes (default), GeneMarkES"
+        print >> sys.stderr, "-f  --gene-finding                    Predict genes (with GeneMark.hmm for prokaryotes (default), GeneMark-ES"
         print >> sys.stderr, "                                      for eukaryotes (--eukaryote), or MetaGeneMark for metagenomes (--meta)"
-    print >> sys.stderr, "    --glimmer                         Predict genes with GlimmerHMM instead of GeneMarkES"
+    print >> sys.stderr, "    --glimmer                         Predict genes with GlimmerHMM instead of GeneMark-ES"
     print >> sys.stderr, "-S  --gene-thresholds                 Comma-separated list of threshold lengths of genes to search with Gene Finding module"
     print >> sys.stderr, "                                      [default is %s]" % genes_lengths
     print >> sys.stderr, "-e  --eukaryote                       Genome is eukaryotic"
@@ -179,8 +193,8 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "                                      good alignments [default is %s]" % ambiguity_usage
     print >> sys.stderr, "-n  --strict-NA                       Break contigs in any misassembly event when compute NAx and NGAx"
     print >> sys.stderr, "                                      By default, QUAST breaks contigs only by extensive misassemblies (not local ones)"
-    print >> sys.stderr, "    --no-snps                         Do not search SNPs (to speed up computation and reduce memory consumption)"
     print >> sys.stderr, "    --no-plots                        Do not draw plots (to speed up computation)"
+    print >> sys.stderr, "    --no-snps                         Do not report SNPs (to make quast faster & reduce memory consumption on large genomes)"
     if show_hidden:
         print >> sys.stderr, ""
         print >> sys.stderr, "Hidden options:"
@@ -191,6 +205,8 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "-J  --save-json-to <path>   Save the JSON output to a particular path"
         print >> sys.stderr, "    --no-html               Do not build html report"
         print >> sys.stderr, "    --no-plots              Do not draw plots (to make quast faster)"
+        print >> sys.stderr, "    --no-check              Do not check correctness of fasta file"
+        print >> sys.stderr, "    --no-gc                 Do not compute GC% and GC-distribution"
     print >> sys.stderr, ""
     print >> sys.stderr, "    --test                            Run QUAST on the data from the test_data folder, output to quast_test_output"
     print >> sys.stderr, "-h  --help                            Print this usage message"

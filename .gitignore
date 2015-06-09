@@ -2,12 +2,15 @@ results_*
 latest
 quast_results_archive_json/*
 results_json/*
+quality.pyc
 show-snps.err
-libs/MUMmer3.23-linux/*.o
+libs/MUMmer3.23-linux/
 libs/MUMmer3.23-osx/
-libs/samtools-1.2/
 libs/gage/*.class
 libs/*.o
+libs/*.pyc
+libs/html_saver/*.pyc
+libs/.DS_Store
 .idea/*
 .DS_Store
 *pyc
@@ -35,5 +38,5 @@ libs/Busco/augustus-3.0.3/src/licence.txt
 libs/Busco/augustus-3.0.3/src/LICENCE.TXT
 libs/Busco/hmmer-3.1b2-mac/
 libs/bwa-master/make.*
+libs/Busco/augustus-3.0.3/config/species/test_output/
 
-libs/Busco/augustus-3.0.3/config/species/

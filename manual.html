@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>QUAST 2.3 manual</title>
+    <title>QUAST 2.4 manual</title>
     <style type="text/css">
         body {
             margin-top: 30px;
@@ -66,9 +66,9 @@
     </style>
 </head>
 <body>
-<h1>QUAST 2.3 manual</h1>
+<h1>QUAST 2.4 manual</h1>
 
-<p> QUAST stands for <u>QU</u>ality <u>AS</u>sesment <u>T</u>ool. 
+<p> QUAST stands for <u>QU</u>ality <u>AS</u>sessment <u>T</u>ool.
     The tool evaluates genome assemblies by computing various metrics.
     <br>
     <br>
@@ -77,13 +77,13 @@
     <br>
     <br>
     QUAST utilizes <a href="http://mummer.sourceforge.net/">MUMmer</a>, <a href="http://exon.gatech.edu/GeneMark/gmhmmp.cgi">GeneMark.hmm</a>,
-    <a href="http://exon.gatech.edu/GeneMark/gmes_instructions.html">GeneMarkES</a>, <a href="http://exon.gatech.edu/GeneMark/meta_gmhmmp.cgi">MetaGeneMark</a>,
+    <a href="http://exon.gatech.edu/GeneMark/gmes_instructions.html">GeneMark-ES</a>, <a href="http://exon.gatech.edu/GeneMark/meta_gmhmmp.cgi">MetaGeneMark</a>,
     <a href="http://cbcb.umd.edu/software/glimmerhmm/">GlimmerHMM</a>, <a href="http://bio-bwa.sourceforge.net/">BWA</a>, <a href="http://busco.ezlab.org/">BUSCO</a>,
     <a href="https://github.com/arq5x/lumpy-sv">lumpy</a> and <a href="http://gage.cbcb.umd.edu/index.html">GAGE</a>. These tools are built in, so you do not need to install
     them separately.
     <br>
     <br>
-    Version 2.3 of QUAST was released under GPL v2 (see <a href="LICENSE">LICENSE</a> for details) on 17 January 2014.
+    Version 2.4 of QUAST was released under GPL v2 (see <a href="LICENSE">LICENSE</a> for details) on 17 January 2014.
 </p>
 
 <h2>Contents</h2>
@@ -161,11 +161,11 @@ Or on Ubuntu by typing:
     sudo apt-get install python-matplotlib
 </pre>
 <br>
-To download the <a href="https://downloads.sourceforge.net/project/quast/quast-2.3.tar.gz">QUAST source code tarball</a> and extract it, type:
+To download the <a href="https://downloads.sourceforge.net/project/quast/quast-2.4.tar.gz">QUAST source code tarball</a> and extract it, type:
 <pre class="code">
-    wget https://downloads.sourceforge.net/project/quast/quast-2.3.tar.gz
-    tar -xzf quast-2.3.tar.gz
-    cd quast-2.3
+    wget https://downloads.sourceforge.net/project/quast/quast-2.4.tar.gz
+    tar -xzf quast-2.4.tar.gz
+    cd quast-2.4
 </pre>
 
 <p>
@@ -185,9 +185,9 @@ of their work on your platform.
 </p>
 
 <p>
-Note: you should place quast-2.3 directory in the final destination before 
+Note: you should place quast-2.4 directory in the final destination before
 the first use (e.g. before run with --test). If you want to move QUAST to 
-some new place after several usages you should use a clean copy of quast-2.3.
+some new place after several usages you should use a clean copy of quast-2.4.
 This limitation is caused by auto-generation of absolute paths in compiled 
 modules of QUAST.
 </p>
@@ -510,13 +510,15 @@ Print help.
     </tr>
 </table> -->
 
-<p>All outputs are in separate directories inside the directory provided by <code>-o</code> (or in quast_results/latest).</p>
+<p>All outputs are in separate directories inside the directory provided by <code>-o</code> (or in quast_results/latest).
+Also plots and reports for each metric and combined HTML version of the report are saved in <code>&lt;quast_output_dir&gt;/summary/</code>.
+You can view results for each reference by clicking on any row in HTML-report.</p>
 Usage:
 <pre class="code">
     python metaquast.py contigs_1 contigs_2 ... -R reference_1,reference_2,reference_3,...
 </pre>
 
-All options are the same as for quast.py, except for <code>-R</code>: it can accept multiple references.</p>
+All options are the same as for quast.py, except for <code>-R</code>: it can accept multiple references or directory with references.</p>
 
 <a name="sec3"></a>
 <h2>3. QUAST output</h2>
@@ -584,7 +586,7 @@ Note:
     is total number of contigs of length <code>&ge; x<span class="rhs">&nbsp;</span>bp</code>.
     Not affected by the <code>--min-contig</code> parameter (see <a href="#sec2.4">section 2.4</a>).</p>
 
-<p><span class='metric-name'>Total length (&ge;<span class="rhs">&nbsp;</span>x<span class="rhs">&nbsp;</span>bp)</span>
+<p><span class='metric-name'>Total length (&ge;<span class="rhs">&nbsp;</span>x<span class="rhs">&nbsp;</span>bp)</span> 
     is the total number of bases in contigs of length <code>&ge; x<span class="rhs">&nbsp;</span>bp</code>.
     Not affected by the <code>--min-contig</code> parameter (see <a href="#sec2.4">section 2.4</a>).<br>
     <br>
@@ -706,13 +708,9 @@ Note:
 <a name="sec3.1.2"></a>
 <h4>3.1.2 Misassemblies report</h4>
 
-<p><span class='metric-name'># misassemblies</span> is the number of positions in the contigs that satisfy one of the following criteria:<br>
-    <ul style='margin-top: -24px;'>
-    <li>the left flanking sequence aligns over 1<span class="rhs">&nbsp;</span>kbp away from the right flanking sequence on the reference;
-    <li>flanking sequences overlap on more than 1<span class="rhs">&nbsp;</span>kbp;
-    <li>flanking sequences align to different strands or different chromosomes.
-    </ul>
-    Requires a reference genome.<br><br>
+<p><span class='metric-name'># misassemblies</span> is the same as <span class='metric-ref'># misassemblies</span> from <a href="#sec3.1.1">section 3.1.1</a>.
+    However, this report also contains a classification of all misassemblies into three groups: <span class='metric-ref'>relocations</span>, <span class='metric-ref'>translocations</span>,
+    and <span class='metric-ref'>inversions</span> (see below). For metagenomic assemblies, this classification also includes interspecies translocation.</p>
 
     This statistic is identical to <span class='metric-ref'># misassemblies</span> from <a href="#sec3.1.1">section 3.1.1</a>,
     although this report also contains a classification of all misassemblies into three groups: <span class='metric-ref'>relocations</span>, <span class='metric-ref'>translocations</span>,
@@ -723,19 +721,20 @@ sequence on the reference, or they overlap by more than 1<span class="rhs">&nbsp
 
 <p><span class='metric-name'>Translocation</span> is a misassembly where the flanking sequences align on different chromosomes. </p>
 
+<p><span class='metric-name'>Interspecies translocation</span> is a misassembly where the flanking sequences align on different references (--meta only). </p>
+
 <p><span class='metric-name'>Inversion</span> is a misassembly where the flanking sequences align on
 opposite strands of the same chromosome. </p>
 
 <p><span class='metric-name'># misassembled contigs</span> and <span class='metric-ref'>misassembled contigs length</span> are the same as the metrics from 
     <a href="#sec3.1.1">section 3.1.1</a> and are counted among all contigs with any type of a misassembly 
-    (relocation, translocation or inversion). </p>
+    (relocation, translocation, interspecies translocation or inversion). </p>
 
-<p><span class='metric-name'># local misassemblies</span> is the number of breakpoints that satisfy the following conditions:
-<ol class='my_ol' style='margin-top: -24px;'>
-<li>Two or more distinct alignments cover the breakpoint.</li>
-<li>The gap between left and right flanking sequences is less than 1<span class="rhs">&nbsp;</span>kbp.</li>
-<li>The left and right flanking sequences both are on the same strand of the same chromosome of the reference genome.</li>
-</ol>
+<p><span class='metric-name'># possibly misassembled contigs</span> is the number of contigs that contain large unaligned fragment and thus could possibly contain
+    interspecies translocation with unknown reference. This metric is computed only for metagenomic assemblies. </p>
+
+<p><span class='metric-name'># local misassemblies</span> is the same as <span class='metric-ref'># local misassemblies</span> from
+<a href="#sec3.1.1">section 3.1.1</a>.
 </p>
 
 <p><span class='metric-name'># mismatches</span> is the number of mismatches in all aligned bases.</p>
@@ -846,7 +845,7 @@ file consists of several sequences all of them are drawn on the single plot hori
     which will help you to adjust QUAST reports easily even if you are new to Python.
 </p>    
 
-<p> You can also adjust plot colors, style and width of lines, legeng font, plots output format, etc.
+<p> You can also adjust plot colors, style and width of lines, legend font, plots output format, etc.
     Please see the <code>CONFIGURABLE PARAMETERS</code> section in <code>libs/plotter.py</code>.
 </p>
 
@@ -976,6 +975,7 @@ The brief information about misassemblies (contig name, type and coordinates on 
 <code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.mis_contigs.info</code> file.
 QUAST also can detect structural variations aligning reads to reference.
 </p>
+
 <br>
 <p><b><i>
 Q4. Could you explain the format of Real Alignments in contigs report files (see the answer for Q3)?
@@ -1029,7 +1029,7 @@ FRM and TAGS are not documented in Nucmer help message, and the last two columns
 <br>
 The second file (<a href="http://en.wikipedia.org/wiki/Variant_Call_Format">"*.vcf"</a>) is generated by QUAST.
 <br>
-We analyse all alignments and filter them by skiping some "uninformative" alignments (redundant, duplicated) and after that include in VCF file
+We analyse all alignments and filter them by skipping some "uninformative" alignments (redundant, duplicated) and after that include in ".used_snps" file
 only those of all SNPs which were actually appear in filtered alignments. Thus, reported by QUAST numbers of "# mismatches per 100 kbp", "# indels per 100 kbp" includes statistics 
 from USED SNPs, not ALL SNPs.
 <br>

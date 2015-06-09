@@ -1,5 +1,5 @@
 ############################################################################
-# Copyright (c) 2011-2014 Saint-Petersburg Academic University
+# Copyright (c) 2011-2015 Saint-Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -32,6 +32,8 @@ gc_fn                 = '/gc.json'
 prefix_fn             = '/'
 suffix_fn             = '.json'
 
+json_text = ''
+
 
 def save(fpath, what):
     if simplejson_error:
@@ -46,7 +48,7 @@ def save(fpath, what):
     return fpath
 
 
-def save_total_report(output_dirpath, min_contig):
+def save_total_report(output_dirpath, min_contig, ref_fpath):
     from libs import reporting
     asm_names = map(qutils.label_from_fpath, reporting.assembly_fpaths)
     report = reporting.table(reporting.Fields.grouped_order)
@@ -55,6 +57,7 @@ def save_total_report(output_dirpath, min_contig):
     return save(output_dirpath + total_report_fname, {
         'date': t.strftime('%d %B %Y, %A, %H:%M:%S'),
         'assembliesNames': asm_names,
+        'referenceName': qutils.name_from_fpath(ref_fpath) if ref_fpath else qconfig.not_aligned_name,
         'order': [i for i, _ in enumerate(asm_names)],
         'report': report,
         'minContig': min_contig,

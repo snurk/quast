@@ -1,6 +1,6 @@
 -- Version history --
 
-2.4   1. Added assessing read coverage of an assembly. See details in manual.
+3.0   1. Added assessing read coverage of an assembly. See details in manual.
 
       2. BUSCO is used to find conserved orthologs in the assembly to assess
       the completeness of genome assembly.
@@ -18,6 +18,25 @@
       Now misassemblies are checked for match with structural variations.
 
       8. New metric: chaff contig size.
+      
+
+2.4   1. Plots and reports for each metric, misassemblies plot for each assembly, and HTML-report with results for all references are created
+      by metaQUAST.
+
+      2. MetaQUAST searches references in NCBI's database, if no references are provided.
+
+      3. Added misassemblies plots.
+
+      4. New metrics for --meta only: interspecies translocations and # possibly
+      misassembled contigs.
+
+      5. Fixed metaQUAST's handling of references with more than one chromosome.
+
+      6. An option --reference in metaQUAST allows to specify directory with references.
+
+      7. GeneMark-ES is used for predicting genes in eukaryotic genomes instead of Glimmer-HMM.
+      For using Glimmer-HMM, a new option --glimmer added.
+
 
 2.3   1. Changed logic in misassembly computation. Fixed several minor bugs in misassembly 
       detection algorithm and one major bug caused by linear represenation of circular

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ############################################################################
-# Copyright (c) 2011-2014 Saint-Petersburg Academic University
+# Copyright (c) 2011-2015 Saint-Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -105,20 +105,27 @@ def correct_fasta(original_fpath, corrected_fpath, min_contig,
 
     if is_reference:
         ref_len = sum(len(chr_seq) for (chr_name, chr_seq) in modified_fasta_entries)
-        if ref_len > qconfig.MAX_REFERENCE_LENGTH:
+        if ref_len > qconfig.MAX_REFERENCE_FILE_LENGTH:
             _, fasta_ext = os.path.splitext(corrected_fpath)
             split_ref_dirpath = os.path.join(os.path.dirname(corrected_fpath), 'split_ref')
             os.makedirs(split_ref_dirpath)
+            cur_len = 0
+            num_file = 0
+            max_len = ref_len/qconfig.max_threads
 
-            for i, (chr_name, chr_seq) in enumerate(modified_fasta_entries):
+            for (chr_name, chr_seq) in modified_fasta_entries:
                 if len(chr_seq) > qconfig.MAX_REFERENCE_LENGTH:
                     logger.warning("Skipping chromosome " + chr_name + " because it length is greater than " +
                             str(qconfig.MAX_REFERENCE_LENGTH) + " (Nucmer's constraint).")
                     continue
+                cur_len += len(chr_seq)
 
-                split_ref_fpath = os.path.join(split_ref_dirpath, "chr_" + str(i + 1)) + fasta_ext
-                qconfig.splitted_ref.append(split_ref_fpath)
-                fastaparser.write_fasta(split_ref_fpath, [(chr_name, chr_seq)])
+                split_ref_fpath = os.path.join(split_ref_dirpath, "chr_" + str(num_file + 1)) + fasta_ext
+                fastaparser.write_fasta(split_ref_fpath, [(chr_name, chr_seq)], mode='a')
+                if cur_len > max_len:
+                    qconfig.splitted_ref.append(split_ref_fpath)
+                    cur_len = 0
+                    num_file += 1
 
             if len(qconfig.splitted_ref) == 0:
                 logger.warning("Skipping reference because all of its chromosomes exceeded Nucmer's constraint.")
@@ -136,9 +143,12 @@ def _handle_fasta(contigs_fpath, corr_fpath, reporting):
         return False
 
     # correcting
-    if not correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig):
-        return False
-
+    if qconfig.no_check:
+        shutil.copy2(contigs_fpath, corr_fpath)
+    else:
+        if not correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig):
+            return False
+    
     ## filling column "Assembly" with names of assemblies
     report = reporting.get(corr_fpath)
     report.add_field(reporting.Fields.CHAFFCONTIG_PERCENT,('%.2f' % (sum(l for l in lengths if l < qconfig.min_contig)*100.0 / float(sum(l for l in lengths)))))
@@ -372,11 +382,11 @@ def main(args):
                         ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
                         ('-O', 'test_data/operons.gff'),
                         ('-G', 'test_data/genes.gff'),
-                        ('--gage', ''),  # for compiling GAGE Java classes
+                        ('--gage', ''), # for compiling GAGE Java classes
                         ('--find-conserved-genes', ''),  # for compiling BUSCO
-                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
+                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')] # for compiling GlimmerHMM
             contigs_fpaths += ['test_data/contigs_1.fasta',
-                               'test_data/contigs_2.fasta',]
+                               'test_data/contigs_2.fasta']
             qconfig.test = True
 
         if opt.startswith('--help'):
@@ -487,7 +497,7 @@ def main(args):
             qconfig.strict_NA = True
 
         elif opt == '--no-snps':
-            qconfig.search_snps = False
+            qconfig.show_snps = False
 
         elif opt == '--no-plots':
             qconfig.draw_plots = False
@@ -498,6 +508,12 @@ def main(args):
         elif opt == '--no-html':
             qconfig.html_report = False
 
+        elif opt == '--no-check':
+            qconfig.no_check = True
+
+        elif opt == '--no-gc':
+            qconfig.no_gc = True
+
         elif opt in ('-m', '--meta'):
             qconfig.meta = True
 
@@ -507,6 +523,9 @@ def main(args):
         elif opt == '-L':
             all_labels_from_dirs = True
 
+        elif opt == '--glimmer':
+            qconfig.glimmer = True
+        
         elif opt == '--archaea':
             qconfig.archaea = True
         else:
@@ -569,7 +588,6 @@ def main(args):
         logger.info()
         logger.info('Reference:')
         ref_fpath = _correct_reference(ref_fpath, corrected_dirpath)
-
     else:
         ref_fpath = ''
 
@@ -663,7 +681,6 @@ def main(args):
             ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
             genes_fpaths, operons_fpaths, detailed_contigs_reports_dirpath, os.path.join(output_dirpath, 'genome_stats'))
 
-
     if qconfig.gene_finding or qconfig.glimmer:
         if qconfig.glimmer:
             ########################################################################
@@ -678,7 +695,7 @@ def main(args):
             from libs import genemark
             genemark.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'), qconfig.prokaryote,
                         qconfig.meta)
-
+            
     else:
         logger.info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
@@ -705,15 +722,19 @@ def main(args):
         logger.info('Drawing large plots...')
         logger.info('This may take a while: press Ctrl-C to skip this step..')
         try:
-            number_of_steps = sum([int(bool(value)) for value in [detailed_contigs_reports_dirpath, all_pdf_file]])
-            if detailed_contigs_reports_dirpath:
+            if detailed_contigs_reports_dirpath and qconfig.show_snps:
+                contig_report_fpath_pattern = os.path.join(detailed_contigs_reports_dirpath, 'contigs_report_%s.stdout')
+            else:
+                contig_report_fpath_pattern = None
+            number_of_steps = sum([int(bool(value)) for value in [contig_report_fpath_pattern, all_pdf_file]])
+            if contig_report_fpath_pattern:
                 ########################################################################
                 ### VISUALIZE CONTIG ALIGNMENT
                 ########################################################################
                 logger.info('  1 of %d: Creating contig alignment plot...' % number_of_steps)
                 from libs import contig_alignment_plotter
                 contig_alignment_plot_fpath = contig_alignment_plotter.do(
-                    contigs_fpaths, os.path.join(detailed_contigs_reports_dirpath, 'contigs_report_%s.stdout'),
+                    contigs_fpaths, contig_report_fpath_pattern,
                     output_dirpath, ref_fpath, similar=True)
 
             if all_pdf_file:
@@ -724,7 +745,6 @@ def main(args):
         except KeyboardInterrupt:
             logger.info('..step skipped!')
             os.remove(all_pdf_fpath)
-
 
     ########################################################################
     ### TOTAL REPORT
@@ -739,7 +759,7 @@ def main(args):
 
     if qconfig.html_report:
         from libs.html_saver import html_saver
-        html_saver.save_total_report(output_dirpath, qconfig.min_contig)
+        html_saver.save_total_report(output_dirpath, qconfig.min_contig, ref_fpath)
 
     if os.path.isfile(all_pdf_fpath):
         logger.info('  PDF version (tables and plots) saved to ' + all_pdf_fpath)
