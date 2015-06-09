@@ -43,18 +43,17 @@ if platform.system() == 'Darwin':
     sed_cmd = "sed -i '' "
     hmmer_dirpath = join(busco_dirpath, 'hmmer-3.1b2-mac/src')
     augustus_dirpath = join(busco_dirpath, 'augustus-3.0.3/bin-mac')
-    blast_dirpath = join(busco_dirpath, 'ncbi-blast-2.2.30+mac/bin')
 else:
     sed_cmd = 'sed -i '
     hmmer_dirpath = join(busco_dirpath, 'hmmer-3.1b2/src')
     augustus_dirpath = join(busco_dirpath, 'augustus-3.0.3/bin')
-    blast_dirpath = join(busco_dirpath, 'ncbi-blast-2.2.30+/bin')
 
 def hmmer_fpath(fname):
     return join(hmmer_dirpath, fname)
 
 def blast_fpath(fname):
-    return join(blast_dirpath, fname)
+    blast_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast', qconfig.platform_name)
+    return os.path.join(blast_dirpath, fname)
 
 def august_fpath(fname):
     return join(augustus_dirpath, fname)
