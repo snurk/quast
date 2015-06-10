@@ -32,7 +32,7 @@ var nx = {
         showWithData: null,
     },
 
-    draw: function (name, title, colors, filenames, data, refPlotValue,
+    draw: function (name, title, colors, filenames, data, refPlotValue, tickX,
                     placeholder, legendPlaceholder, glossary, order, scalePlaceholder) {
 
         $(scalePlaceholder).empty();
@@ -137,14 +137,14 @@ var nx = {
                                 }
                             }
                         },
-                        minTickSize: 1,
+                        minTickSize: tickX,
                     }
                 );
 
                 var firstLabel = $('.yAxis .tickLabel').last();
                 firstLabel.prepend(title + '<span class="rhs">&nbsp;</span>=<span class="rhs">&nbsp;</span>');
 
-                bindTip(placeholder, series, plot, toPrettyString, '%', 'top right');
+                bindTip(placeholder, series, plot, toPrettyString, 1, '%', 'top right');
 
             };
 

@@ -109,6 +109,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     logger.info('  Contig files: ')
     lists_of_lengths = []
     numbers_of_Ns = []
+    num_contigs = 0
     for id, contigs_fpath in enumerate(contigs_fpaths):
         assembly_label = qutils.label_from_fpath(contigs_fpath)
 
@@ -119,17 +120,27 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
         for (name, seq) in fastaparser.read_fasta(contigs_fpath):
             list_of_length.append(len(seq))
             number_of_Ns += seq.count('N')
-
+        num_contigs = max(len(list_of_length), num_contigs)
         lists_of_lengths.append(list_of_length)
         numbers_of_Ns.append(number_of_Ns)
 
+    multiplicator = 1
+    if num_contigs > qconfig.max_points:
+        multiplicator = int(num_contigs/qconfig.max_points)
+        corr_lists_of_lengths = [[sum(list_of_length[((i-1)*multiplicator):(i*multiplicator)]) for i in range(1, qconfig.max_points) if (i*multiplicator) < len(list_of_length)]
+                            for list_of_length in lists_of_lengths]
+    else:
+        corr_lists_of_lengths = lists_of_lengths
+
     # saving lengths to JSON
     if json_output_dir:
-        json_saver.save_contigs_lengths(json_output_dir, contigs_fpaths, lists_of_lengths)
+        json_saver.save_contigs_lengths(json_output_dir, contigs_fpaths, corr_lists_of_lengths)
+        json_saver.save_tick_x(output_dirpath, multiplicator)
 
     if qconfig.html_report:
         from libs.html_saver import html_saver
-        html_saver.save_contigs_lengths(results_dir, contigs_fpaths, lists_of_lengths)
+        html_saver.save_contigs_lengths(results_dir, contigs_fpaths, corr_lists_of_lengths)
+        html_saver.save_tick_x(results_dir, multiplicator)
 
     ########################################################################
 

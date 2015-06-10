@@ -174,6 +174,12 @@ def save_reference_length(results_dirpath, reference_length):
         append(results_dirpath, json_fpath, 'referenceLength')
 
 
+def save_tick_x(results_dirpath, tick_x):
+    json_fpath = json_saver.save_tick_x(results_dirpath, tick_x)
+    if json_fpath:
+        append(results_dirpath, json_fpath, 'tickX')
+
+
 def save_aligned_contigs_lengths(results_dirpath, contigs_fpaths, lists_of_lengths):
     json_fpath = json_saver.save_aligned_contigs_lengths(results_dirpath, contigs_fpaths, lists_of_lengths)
     if json_fpath:

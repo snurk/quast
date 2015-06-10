@@ -351,6 +351,7 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
     res_file.write('%-25s| %-10s| %-12s| %-10s| %-10s| %-10s| %-10s| %-10s|\n'
         % ('', 'fraction', 'ratio', 'number', '', 'genes', '', 'operons'))
     res_file.write('================================================================================================================\n')
+    num_contigs = 0
 
     for contigs_fpath, (results, genes_in_contigs, operons_in_contigs) in zip(aligned_contigs_fpaths, results_genes_operons_tuples):
         assembly_name = qutils.name_from_fpath(contigs_fpath)
@@ -359,6 +360,7 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
         files_operons_in_contigs[contigs_fpath] = operons_in_contigs
         full_found_genes.append(sum(genes_in_contigs))
         full_found_operons.append(sum(operons_in_contigs))
+        num_contigs = max(num_contigs, len(genes_in_contigs))
 
         covered_bp = results["covered_bp"]
         gaps_count = results["gaps_count"]
@@ -401,6 +403,15 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
         ref_operons_num = len(operons_container.region_list)
     else:
         ref_operons_num = None
+
+    if num_contigs > qconfig.max_points:
+        multiplicator = int(num_contigs/qconfig.max_points)
+        for k, v in files_genes_in_contigs.iteritems():
+            files_genes_in_contigs[k] = [sum(files_genes_in_contigs[k][((i-1)*multiplicator):(i*multiplicator)]) for i in range(1, qconfig.max_points)
+                                         if (i*multiplicator) < len(files_genes_in_contigs[k])]
+        for k, v in files_operons_in_contigs.iteritems():
+            files_operons_in_contigs[k] = [sum(files_operons_in_contigs[k][((i-1)*multiplicator):(i*multiplicator)]) for i in range(1, qconfig.max_points)
+                                         if (i*multiplicator) < len(files_operons_in_contigs[k])]
 
     # saving json
     if json_output_dirpath:

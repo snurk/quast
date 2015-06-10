@@ -228,7 +228,7 @@ function showInNormalScaleWithData(series, colors) {
 
     var firstLabel = $('.yAxis .tickLabel').last();
     firstLabel.append(' windows');
-    bindTip(gc.placeholder, series, gc.plot, toPrettyString, '%<span class="rhs">&nbsp;</span>GC', 'top right');
+    bindTip(gc.placeholder, series, gc.plot, toPrettyString, 1, '%<span class="rhs">&nbsp;</span>GC', 'top right');
 }
 
 
@@ -289,7 +289,7 @@ function showInLogarithmicScaleWithData(series, colors) {
 
     var firstLabel = $('.yAxis .tickLabel').last();
     firstLabel.append(' windows');
-    bindTip(gc.placeholder, series, gc.plot, toPrettyString, '% GC', 'top right');
+    bindTip(gc.placeholder, series, gc.plot, toPrettyString, 1, '% GC', 'top right');
 }
 
 

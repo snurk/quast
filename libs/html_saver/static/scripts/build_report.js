@@ -87,16 +87,16 @@ function buildReport() {
     var legendPlaceholder = document.getElementById('legend-placeholder');
     var scalePlaceholder = document.getElementById('scale-placeholder');
 
-    function getToggleFunction(name, title, drawPlot, data, refPlotValue) {
+    function getToggleFunction(name, title, drawPlot, data, refPlotValue, tickX) {
         return function() {
             this.parentNode.getElementsByClassName('selected-switch')[0].className = 'plot-switch dotted-link';
             this.className = 'plot-switch selected-switch';
-            togglePlots(name, title, drawPlot, data, refPlotValue)
+            togglePlots(name, title, drawPlot, data, refPlotValue, tickX)
         };
     }
 
     var toRemoveRefLabel = true;
-    function togglePlots(name, title, drawPlot, data, refPlotValue) {
+    function togglePlots(name, title, drawPlot, data, refPlotValue, tickX) {
         if (name === 'cumulative') {
             $(plotPlaceholder).addClass('cumulative-plot-placeholder');
         } else {
@@ -119,12 +119,12 @@ function buildReport() {
             );
         }
 
-        drawPlot(name, title, colors, assembliesNames, data, refPlotValue,
+        drawPlot(name, title, colors, assembliesNames, data, refPlotValue, tickX,
             plotPlaceholder, legendPlaceholder, glossary, order, scalePlaceholder);
     }
 
     var firstPlot = true;
-    function makePlot(name, title, drawPlot, data, refPlotValue) {
+    function makePlot(name, title, drawPlot, data, refPlotValue, tickX) {
         var switchSpan = document.createElement('span');
         switchSpan.id = name + '-switch';
         switchSpan.innerHTML = title;
@@ -132,14 +132,14 @@ function buildReport() {
 
         if (firstPlot) {
             switchSpan.className = 'plot-switch selected-switch';
-            togglePlots(name, title, drawPlot, data, refPlotValue);
+            togglePlots(name, title, drawPlot, data, refPlotValue, tickX);
             firstPlot = false;
 
         } else {
             switchSpan.className = 'plot-switch dotted-link';
         }
 
-        $(switchSpan).click(getToggleFunction(name, title, drawPlot, data, refPlotValue));
+        $(switchSpan).click(getToggleFunction(name, title, drawPlot, data, refPlotValue, tickX));
     }
 
     function readJson(what) {
@@ -187,14 +187,18 @@ function buildReport() {
             '</div>');
     });
 
+    var tickX = 1;
+    if (tickX = readJson('tick-x'))
+        tickX = tickX.tickX;
+
     if (contigsLens = readJson('contigs-lengths')) {
-        makePlot('cumulative', 'Cumulative length', cumulative.draw, contigsLens.lists_of_lengths, refLen);
+        makePlot('cumulative', 'Cumulative length', cumulative.draw, contigsLens.lists_of_lengths, refLen, tickX);
 
         makePlot('nx', 'Nx', nx.draw, {
                 listsOfLengths: contigsLens.lists_of_lengths,
                 refLen: refLen,
             },
-            null
+            null, tickX
         );
     }
 
@@ -203,7 +207,7 @@ function buildReport() {
                 listsOfLengths: alignedContigsLens.lists_of_lengths,
                 refLen: refLen,
             },
-            null
+            null, tickX
         );
     }
 
@@ -212,7 +216,7 @@ function buildReport() {
                 listsOfLengths: contigsLens.lists_of_lengths,
                 refLen: refLen,
             },
-            null
+            null, tickX
         );
     }
 
@@ -221,13 +225,12 @@ function buildReport() {
                 listsOfLengths: alignedContigsLens.lists_of_lengths,
                 refLen: refLen,
             },
-            null
+            null, tickX
         );
     }
 
     genesInContigs = readJson('genes-in-contigs');
     operonsInContigs = readJson('operons-in-contigs');
-
 //    if (genesInContigs || operonsInContigs)
 //        contigs = readJson('contigs');
 
@@ -236,7 +239,7 @@ function buildReport() {
                 filesFeatureInContigs: genesInContigs.genes_in_contigs,
                 kind: 'gene',
             },
-            genesInContigs.ref_genes_number
+            genesInContigs.ref_genes_number, tickX
         );
     }
     if (operonsInContigs) {
@@ -244,7 +247,7 @@ function buildReport() {
                 filesFeatureInContigs: operonsInContigs.operons_in_contigs,
                 kind: 'operon',
             },
-            operonsInContigs.ref_operons_number
+            operonsInContigs.ref_operons_number, tickX
         );
     }
 

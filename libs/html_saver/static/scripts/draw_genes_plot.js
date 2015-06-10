@@ -22,7 +22,7 @@ var gns = {
         yAxisLabeled: false,
     },
 
-    draw: function (name, title, colors, filenames, data, refGenesNumber,
+    draw: function (name, title, colors, filenames, data, refGenesNumber, tickX,
                     placeholder, legendPlaceholder, glossary, order, scalePlaceholder) {
 //    div.html(
 //        "<span class='plot-header'>" + kind[0].toUpperCase() + kind.slice(1) + "s covered</span>" +
@@ -150,15 +150,15 @@ var gns = {
                         max: info.maxX,
                         lineWidth: 0.5,
                         color: '#000',
-                        tickFormatter: getContigNumberTickFormatter(info.maxX),
-                        minTickSize: 1,
+                        tickFormatter: getContigNumberTickFormatter(info.maxX, tickX),
+                        minTickSize: tickX,
                     },
                 });
 
                 var firstLabel = $('.yAxis .tickLabel').last();
                 firstLabel.append(' ' + name);
 
-                bindTip(placeholder, series, plot, ordinalNumberToPrettyString, 'contig', 'bottom right');
+                bindTip(placeholder, series, plot, ordinalNumberToPrettyString, tickX, 'contig', 'bottom right');
             };
 
             info.isInitialized = true;
