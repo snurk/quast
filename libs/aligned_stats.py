@@ -67,20 +67,14 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
     ########################################################################
     # saving to JSON
     num_contigs = max([len(aligned_lengths_lists[i]) for i in range(len(aligned_lengths_lists))])
-    if num_contigs > qconfig.max_points:
-        multiplicator = int(num_contigs/qconfig.max_points)
-        aligned_lengths_lists = [[sum(list_of_length[((i-1)*multiplicator):(i*multiplicator)]) for i in range(1, qconfig.max_points) if (i*multiplicator) < len(list_of_length)]
-                                 for list_of_length in aligned_lengths_lists]
 
     if json_output_dirpath:
         from libs.html_saver import json_saver
-        json_saver.save_aligned_contigs_lengths(json_output_dirpath, aligned_contigs_fpaths, aligned_lengths_lists)
         json_saver.save_assembly_lengths(json_output_dirpath, aligned_contigs_fpaths, assembly_lengths)
 
     # saving to html
     if qconfig.html_report:
         from libs.html_saver import html_saver
-        html_saver.save_aligned_contigs_lengths(output_dirpath, aligned_contigs_fpaths, aligned_lengths_lists)
         html_saver.save_assembly_lengths(output_dirpath, aligned_contigs_fpaths, assembly_lengths)
 
     if qconfig.draw_plots:
@@ -91,8 +85,8 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
                                 'Cumulative length (aligned contigs)')
 
         # Drawing NAx and NGAx plots...
-        plotter.Nx_plot(aligned_contigs_fpaths, aligned_lengths_lists, aligned_stats_dirpath + '/NAx_plot', 'NAx', assembly_lengths)
-        plotter.Nx_plot(aligned_contigs_fpaths, aligned_lengths_lists, aligned_stats_dirpath + '/NGAx_plot', 'NGAx', [reference_length for i in range(len(aligned_contigs_fpaths))])
+        plotter.Nx_plot(output_dirpath, num_contigs > qconfig.max_points, aligned_contigs_fpaths, aligned_lengths_lists, aligned_stats_dirpath + '/NAx_plot', 'NAx', assembly_lengths)
+        plotter.Nx_plot(output_dirpath, num_contigs > qconfig.max_points, aligned_contigs_fpaths, aligned_lengths_lists, aligned_stats_dirpath + '/NGAx_plot', 'NGAx', [reference_length for i in range(len(aligned_contigs_fpaths))])
 
     logger.info('Done.')
     return report_dict

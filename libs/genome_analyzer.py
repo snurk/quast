@@ -404,8 +404,25 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
     else:
         ref_operons_num = None
 
+    if qconfig.draw_plots:
+        # cumulative plots:
+        import plotter
+        if genes_container.region_list:
+            plotter.genes_operons_plot(len(genes_container.region_list), aligned_contigs_fpaths, files_genes_in_contigs,
+                genome_stats_dirpath + '/genes_cumulative_plot', 'genes')
+            plotter.histogram(aligned_contigs_fpaths, full_found_genes, genome_stats_dirpath + '/complete_genes_histogram',
+                '# complete genes')
+        if operons_container.region_list:
+            plotter.genes_operons_plot(len(operons_container.region_list), aligned_contigs_fpaths, files_operons_in_contigs,
+                genome_stats_dirpath + '/operons_cumulative_plot', 'operons')
+            plotter.histogram(aligned_contigs_fpaths, full_found_operons, genome_stats_dirpath + '/complete_operons_histogram',
+                '# complete operons')
+        plotter.histogram(aligned_contigs_fpaths, genome_mapped, genome_stats_dirpath + '/genome_fraction_histogram',
+            'Genome fraction, %', top_value=100)
+
     if num_contigs > qconfig.max_points:
-        multiplicator = int(num_contigs/qconfig.max_points)
+        import math
+        multiplicator = int(math.ceil(int(num_contigs/qconfig.max_points)))
         for k, v in files_genes_in_contigs.iteritems():
             files_genes_in_contigs[k] = [sum(files_genes_in_contigs[k][((i-1)*multiplicator):(i*multiplicator)]) for i in range(1, qconfig.max_points)
                                          if (i*multiplicator) < len(files_genes_in_contigs[k])]
@@ -426,22 +443,6 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
             html_saver.save_features_in_contigs(output_dirpath, aligned_contigs_fpaths, 'genes', files_genes_in_contigs, ref_genes_num)
         if operons_container.region_list:
             html_saver.save_features_in_contigs(output_dirpath, aligned_contigs_fpaths, 'operons', files_operons_in_contigs, ref_operons_num)
-
-    if qconfig.draw_plots:
-        # cumulative plots:
-        import plotter
-        if genes_container.region_list:
-            plotter.genes_operons_plot(len(genes_container.region_list), aligned_contigs_fpaths, files_genes_in_contigs,
-                genome_stats_dirpath + '/genes_cumulative_plot', 'genes')
-            plotter.histogram(aligned_contigs_fpaths, full_found_genes, genome_stats_dirpath + '/complete_genes_histogram',
-                '# complete genes')
-        if operons_container.region_list:
-            plotter.genes_operons_plot(len(operons_container.region_list), aligned_contigs_fpaths, files_operons_in_contigs,
-                genome_stats_dirpath + '/operons_cumulative_plot', 'operons')
-            plotter.histogram(aligned_contigs_fpaths, full_found_operons, genome_stats_dirpath + '/complete_operons_histogram',
-                '# complete operons')
-        plotter.histogram(aligned_contigs_fpaths, genome_mapped, genome_stats_dirpath + '/genome_fraction_histogram',
-            'Genome fraction, %', top_value=100)
 
     logger.info('Done.')
 

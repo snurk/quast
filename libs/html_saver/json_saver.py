@@ -104,7 +104,6 @@ def save_contigs_lengths(output_dirpath, contigs_fpaths, lists_of_lengths):
         'lists_of_lengths': lists_of_lengths
     })
 
-
 def save_reference_length(output_dirpath, reference_length):
     return save(output_dirpath + ref_length_fn, {'reflen': reference_length})
 
@@ -113,12 +112,11 @@ def save_tick_x(output_dirpath, tick_x):
     return save(output_dirpath + tick_x_fn, {'tickX': tick_x})
 
 
-def save_aligned_contigs_lengths(output_dir, contigs_fpaths, lists_of_lengths):
-    lists_of_lengths = [sorted(one_list, reverse=True) for one_list in lists_of_lengths]
-
-    return save(output_dir + aligned_contigs_fn, {
-        'filenames': map(qutils.label_from_fpath, contigs_fpaths),
-        'lists_of_lengths': lists_of_lengths
+def save_coord(output_dirpath, coord_x, coord_y, name_coord):
+    coord_fn = prefix_fn + 'coord' + name_coord + suffix_fn
+    return save(output_dirpath + coord_fn, {
+        'coord_x': coord_x,
+        'coord_y': coord_y
     })
 
 

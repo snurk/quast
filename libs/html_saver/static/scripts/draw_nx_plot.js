@@ -37,8 +37,8 @@ var nx = {
 
         $(scalePlaceholder).empty();
 
-        var listsOfLengths = data.listsOfLengths;
-        var refLength = data.refLen;
+        var coordX = data.coord_x;
+        var coordY = data.coord_y;
 
         var info = nx[name];
 
@@ -47,18 +47,9 @@ var nx = {
             info.series = new Array(plotsN);
 
             for (var i = 0; i < plotsN; i++) {
-                var lengths = listsOfLengths[order[i]];
-
-                var size = lengths.length;
-
-                if (name == 'ngx' || name == 'ngax') {
-                    sumLen = refLength;
-                } else {
-                    var sumLen = 0;
-                    for (var j = 0; j < lengths.length; j++) {
-                        sumLen += lengths[j];
-                    }
-                }
+                var plot_coordX = coordX[order[i]];
+                var plot_coordY = coordY[order[i]];
+                var size = plot_coordX.length;
 
                 info.series[i] = {
                     data: [],
@@ -66,15 +57,12 @@ var nx = {
                     number: i,
                     color: colors[order[i]],
                 };
-                info.series[i].data.push([0.0, lengths[0]]);
+                info.series[i].data.push([0.0, plot_coordY[0]]);
                 var currentLen = 0;
                 var x = 0.0;
 
                 for (var k = 0; k < size; k++) {
-                    currentLen += lengths[k];
-                    info.series[i].data.push([x, lengths[k]]);
-                    x = currentLen * 100.0 / sumLen;
-                    info.series[i].data.push([x, lengths[k]]);
+                    info.series[i].data.push([plot_coordX[k], plot_coordY[k]]);
                 }
 
                 if (info.series[i].data[0][1] > info.maxY) {

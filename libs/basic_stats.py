@@ -126,9 +126,15 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
 
     multiplicator = 1
     if num_contigs > qconfig.max_points:
-        multiplicator = int(num_contigs/qconfig.max_points)
+        import math
+        multiplicator = int(math.ceil(int(num_contigs/qconfig.max_points)))
+        lists_of_lengths = [sorted(list, reverse=True) for list in lists_of_lengths]
         corr_lists_of_lengths = [[sum(list_of_length[((i-1)*multiplicator):(i*multiplicator)]) for i in range(1, qconfig.max_points) if (i*multiplicator) < len(list_of_length)]
                             for list_of_length in lists_of_lengths]
+        for num_list in range(len(corr_lists_of_lengths)):
+            list_len = len(lists_of_lengths[num_list])
+            last_index = (int(list_len/multiplicator)-1)*multiplicator
+            corr_lists_of_lengths[num_list].append(sum(lists_of_lengths[num_list][last_index:]))
     else:
         corr_lists_of_lengths = lists_of_lengths
 
@@ -147,6 +153,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     logger.info('  Calculating N50 and L50...')
 
     list_of_GC_distributions = []
+    largest_contig = 0
     import N50
     for id, (contigs_fpath, lengths_list, number_of_Ns) in enumerate(itertools.izip(contigs_fpaths, lists_of_lengths, numbers_of_Ns)):
         report = reporting.get(contigs_fpath)
@@ -181,6 +188,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
             report.add_field(reporting.Fields.LG75, lg75)
         report.add_field(reporting.Fields.CONTIGS, len(lengths_list))
         report.add_field(reporting.Fields.LARGCONTIG, max(lengths_list))
+        largest_contig = max(largest_contig, max(lengths_list))
         report.add_field(reporting.Fields.TOTALLEN, total_length)
         report.add_field(reporting.Fields.GC, ('%.2f' % total_GC if total_GC else None))
         report.add_field(reporting.Fields.UNCALLED, number_of_Ns)
@@ -190,6 +198,9 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
             report.add_field(reporting.Fields.REFGC, '%.2f' % reference_GC)
         elif reference_length:
             report.add_field(reporting.Fields.ESTREFLEN, int(reference_length))
+
+    import math
+    qconfig.min_difference = math.ceil((largest_contig/1000)/600)  # divide on height of plot
 
     if json_output_dir:
         json_saver.save_GC_info(json_output_dir, contigs_fpaths, list_of_GC_distributions)
@@ -213,8 +224,8 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
 
         ########################################################################
         # Drawing Nx and NGx plots...
-        plotter.Nx_plot(contigs_fpaths, lists_of_lengths, output_dirpath + '/Nx_plot', 'Nx', [])
+        plotter.Nx_plot(results_dir, num_contigs > qconfig.max_points, contigs_fpaths, lists_of_lengths, output_dirpath + '/Nx_plot', 'Nx', [])
         if reference_length:
-            plotter.Nx_plot(contigs_fpaths, lists_of_lengths, output_dirpath + '/NGx_plot', 'NGx', [reference_length for i in range(len(contigs_fpaths))])
+            plotter.Nx_plot(results_dir, num_contigs > qconfig.max_points, contigs_fpaths, lists_of_lengths, output_dirpath + '/NGx_plot', 'NGx', [reference_length for i in range(len(contigs_fpaths))])
 
     logger.info('Done.')

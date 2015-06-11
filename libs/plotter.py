@@ -199,7 +199,7 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
 
 
 # common routine for Nx-plot and NGx-plot (and probably for others Nyx-plots in the future)
-def Nx_plot(contigs_fpaths, lists_of_lengths, plot_fpath, title='Nx', reference_lengths=None):
+def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_fpath, title='Nx', reference_lengths=None):
     if matplotlib_error:
         return
 
@@ -212,8 +212,12 @@ def Nx_plot(contigs_fpaths, lists_of_lengths, plot_fpath, title='Nx', reference_
     max_y = 0
 
     color_id = 0
+    json_vals_x = []  # coordinates for Nx-like plots in HTML-report
+    json_vals_y = []
 
     for id, (contigs_fpath, lengths) in enumerate(itertools.izip(contigs_fpaths, lists_of_lengths)):
+        vals_x = [0.0]
+        vals_y = [lengths[0]]
         lengths.sort(reverse=True)
         # calculate values for the plot
         vals_Nx = [0.0]
@@ -223,6 +227,9 @@ def Nx_plot(contigs_fpaths, lists_of_lengths, plot_fpath, title='Nx', reference_
         lsum = sum(lengths)
         if reference_lengths:
             lsum = reference_lengths[id]
+        min_difference = 0
+        if reduce_points:
+            min_difference = qconfig.min_difference
         for l in lengths:
             lcur += l
             x = lcur * 100.0 / lsum
@@ -230,14 +237,27 @@ def Nx_plot(contigs_fpaths, lists_of_lengths, plot_fpath, title='Nx', reference_
             vals_l.append(l)
             vals_Nx.append(x)
             vals_l.append(l)
+            if vals_y[-1] - l > min_difference or len(vals_x) == 1:
+                vals_x.append(vals_x[-1] + 1e-10) # eps
+                vals_y.append(l)
+                vals_x.append(x)
+                vals_y.append(l)
             # add to plot
 
         vals_Nx.append(vals_Nx[-1] + 1e-10) # eps
         vals_l.append(0.0)
+        vals_x.append(vals_x[-1] + 1e-10) # eps
+        vals_y.append(0.0)
+        json_vals_x.append(vals_x)
+        json_vals_y.append(vals_y)
         max_y = max(max_y, max(vals_l))
 
         color, ls, color_id = get_color_and_ls(color_id, contigs_fpath)
         matplotlib.pyplot.plot(vals_Nx, vals_l, color=color, lw=line_width, ls=ls)
+
+    if qconfig.html_report:
+        from libs.html_saver import html_saver
+        html_saver.save_coord(results_dir, json_vals_x, json_vals_y, 'coord' + title)
 
     if with_title:
         matplotlib.pyplot.title(title)

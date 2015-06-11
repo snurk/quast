@@ -73,6 +73,8 @@ function buildReport() {
     var qualities = null;
     var mainMetrics = null;
     var contigsLens = null;
+    var coordNx = null;
+    var contigsLensNx = null;
     var alignedContigsLens = null;
     var refLen = 0;
     var contigs = null;
@@ -193,41 +195,44 @@ function buildReport() {
 
     if (contigsLens = readJson('contigs-lengths')) {
         makePlot('cumulative', 'Cumulative length', cumulative.draw, contigsLens.lists_of_lengths, refLen, tickX);
+    }
 
+    if (coordNx = readJson('coord-nx')) {
         makePlot('nx', 'Nx', nx.draw, {
-                listsOfLengths: contigsLens.lists_of_lengths,
-                refLen: refLen,
+                coord_x: coordNx.coord_x,
+                coord_y: coordNx.coord_y,
             },
-            null, tickX
+            null, null
         );
     }
 
-    if (alignedContigsLens = readJson('aligned-contigs-lengths')) {
+    if (coordNx = readJson('coord-nax')) {
         makePlot('nax', 'NAx', nx.draw, {
-                listsOfLengths: alignedContigsLens.lists_of_lengths,
-                refLen: refLen,
+                coord_x: coordNx.coord_x,
+                coord_y: coordNx.coord_y,
             },
-            null, tickX
+            null, null
         );
     }
 
-    if (contigsLens && refLen) {
+    if (coordNx = readJson('coord-ngx')) {
         makePlot('ngx', 'NGx', nx.draw, {
-                listsOfLengths: contigsLens.lists_of_lengths,
-                refLen: refLen,
+                coord_x: coordNx.coord_x,
+                coord_y: coordNx.coord_y,
             },
-            null, tickX
+            null, null
         );
     }
 
-    if (alignedContigsLens && refLen) {
+    if (coordNx = readJson('coord-ngax')) {
         makePlot('ngax', 'NGAx', nx.draw, {
-                listsOfLengths: alignedContigsLens.lists_of_lengths,
-                refLen: refLen,
+                coord_x: coordNx.coord_x,
+                coord_y: coordNx.coord_y,
             },
-            null, tickX
+            null, null
         );
     }
+
 
     genesInContigs = readJson('genes-in-contigs');
     operonsInContigs = readJson('operons-in-contigs');
