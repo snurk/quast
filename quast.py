@@ -423,7 +423,8 @@ def main(args):
     ref_fpath = ''
     genes_fpaths = []
     operons_fpaths = []
-    reads_fpaths = []
+    reads_fpath_f = ''
+    reads_fpath_r = ''
     reads_inter_fpath = []
 
     # Yes, this is a code duplicating. But OptionParser is deprecated since version 2.7.
@@ -442,11 +443,11 @@ def main(args):
             ref_fpath = assert_file_exists(arg, 'reference')
 
         elif opt in ('-1', '--reads1'):
-            reads_fpaths.append(arg)
+            reads_fpath_f = arg
             qconfig.reads = True
 
         elif opt in ('-2', '--reads2'):
-            reads_fpaths.append(arg)
+            reads_fpath_r = arg
             qconfig.reads = True
 
         elif opt == '--12':
@@ -456,7 +457,7 @@ def main(args):
             qconfig.reads = True
 
         elif opt in ('-s', '--single-reads'):
-            reads_fpaths.append(arg)
+            reads_fpath_f = arg
             qconfig.reads = True
 
         elif opt in ('-t', "--contig-thresholds"):
@@ -549,6 +550,14 @@ def main(args):
 
     for contigs_fpath in contigs_fpaths:
         assert_file_exists(contigs_fpath, 'contigs')
+
+    reads_fpaths = []
+    if reads_fpath_f:
+        reads_fpaths.append(reads_fpath_f)
+    if reads_fpath_r:
+        reads_fpaths.append(reads_fpath_r)
+    if len(reads_fpaths) > 1 and reads_fpath_f == reads_fpath_r:
+        logger.error('Files with forward and reverse reads are the same. Please provide correct files.', to_stderr=True, exit_with_code=2)
 
     for reads_fpath in reads_fpaths:
         assert_file_exists(reads_fpath, 'reads')
