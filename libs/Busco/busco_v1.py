@@ -59,6 +59,30 @@ def august_fpath(fname):
     return join(augustus_dirpath, fname)
 
 
+def parallel_augustus(data, profile, assembly_name, target_species, clade, aug_out_path, mainout, err_path):
+    if len(data) > 1:
+        for z in range(0, len(data)):
+            scaffold = data[z][0] + assembly_name + '_.temp'
+            cmd = august_fpath('augustus') + (
+                ' --proteinprofile=%(clade)s/%(prot_profile)s --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
+                {'prot_profile': 'prfl/%s.prfl' % profile, 'start_coord': data[z][1], 'end_coord': data[z][2],
+                 'clade': join(busco_dirpath, clade), 'species': target_species,
+                 'scaffold': join(mainout, scaffold)})
+            out_aug = open(join(aug_out_path, '%s.out.%s' % (profile, (z + 1))), 'w')
+            qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
+            logger.debug('')
+    else:
+        scaffold = data[0][0] + assembly_name + '_.temp'
+        cmd = august_fpath('augustus') + (
+            ' --proteinprofile=%(clade)s/%(prot_profile)s --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
+            {'prot_profile': 'prfl/%s.prfl' % profile, 'start_coord': data[0][1], 'end_coord': data[0][2],
+             'clade': join(busco_dirpath, clade), 'species': target_species,
+             'scaffold': join(mainout, scaffold)})
+        out_aug = open(join(mainout, 'augustus/%s.out' % profile), 'w')
+        qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
+        logger.debug('')
+
+
 def do(f_args, output_dir):
     #------------------------------------ Argument parser START ----------------------------------------#
     start_time = time.time()
@@ -531,7 +555,6 @@ def do(f_args, output_dir):
 
         f = open(coord_path)
         dic = {}
-
         for i in f:
             i = i.strip().split('\t')
             name = i[0]
@@ -540,28 +563,9 @@ def do(f_args, output_dir):
             elif name in dic:
                 dic[name].append([i[1], i[2], i[3]])
 
-        for i in dic.keys():
-            if len(dic[i]) > 1:
-                for z in range(0, len(dic[i])):
-                    scaffold = dic[i][z][0] + assembly_name + '_.temp'
-                    cmd = august_fpath('augustus') + (
-                        ' --proteinprofile=%(clade)s/%(prot_profile)s --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
-                        {'prot_profile': 'prfl/%s.prfl' % i, 'start_coord': dic[i][z][1], 'end_coord': dic[i][z][2],
-                         'clade': join(busco_dirpath, clade), 'species': target_species,
-                         'scaffold': join(mainout, scaffold)})
-                    out_aug = open(join(aug_out_path, '%s.out.%s' % (i, (z + 1))), 'w')
-                    qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
-                    logger.debug('')
-            else:
-                scaffold = dic[i][0][0] + assembly_name + '_.temp'
-                cmd = august_fpath('augustus') + (
-                    ' --proteinprofile=%(clade)s/%(prot_profile)s --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
-                    {'prot_profile': 'prfl/%s.prfl' % i, 'start_coord': dic[i][0][1], 'end_coord': dic[i][0][2],
-                     'clade': join(busco_dirpath, clade), 'species': target_species,
-                     'scaffold': join(mainout, scaffold)})
-                out_aug = open(join(mainout, 'augustus/%s.out' % i), 'w')
-                qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
-                logger.debug('')
+        from joblib import Parallel, delayed
+        Parallel(n_jobs=int(cpus))(delayed(parallel_augustus)(dic[i], i, assembly_name, target_species, clade, aug_out_path, mainout, err_path) for i in dic.keys())
+
 
     #---------------------------AUGUSTUS steps END -------------------------------------------#
 

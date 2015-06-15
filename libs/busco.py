@@ -11,7 +11,6 @@ if platform.system() == 'Darwin':
     hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2-mac')
 else:
     hmmer_dirpath = os.path.join(busco_dirpath, 'hmmer-3.1b2')
-blast_dirpath = os.path.join(busco_dirpath, 'ncbi-blast-2.2.30+-src')
 
 def all_required_binaries_exist(bin_dirpath, binary):
     if not os.path.isfile(os.path.join(bin_dirpath, binary)):
@@ -53,11 +52,11 @@ def do(contigs_fpaths, out_dirpath, clade):
     err_path = os.path.join(out_dirpath, 'busco.err')
     open(log_path, 'w').close()
     open(err_path, 'w').close()
-    n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
-    busco_threads = qconfig.max_threads//n_jobs
-
-    results = Parallel(n_jobs=n_jobs)(delayed(busco_v1.do)(['-n', str(index), '-in', contigs_fpath,'-o', qutils.name_from_fpath(contigs_fpath), '-l', clade, '-m', 'genome', '-f', '-c', str(busco_threads)],
-                                                         out_dirpath) for index, contigs_fpath in enumerate(contigs_fpaths))
+    results = []
+    for index, contigs_fpath in enumerate(contigs_fpaths):
+        results.append(busco_v1.do(['-n', str(index), '-in', contigs_fpath,'-o', qutils.name_from_fpath(contigs_fpath), '-l', clade, '-m', 'genome', '-f', '-c', str(qconfig.max_threads)],
+                                                         out_dirpath))
+    logger.print_timestamp()
     # saving results
     for i, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
