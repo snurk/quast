@@ -34,7 +34,6 @@ Output
 
 **When a reference is given:**  
 
-* Numbers of misassemblies of different kinds (inversions, relocations, translocations, interspecies translocations (--meta only) or local).  
 * Numbers of misassemblies of different kinds (inversions, relocations, translocations, interspecies translocations (metaQUAST only) or local).
 * Number and total length of unaligned contigs.  
 * Numbers of mismatches and indels, over the assembly and per 100 kb.  

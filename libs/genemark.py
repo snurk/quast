@@ -99,7 +99,6 @@ def parse_gtf_out(out_fpath):
                 yield contig_id, strand, left_index, right_index, gene
 
 
-
 def add_genes_to_gff(genes, gff_fpath, prokaryote):
     gff = open(gff_fpath, 'w')
     if prokaryote:

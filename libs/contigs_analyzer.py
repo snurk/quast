@@ -403,6 +403,41 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         else:
             return False, aux_data
 
+    def check_sv(align1, align2, inconsistency, region_struct_variations, misassemblies_matched_sv):
+        max_error = max(1000, abs(inconsistency)*0.1)
+        if align2.s1 < align1.s1:
+            align1, align2 = align2, align1
+        if align1.ref != align2.ref:
+            variations = region_struct_variations.translocations
+        elif (align1.s2 < align1.e2) != (align2.s2 < align2.e2) and abs(inconsistency) < smgap:
+            variations = region_struct_variations.inversions
+        else:
+            variations = region_struct_variations.relocations
+        for sv in variations:
+            if (abs(sv[0].e1-align1.e1) < max_error and abs(sv[1].s1-align2.s1) < max_error) and \
+                        sv[0].ref == align1.ref and sv[1].ref == align2.ref:
+                print >> planta_out_f, '\t\t\t  Fake misassembly (caused by structural variations of genome) between these two alignments'
+                return True, (misassemblies_matched_sv + 1)
+        return False, misassemblies_matched_sv
+
+    def find_all_sv(bed_fpath):
+        if not bed_fpath:
+            return None
+        region_struct_variations = StructuralVariations()
+        f = open(bed_fpath)
+        for line in f:
+            l = line.split()
+            if len(l) > 10 and not line.startswith('#'):
+                align1 = Mapping(s1=int(l[1]), e1=int(l[2]), ref=l[0], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
+                align2 = Mapping(s1=int(l[4]), e1=int(l[5]),  ref=l[3], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
+                if 'INV' in l[10]:
+                    region_struct_variations.inversions.append((align1, align2))
+                elif l[0] != l[3]:  # different chromosomes
+                    region_struct_variations.translocations.append((align1, align2))
+                else:
+                    region_struct_variations.relocations.append((align1, align2))
+        return region_struct_variations
+
     def check_chr_for_refs(chr1, chr2):
         return ref_labels_by_chromosomes[chr1] == ref_labels_by_chromosomes[chr2]
 
@@ -1471,20 +1506,6 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
                                          [x[2] for x in statuses_results_lengths_tuples]
     reports = []
 
-    ref_misassemblies = [result['istranslocations_by_refs'] for result in results]
-    all_rows = []
-    cur_ref_names = []
-    row = {'metricName': 'References', 'values': cur_ref_names}
-    all_rows.append(row)
-
-    for fpath in contigs_fpaths:
-        row = {'metricName': qutils.label_from_fpath(fpath), 'values': []}
-        all_rows.append(row)
-    for k, v in ref_misassemblies[0].iteritems():
-        all_rows[0]['values'].append(k)
-        for i in range(len(contigs_fpaths)):
-            all_rows[i+1]['values'].append(ref_misassemblies[i][k])
-
 
     def val_to_str(val):
         if val is None:
@@ -1502,11 +1523,25 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
             print >> txt_file, '  '.join('%-*s' % (colwidth, cell) for colwidth, cell
                                          in zip(colwidths, [row['metricName']] + map(val_to_str, row['values'])))
 
+    if reference.endswith(COMBINED_REF_FNAME):
+        ref_misassemblies = [result['istranslocations_by_refs'] for result in results]
+        all_rows = []
+        cur_ref_names = []
+        row = {'metricName': 'References', 'values': cur_ref_names}
+        all_rows.append(row)
 
-    misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecial_translocations_by_refs.info')
-    print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecial translocations by references: \n'
-    print_file(all_rows, len(ref_misassemblies[0]), misassembly_by_ref_fpath)
-    logger.info('  Information about interspecies translocations by references is saved to ' + misassembly_by_ref_fpath)
+        for fpath in contigs_fpaths:
+            row = {'metricName': qutils.label_from_fpath(fpath), 'values': []}
+            all_rows.append(row)
+        for k, v in ref_misassemblies[0].iteritems():
+            all_rows[0]['values'].append(k)
+            for i in range(len(contigs_fpaths)):
+                all_rows[i+1]['values'].append(ref_misassemblies[i][k])
+
+        misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecial_translocations_by_refs.info')
+        print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecial translocations by references: \n'
+        print_file(all_rows, len(ref_misassemblies[0]), misassembly_by_ref_fpath)
+        logger.info('  Information about interspecies translocations by references is saved to ' + misassembly_by_ref_fpath)
 
     def save_result(result):
         report = reporting.get(fname)
