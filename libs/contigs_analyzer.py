@@ -40,6 +40,7 @@ def bin_fpath(fname):
     return os.path.join(mummer_dirpath, fname)
 
 ref_labels_by_chromosomes = {}
+COMBINED_REF_FNAME = 'combined_reference.fasta'
 
 class Misassembly:
     LOCAL = 0
@@ -189,6 +190,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     unaligned_fpath = nucmer_fpath + '.unaligned'
     show_snps_fpath = nucmer_fpath + '.all_snps'
     used_snps_fpath = nucmer_fpath + '.used_snps'
+    combined_ref = False
+    if ref_fpath.endswith(COMBINED_REF_FNAME):
+        combined_ref = True
     vcf_temp_fpath = nucmer_fpath + '_temp.vcf'
 
     print >> planta_out_f, 'Aligning contigs to reference...'
@@ -399,47 +403,14 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         else:
             return False, aux_data
 
-    def check_sv(align1, align2, inconsistency, region_struct_variations, misassemblies_matched_sv):
-        max_error = max(1000, abs(inconsistency)*0.1)
-        if align2.s1 < align1.s1:
-            align1, align2 = align2, align1
-        if align1.ref != align2.ref:
-            variations = region_struct_variations.translocations
-        elif (align1.s2 < align1.e2) != (align2.s2 < align2.e2) and abs(inconsistency) < smgap:
-            variations = region_struct_variations.inversions
-        else:
-            variations = region_struct_variations.relocations
-        for sv in variations:
-            if (abs(sv[0].e1-align1.e1) < max_error and abs(sv[1].s1-align2.s1) < max_error) and \
-                        sv[0].ref == align1.ref and sv[1].ref == align2.ref:
-                print >> planta_out_f, '\t\t\t  Fake misassembly (caused by structural variations of genome) between these two alignments'
-                return True, (misassemblies_matched_sv + 1)
-        return False, misassemblies_matched_sv
-
-    def find_all_sv(bed_fpath):
-        if not bed_fpath:
-            return None
-        region_struct_variations = StructuralVariations()
-        f = open(bed_fpath)
-        for line in f:
-            l = line.split()
-            if len(l) > 10 and not line.startswith('#'):
-                align1 = Mapping(s1=int(l[1]), e1=int(l[2]), ref=l[0], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
-                align2 = Mapping(s1=int(l[4]), e1=int(l[5]),  ref=l[3], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
-                if 'INV' in l[10]:
-                    region_struct_variations.inversions.append((align1, align2))
-                elif l[0] != l[3]:  # different chromosomes
-                    region_struct_variations.translocations.append((align1, align2))
-                else:
-                    region_struct_variations.relocations.append((align1, align2))
-        return region_struct_variations
-
-
     def check_chr_for_refs(chr1, chr2):
         return ref_labels_by_chromosomes[chr1] == ref_labels_by_chromosomes[chr2]
 
+    def check_ns_between_aligns(contig_seq, align1, align2):
+        return contig_seq[max(align1.e2, align1.s2): min(align2.e2, align2.s2) - 1] == \
+               "N" * (min(align2.e2, align2.s2) - max(align1.e2, align1.s2) - 1)
 
-    def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, region_struct_variations, misassemblies_matched_sv):
+    def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, contig_seq, references_misassemblies, region_struct_variations, misassemblies_matched_sv):
         misassembly_internal_overlap = 0
         prev = sorted_aligns[0].clone()
         cur_aligned_length = prev.len2
@@ -472,10 +443,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 print >> misassembly_file, 'Extensive misassembly (',
                 print >> planta_out_f, '\t\t\t  Extensive misassembly (',
                 if sorted_aligns[i].ref != sorted_aligns[i+1].ref:
-                    region_misassemblies.append(Misassembly.TRANSLOCATION)
-                    if qconfig.meta and \
+                    if combined_ref and \
                             not check_chr_for_refs(sorted_aligns[i].ref, sorted_aligns[i+1].ref):  # if chromosomes from different references
                             region_misassemblies.append(Misassembly.INTERSPECTRANSLOCATION)
+                            references_misassemblies[ref] += 1
                             print >> planta_out_f, 'interspecies translocation',
                             print >> misassembly_file, 'interspecies translocation',
                     else:
@@ -495,9 +466,12 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                                                                           sorted_aligns[i+1].s2, sorted_aligns[i+1].e2)
                 ref_features.setdefault(sorted_aligns[i].ref, {})[sorted_aligns[i].e1] = 'M'
                 ref_features.setdefault(sorted_aligns[i+1].ref, {})[sorted_aligns[i+1].e1] = 'M'
+
             elif not is_sv:
-                if cyclic_moment and inconsistency == 0:
+                if inconsistency == 0 and cyclic_moment:
                     print >> planta_out_f, '\t\t\t  Fake misassembly (caused by linear representation of circular genome) between these two alignments'
+                elif inconsistency == 0 and check_ns_between_aligns(contig_seq, sorted_aligns[i], sorted_aligns[i+1]):
+                    print >> planta_out_f, '\t\t\t  Fake misassembly between these two alignments: inconsistency = 0, gap is filled with Ns'
                 else:
                     if qconfig.strict_NA:
                         aligned_lengths.append(cur_aligned_length)
@@ -614,6 +588,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
     region_misassemblies = []
     misassembled_contigs = {}
+    references_misassemblies = {}
+    for ref in references:
+        references_misassemblies[ref] = 0
 
     aligned_lengths = []
 
@@ -922,7 +899,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
                     ### processing misassemblies
                     is_misassembled, current_mio, misassemblies_matched_sv = process_misassembled_contig(sorted_aligns, cyclic,
-                         aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, region_struct_variations, misassemblies_matched_sv)
+                         aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, seq, references_misassemblies, region_struct_variations, misassemblies_matched_sv)
                     misassembly_internal_overlap += current_mio
                     if is_misassembled:
                         misassembled_contigs[contig] = len(assembly[contig])
@@ -1298,10 +1275,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     print >> planta_out_f, '\tMisassemblies: %d' % (len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL))
     print >> planta_out_f, '\t\tRelocations: %d' % region_misassemblies.count(Misassembly.RELOCATION)
     print >> planta_out_f, '\t\tTranslocations: %d' % region_misassemblies.count(Misassembly.TRANSLOCATION)
-    if qconfig.meta:
+    if combined_ref:
         print >> planta_out_f, '\t\tInterspecies translocations: %d' % region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION)
     print >> planta_out_f, '\t\tInversions: %d' % region_misassemblies.count(Misassembly.INVERSION)
-    if qconfig.meta:
+    if combined_ref:
         print >> planta_out_f, '\tPotentially Misassembled Contigs (i/s translocations): %d' % contigs_with_istranslocations
     print >> planta_out_f, '\tMisassembled Contigs: %d' % len(misassembled_contigs)
     misassembled_bases = sum(misassembled_contigs.itervalues())
@@ -1394,7 +1371,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
               'total_aligned_bases': total_aligned_bases,
               'partially_unaligned_with_misassembly': partially_unaligned_with_misassembly,
               'partially_unaligned_with_significant_parts': partially_unaligned_with_significant_parts,
-              'contigs_with_istranslocations': contigs_with_istranslocations}
+              'contigs_with_istranslocations': contigs_with_istranslocations,
+              'istranslocations_by_refs': references_misassemblies}
 
     ## outputting misassembled contigs to separate file
     fasta = [(name, seq) for name, seq in fastaparser.read_fasta(contigs_fpath)
@@ -1417,7 +1395,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     planta_out_f.close()
     planta_err_f.close()
     if qconfig.show_snps:
-        used_snps_file.close()
+        vcf_file.close()
     logger.info('  ' + qutils.index_to_str(index) + 'Analysis is finished.')
     logger.debug('')
     if nothing_aligned:
@@ -1493,6 +1471,43 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
                                          [x[2] for x in statuses_results_lengths_tuples]
     reports = []
 
+    ref_misassemblies = [result['istranslocations_by_refs'] for result in results]
+    all_rows = []
+    cur_ref_names = []
+    row = {'metricName': 'References', 'values': cur_ref_names}
+    all_rows.append(row)
+
+    for fpath in contigs_fpaths:
+        row = {'metricName': qutils.label_from_fpath(fpath), 'values': []}
+        all_rows.append(row)
+    for k, v in ref_misassemblies[0].iteritems():
+        all_rows[0]['values'].append(k)
+        for i in range(len(contigs_fpaths)):
+            all_rows[i+1]['values'].append(ref_misassemblies[i][k])
+
+
+    def val_to_str(val):
+        if val is None:
+            return '-'
+        else:
+            return str(val)
+
+    def print_file(all_rows, ref_num, fpath):
+        colwidths = [0] * (ref_num + 1)
+        for row in all_rows:
+            for i, cell in enumerate([row['metricName']] + map(val_to_str, row['values'])):
+                colwidths[i] = max(colwidths[i], len(cell))
+        txt_file = open(fpath, 'w')
+        for row in all_rows:
+            print >> txt_file, '  '.join('%-*s' % (colwidth, cell) for colwidth, cell
+                                         in zip(colwidths, [row['metricName']] + map(val_to_str, row['values'])))
+
+
+    misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecial_translocations_by_refs.info')
+    print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecial translocations by references: \n'
+    print_file(all_rows, len(ref_misassemblies[0]), misassembly_by_ref_fpath)
+    logger.info('  Information about interspecies translocations by references is saved to ' + misassembly_by_ref_fpath)
+
     def save_result(result):
         report = reporting.get(fname)
 
@@ -1549,7 +1564,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
         report.add_field(reporting.Fields.MIS_EXTENSIVE_CONTIGS, len(misassembled_contigs))
         report.add_field(reporting.Fields.MIS_EXTENSIVE_BASES, misassembled_bases)
         report.add_field(reporting.Fields.MIS_LOCAL, region_misassemblies.count(Misassembly.LOCAL))
-        if qconfig.meta:
+        if reference.endswith(COMBINED_REF_FNAME):
             report.add_field(reporting.Fields.MIS_ISTRANSLOCATIONS, region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION))
             report.add_field(reporting.Fields.CONTIGS_WITH_ISTRANSLOCATIONS, contigs_with_istranslocations)
 

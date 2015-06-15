@@ -1,13 +1,11 @@
 ############################################################################
-# Copyright (c) 2011-2014 Saint-Petersburg Academic University
+# Copyright (c) 2011-2015 Saint-Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
 
 from __future__ import with_statement
-import logging
 import os
-import platform
 import shutil
 import tempfile
 
@@ -40,10 +38,8 @@ def gmhmm_p(tool_exec, fasta_fpath, heu_fpath, out_fpath, err_file, index):
 
     return return_code == 0 and os.path.isfile(out_fpath)
 
-
 def install_genemark(tool_dirpath):
     """Installation instructions for GeneMark Suite.
-
     Please, copy key "gm_key" into users home directory as:
     cp gm_key ~/.gm_key
     (genemark_suite_linux_XX/gmsuite/INSTALL)
@@ -101,6 +97,7 @@ def parse_gtf_out(out_fpath):
                 left_index = int(left_index)
                 right_index = int(right_index)
                 yield contig_id, strand, left_index, right_index, gene
+
 
 
 def add_genes_to_gff(genes, gff_fpath, prokaryote):
@@ -176,7 +173,6 @@ def gmhmm_p_metagenomic(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath
 
 
 def gm_es(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath, num_threads):
-
     tool_exec_fpath = os.path.join(tool_dirpath, 'gmes_petap.pl')
     libs_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'genemark-es', 'lib')
     err_file = open(err_fpath, 'w')
