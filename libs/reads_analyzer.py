@@ -17,12 +17,14 @@ def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpa
     assembly_name = qutils.name_from_fpath(ref_fpath)
     res_fpath = os.path.join(res_path, assembly_name + '.res')
     logger.info('  ' + qutils.index_to_str(index) + assembly_name)
+    cov_fpath = os.path.join(res_path, assembly_name + '.cov')
 
     if os.path.isfile(res_fpath):
         logger.info('  ' + qutils.index_to_str(index) + 'Using existing BWA alignments...')
-        return res_fpath
+        return res_fpath, cov_fpath
     sam_fpath = os.path.join(output_dirpath, assembly_name + '.sam')
     bam_fpath = os.path.join(output_dirpath, assembly_name + '.bam')
+    bamsorted_fpath = os.path.join(output_dirpath, assembly_name + '.sorted.bam')
     logger.info('  ' + qutils.index_to_str(index) + 'Running BWA...')
     qutils.call_subprocess([bin_fpath('bwa'), 'index', ref_fpath], stdout=open(log_path, 'a'),
                            stderr=open(err_path, 'a'))
@@ -34,8 +36,11 @@ def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpa
     qutils.assert_file_exists(bam_fpath, 'bam file')
     qutils.call_subprocess([samtools_fpath('samtools'), 'flagstat', bam_fpath], stdout=open(res_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-
-    return res_fpath
+    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', bam_fpath, bamsorted_fpath], stdout=open(cov_fpath, 'w'),
+                           stderr=open(err_path, 'a'))
+    qutils.call_subprocess([samtools_fpath('samtools'), 'depth', bamsorted_fpath], stdout=open(cov_fpath, 'w'),
+                           stderr=open(err_path, 'a'))
+    return res_fpath, cov_fpath
 
 def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
@@ -217,6 +222,8 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     res_fpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(index, fpath, bwa_threads,
                                                                         reads_fpaths, temp_output_dir, final_output_dir, log_path,
                                                                         err_path) for (index, fpath) in enumerate(proc_files))
+    cov_fpaths = [res_fpaths[i][1] for i in range(len(res_fpaths))]
+
     if ref_fpath:
         bed_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
     else:
@@ -238,7 +245,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     # process all contigs files
     for index, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
-        results = open(res_fpaths[index])
+        results = open(res_fpaths[0][index])
         for line in results:
             if 'total' in line:
                 report.add_field(reporting.Fields.TOTALREADS, line.split()[0])
@@ -269,4 +276,4 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
 
     reporting.save_reads(output_dir)
     logger.info('Done.')
-    return bed_fpath
+    return bed_fpath, cov_fpaths

@@ -626,9 +626,9 @@ def main(args):
     if qconfig.reads:
         from libs import reads_analyzer
         if reads_fpaths:
-            bed_fpath = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
+            bed_fpath, cov_fpaths = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, os.path.join(output_dirpath, 'reads_reports'))
         if reads_inter_fpath:
-            bed_fpath = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_inter_fpath, os.path.join(output_dirpath, 'reads_reports'))
+            bed_fpath, cov_fpaths = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_inter_fpath, os.path.join(output_dirpath, 'reads_reports'))
 
     for contigs_fpath in contigs_fpaths:
         report = reporting.get(contigs_fpath)
@@ -759,7 +759,7 @@ def main(args):
                 from libs import contig_alignment_plotter
                 contig_alignment_plot_fpath = contig_alignment_plotter.do(
                     contigs_fpaths, contig_report_fpath_pattern,
-                    output_dirpath, ref_fpath, similar=True)
+                    output_dirpath, ref_fpath, cov_fpaths=cov_fpaths,similar=True)
 
             if all_pdf_file:
                 # full report in PDF format: all tables and plots

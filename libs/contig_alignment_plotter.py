@@ -749,12 +749,11 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 for line in coverage:
                     if line[0] == '>':
                         if (name != chr_names[0]):
+                            c = list(line.split())
+                            name = qutils.correct_name(line[1:])
                             cov_data[name] = cov_data[name][1: -1]
                             not_covered[name] = not_covered[name][1: -1]
-                        name = qutils.correct_name(line[1:])
-                    else:
-                        c = list(line.split())
-                        cov_data[name].append(c[1])
+                            cov_data[name].append(c[1])
                         if c[1] == '0':
                             not_covered[name].append(c[0])
             cov_data[name] = cov_data[name][1: -1]

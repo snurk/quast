@@ -617,9 +617,8 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
             for i in range(len(all_rows[0]['values'])):
                 values = []
                 for j in range(1, len(all_rows)):
-                    if j < len(all_rows[j]):
-                        values.append(all_rows[j]['values'][i])
-                    transposed_table.append({'metricName': all_rows[0]['values'][i], # name of assembly, assuming the first line is assemblies names
+                    values.append(all_rows[j]['values'][i])
+                transposed_table.append({'metricName': all_rows[0]['values'][i], # name of assembly, assuming the first line is assemblies names
                                          'values': values,})
 
             report_txt_fpath = os.path.join(output_dirpath, transposed_report_name) + '.txt'
