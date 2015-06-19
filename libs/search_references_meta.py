@@ -30,14 +30,18 @@ def download_refs(ref_fpaths, organism, downloaded_dirpath):
     ncbi_url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/'
     ref_fpath = os.path.join(downloaded_dirpath, re.sub('[/=]', '', organism) + '.fasta')
     organism = organism.replace('_', '+')
-    request = urlopen(ncbi_url + 'esearch.fcgi?db=nuccore&term=%s+[Organism]+AND+refseq[filter]&retmax=500' % organism)
+    request = urlopen(ncbi_url + 'esearch.fcgi?db=assembly&term=%s+[Organism]&retmax=100' % organism)
     response = request.read()
     xml_tree = ET.fromstring(response)
     if xml_tree.find('Count').text == '0': #  Organism is not found
         logger.info("  %s is not found in NCBI's database" % organism.replace('+', ' '))
         return ref_fpaths
-    refs_id = [ref_id.text for ref_id in xml_tree.find('IdList').findall('Id')]
-    for ref_id in refs_id:
+    ref_id = xml_tree.find('IdList').find('Id').text
+    request = urlopen(ncbi_url + 'elink.fcgi?dbfrom=assembly&db=nuccore&id=%s&linkname="assembly_nuccore_refseq"' % ref_id)
+    response = request.read()
+    xml_tree = ET.fromstring(response)
+    refs_id = sorted([ref_id.find('Id').text for ref_id in xml_tree.find('LinkSet').find('LinkSetDb').findall('Link')])
+    for ref_id in sorted(refs_id):
         request = urlopen(ncbi_url + 'efetch.fcgi?db=sequences&id=%s&rettype=fasta&retmode=text' % ref_id)
         fasta = request.read()
         if fasta:
@@ -110,15 +114,21 @@ def do(assemblies, downloaded_dirpath):
             if idy >= qconfig.identity_threshold and length >= qconfig.min_length and score >= qconfig.min_bitscore: #  and (not scores or min(scores) - score < max_identity_difference):
                 organism = line[1].split(';')[-1]
                 specie = organism.split('_')
-                if len(specie) > 2:
-                    specie = specie[0] + specie[1]
+                if len(specie) > 1 and 'uncultured' not in organism:
+                    specie = specie[0] + '_' + specie[1]
                     if specie not in organisms:
                         scores_organisms.append((score, organism))
                         organisms.append(specie)
+                    else:
+                        tuple_scores = [x for x in scores_organisms if specie in x[1]]
+                        if tuple_scores and score > tuple_scores[0][0]:
+                            scores_organisms.remove((tuple_scores[0][0], tuple_scores[0][1]))
+                            scores_organisms.append((score, organism))
+
     logger.print_timestamp()
     logger.info('Trying to download found references from NCBI..')
-    sorted(scores_organisms, reverse=True)
-    for (score, organism) in sorted(scores_organisms, reverse=True):
+    scores_organisms = sorted(scores_organisms, reverse=True)
+    for (score, organism) in scores_organisms:
         if len(ref_fpaths) == qconfig.max_references:
             break
         ref_fpaths = download_refs(ref_fpaths, organism, downloaded_dirpath)

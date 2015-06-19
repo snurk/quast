@@ -481,7 +481,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     if combined_ref and \
                             not check_chr_for_refs(sorted_aligns[i].ref, sorted_aligns[i+1].ref):  # if chromosomes from different references
                             region_misassemblies.append(Misassembly.INTERSPECTRANSLOCATION)
-                            references_misassemblies[ref] += 1
+                            ref1, ref2 = ref_labels_by_chromosomes[sorted_aligns[i].ref], ref_labels_by_chromosomes[sorted_aligns[i+1].ref]
+                            references_misassemblies[ref1] += 1
+                            references_misassemblies[ref2] += 1
                             print >> planta_out_f, 'interspecies translocation',
                             print >> misassembly_file, 'interspecies translocation',
                     else:
@@ -532,7 +534,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         print >> coords_filtered_file, str(prev)
         aligned_lengths.append(cur_aligned_length)
 
-        return is_misassembled, misassembly_internal_overlap, misassemblies_matched_sv
+        return is_misassembled, misassembly_internal_overlap, references_misassemblies, misassemblies_matched_sv
     #### end of aux. functions ###
 
     # Loading the assembly contigs
@@ -624,7 +626,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     region_misassemblies = []
     misassembled_contigs = {}
     references_misassemblies = {}
-    for ref in references:
+    for ref in ref_labels_by_chromosomes.values():
         references_misassemblies[ref] = 0
 
     aligned_lengths = []
@@ -933,7 +935,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         continue
 
                     ### processing misassemblies
-                    is_misassembled, current_mio, misassemblies_matched_sv = process_misassembled_contig(sorted_aligns, cyclic,
+                    is_misassembled, current_mio, references_misassemblies, misassemblies_matched_sv = process_misassembled_contig(sorted_aligns, cyclic,
                          aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, seq, references_misassemblies, region_struct_variations, misassemblies_matched_sv)
                     misassembly_internal_overlap += current_mio
                     if is_misassembled:
@@ -1527,19 +1529,18 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
         ref_misassemblies = [result['istranslocations_by_refs'] for result in results]
         all_rows = []
         cur_ref_names = []
-        row = {'metricName': 'References', 'values': cur_ref_names}
+        row = {'metricName': 'Assembly', 'values': cur_ref_names}
         all_rows.append(row)
-
         for fpath in contigs_fpaths:
-            row = {'metricName': qutils.label_from_fpath(fpath), 'values': []}
+            all_rows[0]['values'].append(qutils.name_from_fpath(fpath))
+        for k in ref_misassemblies[0].keys():
+            row = {'metricName': k, 'values': []}
+            for index, fpath in enumerate(contigs_fpaths):
+                row['values'].append(ref_misassemblies[index][k])
             all_rows.append(row)
-        for k, v in ref_misassemblies[0].iteritems():
-            all_rows[0]['values'].append(k)
-            for i in range(len(contigs_fpaths)):
-                all_rows[i+1]['values'].append(ref_misassemblies[i][k])
 
-        misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecial_translocations_by_refs.info')
-        print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecial translocations by references: \n'
+        misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs.info')
+        print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecies translocations by references: \n'
         print_file(all_rows, len(ref_misassemblies[0]), misassembly_by_ref_fpath)
         logger.info('  Information about interspecies translocations by references is saved to ' + misassembly_by_ref_fpath)
 
