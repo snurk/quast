@@ -1,5 +1,5 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2011-2014 Saint-Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -32,11 +32,11 @@ splitted_ref = []
 MAX_REFERENCE_FILE_LENGTH = 50000000  # Max length of one part of reference
 
 # available options
-long_options = "output-dir= save-json-to= genes= operons= reference= reads1= reads2= contig-thresholds= min-contig= "\
+long_options = "output-dir= save-json-to= genes= operons= coverage= reference= reads1= reads2= contig-thresholds= min-contig= "\
                "gene-thresholds= save-json gage eukaryote archaea glimmer no-plots no-html help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
                "find-conserved-genes strict-NA meta labels= test help-hidden no-snps".split()
-short_options = "o:G:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
+short_options = "o:G:C:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
 
 # default values for options
 contig_thresholds = "0,1000"
@@ -165,6 +165,7 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "-s  --single-reads              File with unpaired reads"
     print >> sys.stderr, "--12                          File with interleaved forward and reverse paired-end reads"
     print >> sys.stderr, "-G  --genes       <filename>  File with gene coordinates in the reference"
+    print >> sys.stderr, "-C  --coverage    <filename>  File with coverage data"
     print >> sys.stderr, "-O  --operons     <filename>  File with operon coordinates in the reference"
     print >> sys.stderr, "-M  --min-contig  <int>       Lower threshold for contig length [default: %s]" % min_contig
     print >> sys.stderr, ""

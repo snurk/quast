@@ -149,7 +149,7 @@ def _handle_fasta(contigs_fpath, corr_fpath, reporting):
     else:
         if not correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig):
             return False
-    
+
     ## filling column "Assembly" with names of assemblies
     report = reporting.get(corr_fpath)
     report.add_field(reporting.Fields.CHAFFCONTIG_PERCENT,('%.2f' % (sum(l for l in lengths if l < qconfig.min_contig)*100.0 / float(sum(l for l in lengths)))))
@@ -542,7 +542,7 @@ def main(args):
 
         elif opt == '--glimmer':
             qconfig.glimmer = True
-        
+
         elif opt == '--archaea':
             qconfig.archaea = True
         else:
@@ -719,7 +719,7 @@ def main(args):
             from libs import genemark
             genemark.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'), qconfig.prokaryote,
                         qconfig.meta)
-            
+
     else:
         logger.info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
