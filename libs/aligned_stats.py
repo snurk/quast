@@ -29,7 +29,7 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
     logger.print_timestamp()
     logger.info('Running NA-NGA calculation...')
 
-    reference_length = sum(fastaparser.get_lengths_from_fastafile(ref_fpath))
+    reference_length = qconfig.ref_len
     assembly_lengths = []
     for contigs_fpath in aligned_contigs_fpaths:
         assembly_lengths.append(sum(fastaparser.get_lengths_from_fastafile(contigs_fpath)))

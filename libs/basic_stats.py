@@ -101,6 +101,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     reference_length = None
     if ref_fpath:
         reference_length = sum(fastaparser.get_lengths_from_fastafile(ref_fpath))
+        qconfig.ref_len = reference_length
         reference_GC, reference_GC_distribution = parallel_get_length_and_GC_content(0, ref_fpath, skip=False, reference=True)
 
         logger.info('  Reference genome:')
