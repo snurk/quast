@@ -738,18 +738,24 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
         # adding coverage data
 
         if cov_fpath:
+            data_str = 'var coverage_data = {};\n'
             with open(cov_fpath, 'r') as coverage:
                 name = chr_names[0]
                 cov_data = dict()
                 not_covered = dict()
+                cur_len = dict()
                 for chr in chr_names:
                     cov_data.setdefault(chr, [])
                     not_covered.setdefault(chr, [])
+                    cur_len.setdefault(chr, 0)
 
-                for line in coverage:
+                for index, line in enumerate(coverage):
                     c = list(line.split())
                     name = qutils.correct_name(c[0])
-                    cov_data[name].append(c[1])
+                    cur_len[name] += int(c[2])
+                    if index % 100 == 0:
+                        cov_data[name].append(cur_len[name]/100)
+                        cur_len[name] = 0
                     if c[2] == '0':
                         not_covered[name].append(c[0])
 
@@ -780,7 +786,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 data_str = ''
 
         with open(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_data_template.js')), 'r') \
-                as template:
+                    as template:
             result.write(template.read())
 
         summary_path = os.path.join(output_dir_path, 'alignment_summary.html')

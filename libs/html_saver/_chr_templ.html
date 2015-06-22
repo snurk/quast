@@ -339,7 +339,7 @@ THE SOFTWARE.
                         return d
                     }) / step;
             if (s >= 1)
-                line += ['M', x_cov_mini_S(pos), y_cov_mini_S(s), 'H', x_cov_mini_S(i)].join(' ');
+                line += ['M', x_cov_mini_S(pos * 100), y_cov_mini_S(s), 'H', x_cov_mini_S(i * 100)].join(' ');
             pos = i;
         }
 
@@ -588,30 +588,24 @@ THE SOFTWARE.
             main_cov.select('.x').call(x_cov_main_A);
 
             var line = '',
-                    l = maxExtent - minExtent,
-                    cov_main_dots_amount = Math.min(500, l),
-                    step = Math.ceil(l / cov_main_dots_amount);
+            l = (maxExtent - minExtent) / 100,
+            cov_main_dots_amount = Math.min(500, l),
+            step = Math.ceil(l / cov_main_dots_amount);
 
             var y_max = 1;
-            for (var s, i = minExtent; i + step <= maxExtent; i += step) {
+            for (var s, i = (minExtent / 100); i + step <= (maxExtent / 100); i += step) {
                 s = d3.sum(coverage_data[CHROMOSOME].slice(i, i + step), function (d) {
                             return d
                         }) / step;
-                y_max = Math.max(y_max, s);
+		        y_max = Math.max(y_max, s);
+                if (s >= 1)
+                    line += ['M', x_main(i * 100), y_cov_main_S(s), 'H', x_main((i + step) * 100)].join(' ');
             }
 
-            y_cov_main_S.domain([y_max + 100, .1]);
+	    y_cov_main_S.domain([y_max + 100, .1]);
             y_cov_main_A.scale(y_cov_main_S);
             y_cov_main_A.tickValues(y_cov_main_S.ticks().filter(y_cov_main_vals));
             main_cov.select('.y').call(y_cov_main_A);
-
-            for (var s, i = minExtent; i + step <= maxExtent; i += step) {
-                s = d3.sum(coverage_data[CHROMOSOME].slice(i, i + step), function (d) {
-                            return d
-                        }) / step;
-                if (s >= 1)
-                    line += ['M', x_main(i), y_cov_main_S(s), 'H', x_main(i + step)].join(' ');
-            }
 
             var not_covered_line = '',
                     not_covered_width = Math.max(chartWidth / (maxExtent - minExtent + 1), .1);
@@ -627,7 +621,8 @@ THE SOFTWARE.
                     .attr('class', 'covered')
                     .append('path')
                     .attr('d', line);
-            main_cov.append('g')
+ 	    if (not_covered_line != '')
+            	main_cov.append('g')
                     .attr('class', 'notCovered')
                     .append('path')
                     .attr('d', not_covered_line);
