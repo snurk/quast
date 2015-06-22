@@ -68,6 +68,10 @@ a {
     stroke: black;
     stroke-width: 50;
     transform: scale(0.02);
+    -ms-transform: scale(0.02); /* IE 9 */
+    -webkit-transform: scale(0.02); /* Safari and Chrome */
+    -o-transform: scale(0.02); /* Opera */
+    -moz-transform: scale(0.02);
     fill: cyan;
 }
 

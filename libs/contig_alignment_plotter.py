@@ -717,7 +717,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         data_str += ', structure: ['
                         for el in alignment.misassembled_structure:
                             if type(el) == list:
-                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}, chr: "{el[5]}"}},'.format(**locals())
+                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}}},'.format(**locals())
                             elif type(el) == str:
                                 data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
                         data_str = data_str[: -1] + ']},'
@@ -747,17 +747,11 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     not_covered.setdefault(chr, [])
 
                 for line in coverage:
-                    if line[0] == '>':
-                        if (name != chr_names[0]):
-                            c = list(line.split())
-                            name = qutils.correct_name(line[1:])
-                            cov_data[name] = cov_data[name][1: -1]
-                            not_covered[name] = not_covered[name][1: -1]
-                            cov_data[name].append(c[1])
-                        if c[1] == '0':
-                            not_covered[name].append(c[0])
-            cov_data[name] = cov_data[name][1: -1]
-            not_covered[name] = not_covered[name][1: -1]
+                    c = list(line.split())
+                    name = qutils.correct_name(c[0])
+                    cov_data[name].append(c[1])
+                    if c[2] == '0':
+                        not_covered[name].append(c[0])
 
             data_str = 'var coverage_data = {};\n'
             for chr in chr_names:

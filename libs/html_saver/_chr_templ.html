@@ -41,7 +41,7 @@ THE SOFTWARE.
 
     var margin = {
                 top: 20, right: 15, bottom: 15, left: /*Math.max(d3.max(lanes, function (d) {
-                 return getTextSize(d.label).width;
+                 return getTextSize(d.label);
                  }), 120)*/ 145
             },
             mainLanesHegiht = 40,
@@ -753,8 +753,8 @@ THE SOFTWARE.
         xMainAxis.tickValues(mainTicksValues)
                 .tickFormat(format);
 
-        var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0])).width,
-                getTextSize(format(mainTicksValues[1])).width);
+        var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0])),
+                getTextSize(format(mainTicksValues[1])));
 
         if (x_main(mainTicksValues[1]) - x_main(mainTicksValues[0]) < min_ticks_delta) {
             mainTicksValues.splice(1, 1)
@@ -772,18 +772,8 @@ THE SOFTWARE.
 
 
     function getTextSize(text) {
-        var tmp = document.createElement("span");
-        var size = {};
 
-        tmp.innerHTML = text;
-        tmp.style.visibility = "hidden";
-        tmp.style.whiteSpace = "nowrap";
-        document.body.appendChild(tmp);
-        size.width = tmp.offsetWidth;
-        size.heght = tmp.offsetHeight;
-        document.body.removeChild(tmp);
-
-        return size;
+        return text.length * 8;
     }
 
 
@@ -806,8 +796,8 @@ THE SOFTWARE.
     function getVisibleText(s, l) {
         var t = s;
 
-        if (getTextSize(t).width > l) {
-            while (t.length > 2 && getTextSize(t + '...').width > l)
+        if (getTextSize(t) > l) {
+            while (t.length > 2 && getTextSize(t + '...') > l)
                 t = t.slice(0, t.length - 1);
             return (t.length < 3 ? '' : t + '...');
         } else return t;

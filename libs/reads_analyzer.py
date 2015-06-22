@@ -17,14 +17,12 @@ def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpa
     assembly_name = qutils.name_from_fpath(ref_fpath)
     res_fpath = os.path.join(res_path, assembly_name + '.res')
     logger.info('  ' + qutils.index_to_str(index) + assembly_name)
-    cov_fpath = os.path.join(res_path, assembly_name + '.cov')
 
     if os.path.isfile(res_fpath):
         logger.info('  ' + qutils.index_to_str(index) + 'Using existing BWA alignments...')
-        return res_fpath, cov_fpath
+        return res_fpath
     sam_fpath = os.path.join(output_dirpath, assembly_name + '.sam')
     bam_fpath = os.path.join(output_dirpath, assembly_name + '.bam')
-    bamsorted_fpath = os.path.join(output_dirpath, assembly_name + '.sorted.bam')
     logger.info('  ' + qutils.index_to_str(index) + 'Running BWA...')
     qutils.call_subprocess([bin_fpath('bwa'), 'index', ref_fpath], stdout=open(log_path, 'a'),
                            stderr=open(err_path, 'a'))
@@ -36,22 +34,34 @@ def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpa
     qutils.assert_file_exists(bam_fpath, 'bam file')
     qutils.call_subprocess([samtools_fpath('samtools'), 'flagstat', bam_fpath], stdout=open(res_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', bam_fpath, bamsorted_fpath], stdout=open(cov_fpath, 'w'),
+
+    return res_fpath
+
+def get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath):
+    bamsorted_fpath = os.path.join(output_dirpath, ref_name + '.sorted')
+    qutils.call_subprocess([samtools_fpath('samtools'), 'sort',  '-@', str(qconfig.max_threads), bam_fpath, bamsorted_fpath], stdout=open(err_path, 'w'),
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'depth', bamsorted_fpath], stdout=open(cov_fpath, 'w'),
+    qutils.call_subprocess([samtools_fpath('samtools'), 'depth', bamsorted_fpath + '.bam'], stdout=open(cov_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-    return res_fpath, cov_fpath
+    qutils.assert_file_exists(cov_fpath, 'coverage file')
+    return cov_fpath
 
 def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
     ref_name = qutils.name_from_fpath(ref_fpath)
     logger.info('  Running LUMPY for %s...' % ref_name)
+    bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
     bed_fpath = os.path.join(res_path, ref_name + '.bed')
+    cov_fpath = os.path.join(res_path, ref_name + '.cov')
+
     logger.info('  ' + 'Logging to %s...' % (err_path))
     if os.path.isfile(bed_fpath):
         logger.info('  Using existing bed-file for %s...' % ref_name)
-        return bed_fpath
-    bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
+        if not os.path.isfile(cov_fpath):
+            cov_fpath = get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath)
+        return bed_fpath, cov_fpath
+
+    cov_fpath = get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath)
     ##preprocessing for lumpy
     vcfoutput_dirpath = os.path.join(output_dirpath, 'lumpy_output')
 
@@ -112,7 +122,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
     qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_fpath, '-o', bed_fpath],
         stderr=open(err_path, 'a'))
     logger.info('  Structural variations saved to ' + bed_fpath)
-    return bed_fpath
+    return bed_fpath, cov_fpath
 
 def bin_fpath(fname):
     return os.path.join(bwa_dirpath, fname)
@@ -222,12 +232,11 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     res_fpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(index, fpath, bwa_threads,
                                                                         reads_fpaths, temp_output_dir, final_output_dir, log_path,
                                                                         err_path) for (index, fpath) in enumerate(proc_files))
-    cov_fpaths = [res_fpaths[i][1] for i in range(len(res_fpaths))]
 
     if ref_fpath:
-        bed_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
+        bed_fpath, cov_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
     else:
-        bed_fpath = None
+        bed_fpath, cov_fpath = None, None
     if ref_fpath:
         assembly_name = qutils.name_from_fpath(ref_fpath)
         ref_respath = os.path.join(final_output_dir, assembly_name + '.res')
@@ -245,7 +254,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     # process all contigs files
     for index, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
-        results = open(res_fpaths[0][index])
+        results = open(res_fpaths[index])
         for line in results:
             if 'total' in line:
                 report.add_field(reporting.Fields.TOTALREADS, line.split()[0])
@@ -276,4 +285,4 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
 
     reporting.save_reads(output_dir)
     logger.info('Done.')
-    return bed_fpath, cov_fpaths
+    return bed_fpath, cov_fpath
