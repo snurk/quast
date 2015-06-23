@@ -344,7 +344,7 @@ THE SOFTWARE.
         }
 
         var not_covered_line = '',
-                not_covered_width = Math.max(chartWidth / x_cov_mini_S.domain()[1], .1);
+                not_covered_width = Math.max(chartWidth / x_cov_mini_S.domain()[1], 1);
 
         for (var i = 0; i < not_covered[CHROMOSOME].length; ++i) {
             not_covered_line += ['M', x_cov_mini_S(not_covered[CHROMOSOME][i]), y_cov_mini_S(.1), 'H', x_cov_mini_S(not_covered[CHROMOSOME][i]) + not_covered_width].join(' ');
@@ -608,7 +608,7 @@ THE SOFTWARE.
             main_cov.select('.y').call(y_cov_main_A);
 
             var not_covered_line = '',
-                    not_covered_width = Math.max(chartWidth / (maxExtent - minExtent + 1), .1);
+                    not_covered_width = Math.max(chartWidth / (maxExtent - minExtent + 1), 1);
 
             var vnc = not_covered[CHROMOSOME].filter(function (d) {
                 if (minExtent <= d && d <= maxExtent) return d;

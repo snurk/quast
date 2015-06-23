@@ -526,7 +526,7 @@ def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, s
                         output_dirpath, lists_of_aligned_blocks, arcs=False, similar=False,
                         coverage_hist=None):
     if plotter.matplotlib_error:
-        return
+        return None, None
 
     output_fpath = os.path.join(output_dirpath, 'alignment')
 
@@ -604,8 +604,8 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
     plot_fpath, assemblies = draw_alignment_plot(
         contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift, output_dirpath,
         lists_of_aligned_blocks, arcs, similar, coverage_hist)
-
-    js_data_gen(assemblies, contigs_fpaths, chr_names, reference_chromosomes, output_dirpath, cov_fpath)
+    if assemblies:
+        js_data_gen(assemblies, contigs_fpaths, chr_names, reference_chromosomes, output_dirpath, cov_fpath)
 
     return plot_fpath
 
@@ -808,9 +808,9 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     result.write(line)
                     if line.find('<!--- references: ---->') != -1:
                         for i, chr in enumerate(chr_names):
-                            p = os.path.join(output_dir_path, '_chr{i}.html'.format(**locals()))
+                            p = '_chr{i}.html'.format(**locals())
                             t = chr.replace('_', ' ')
-                            result.write('<a href="{p}" target="_blank"><div class="block">{t}</div></a>'.format(**locals()))
+                            result.write('<a href="{p}"><div class="block">{t}</div></a>'.format(**locals()))
 
     copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),
              os.path.join(output_dir_path, 'contig_alignment_plot.css'))
