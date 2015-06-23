@@ -167,7 +167,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed aligning the reads.')
-            return
+            return None, None
 
     if not all_required_binaries_exist(samtools_dirpath, 'samtools'):
         # making
@@ -184,7 +184,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed aligning the reads.')
-            return
+            return None, None
 
     if not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
         # making
@@ -201,7 +201,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                              'You can restart Quast with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed searching structural variations.')
-            return
+            return None, None
 
     temp_output_dir = os.path.join(output_dir, 'temp_output')
     final_output_dir = os.path.join(output_dir, 'output')
