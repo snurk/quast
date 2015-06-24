@@ -43,12 +43,7 @@
 
 				for (var i = 0; i < lane.length; i++) {
 					var subLane = lane[i];
-
-					lanes.push({
-						id: laneId,
-						label: i === 0 ? assemblyName : ''
-					});
-
+					var numItems = 0;
 					for (var j = 0; j < subLane.length; j++) {
 					    var item = subLane[j];
 						if (item.name != 'FICTIVE') {
@@ -56,10 +51,18 @@
 						    item.id = itemId;
 						    items.push(item);
 						    itemId++;
+							numItems++;
 						}
 					}
 
-					laneId++;
+					if (numItems > 0){
+						lanes.push({
+						id: laneId,
+						label: i === 0 ? assemblyName : ''
+						});
+						laneId++;
+					}
+
 				}
 			}
 

@@ -644,7 +644,6 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
             if line.startswith('Analyzing coverage...'):
                 break
 
-
         cur_shift = 0
         for line in report_file:
             split_line = line.strip().split(' ')
@@ -726,7 +725,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 result.write(data_str)
                 data_str = ''
             else:
-                data_str = data_str + '];\n\n'
+                data_str += '];\n\n'
                 result.write(data_str)
 
         #add chr -> int
@@ -774,7 +773,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
             data_str = 'var not_covered = {};\n'
             for chr in chr_names:
                 data_str += 'not_covered["{chr}"] = ['.format(**locals())
-                if (len(not_covered[chr]) > 0):
+                if len(not_covered[chr]) > 0:
                     for e in not_covered[chr]:
                         data_str += '{e},'.format(**locals())
                         if len(data_str) > 10000 and e != cov_data[chr][-1]:
@@ -794,7 +793,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
 
         for i, chr in enumerate(chr_names):
             with open(html_saver.get_real_path('_chr_templ.html'), 'r') as template:
-                with open(os.path.join(output_dir_path, '_chr{i}.html'.format(**locals())), 'w') as result:
+                with open(os.path.join(output_dir_path, '_{chr}.html'.format(**locals())), 'w') as result:
                     for line in template:
                         result.write(line)
                         if line.find('<body>') != -1:
@@ -809,7 +808,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     result.write(line)
                     if line.find('<!--- references: ---->') != -1:
                         for i, chr in enumerate(chr_names):
-                            p = '_chr{i}.html'.format(**locals())
+                            p = '_{chr}.html'.format(**locals())
                             t = chr.replace('_', ' ')
                             result.write('<a href="{p}"><div class="block">{t}</div></a>'.format(**locals()))
 
