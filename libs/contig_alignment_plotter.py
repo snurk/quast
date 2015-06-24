@@ -789,7 +789,8 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     as template:
             result.write(template.read())
 
-        summary_path = os.path.join(output_dir_path, 'alignment_summary.html')
+        summary_fname = 'alignment_summary.html'
+        summary_path = os.path.join(output_dir_path, summary_fname)
 
         for i, chr in enumerate(chr_names):
             with open(html_saver.get_real_path('_chr_templ.html'), 'r') as template:
@@ -798,7 +799,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         result.write(line)
                         if line.find('<body>') != -1:
                             title = chr.replace('_', ' ')
-                            result.write('<div class = "block title">{title}<a href="{summary_path}"><div class = "subtitle">(BACK TO MAIN MENU)</div></a></div>\n'.format(**locals()))
+                            result.write('<div class = "block title">{title}<a href="{summary_fname}"><div class = "subtitle">(BACK TO MAIN MENU)</div></a></div>\n'.format(**locals()))
                         if line.find('<script type="text/javascript">') != -1:
                             result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))
 

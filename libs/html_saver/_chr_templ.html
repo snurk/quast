@@ -685,6 +685,19 @@ THE SOFTWARE.
         display();
     }
 
+
+    function getSize(text) {
+        var tmp = document.createElement("span");
+        tmp.innerHTML = text;
+        tmp.style.visibility = "hidden";
+        tmp.style.whiteSpace = "nowrap";
+        document.body.appendChild(tmp);
+        size = tmp.offsetWidth;
+        document.body.removeChild(tmp);
+        return size;
+    }
+
+
     // generates a single path for each item class in the mini display
     // ugly - but draws mini 2x faster than append lines or line generator
     // is there a better way to do a bunch of lines as a single path with d3?
