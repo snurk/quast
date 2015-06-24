@@ -69,6 +69,9 @@ THE SOFTWARE.
     var y_main = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, mainHeight]);
     var y_mini = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, miniHeight]);
 
+    var letterSize = getSize('w') - 1;
+	var numberSize = getSize('0') - 1;
+
     var chart = d3.select('body').append('div').attr('id', 'chart')
             .append('svg:svg')
             .attr('width', width + margin.right + margin.left)
@@ -748,8 +751,8 @@ THE SOFTWARE.
         xMainAxis.tickValues(mainTicksValues)
                 .tickFormat(format);
 
-        var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0])),
-                getTextSize(format(mainTicksValues[1])));
+        var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0]).toString(), numberSize),
+                getTextSize(format(mainTicksValues[1]).toString(), numberSize));
 
         if (x_main(mainTicksValues[1]) - x_main(mainTicksValues[0]) < min_ticks_delta) {
             mainTicksValues.splice(1, 1)
@@ -766,9 +769,9 @@ THE SOFTWARE.
     }
 
 
-    function getTextSize(text) {
+    function getTextSize(text, size) {
 
-        return text.length * 8;
+        return text.length * size;
     }
 
 
@@ -791,8 +794,8 @@ THE SOFTWARE.
     function getVisibleText(s, l) {
         var t = s;
 
-        if (getTextSize(t) > l) {
-            while (t.length > 2 && getTextSize(t + '...') > l)
+        if (getTextSize(t, letterSize) > l) {
+            while (t.length > 2 && getTextSize(t + 'w', letterSize) > l)
                 t = t.slice(0, t.length - 1);
             return (t.length < 3 ? '' : t + '...');
         } else return t;
