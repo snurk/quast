@@ -1,10 +1,5 @@
-String.prototype.trunc =
-    function(n){
-        return this.substr(0, n-1) + (this.length > n ? '&hellip;' : '');
-    };
-
-function fillOneRow(metric, mainMetrics, group_n, order, glossary, primary, rowName, report_n, assembliesNames, notAlignedContigs, notExtendedMetrics)
-{
+function fillOneRow(metric, mainMetrics, group_n, order, glossary, is_primary, rowName,
+                    report_n, assembliesNames, notAlignedContigs, notExtendedMetrics) {
     (function(group_n) {
         var id_group = '#group_' + group_n;
         $(function() {
@@ -28,17 +23,16 @@ function fillOneRow(metric, mainMetrics, group_n, order, glossary, primary, rowN
     } else {
         trClass = 'content-row row_hidden row_to_hide';
     }
-	var tdClass = '';
-
-    if (!primary && $.inArray(metricName, notExtendedMetrics) == -1)
-	{
+    var tdClass = '';
+    if (!is_primary && $.inArray(metricName, notExtendedMetrics) == -1) {
         trClass += ' secondary_hidden';
-		tdClass = ' secondary_td';
-	}
-    else
+        tdClass = 'secondary_td';
+    }
+    else {
         trClass += ' primary';
+    }
 
-    not_extend = false;
+    var not_extend = false;
     if ($.inArray(metricName, notExtendedMetrics) > -1){
         not_extend = true;
         trClass += ' not_extend';
@@ -46,10 +40,12 @@ function fillOneRow(metric, mainMetrics, group_n, order, glossary, primary, rowN
 
     table +=
         '<tr class="' + trClass + '" quality="' + quality + '" onclick="toggleSecondary($(this))">' +
-        '<td class="left_column_td' + tdClass + '"><span class="metric-name">' + (primary && !not_extend ? '+ ' : '') +
-        (not_extend && metricName == '# possibly misassembled contigs' ? '&nbsp&nbsp&nbsp&nbsp' : not_extend ? '&nbsp&nbsp&nbsp&nbsp' : '')
-        + nbsp(addTooltipIfDefinitionExists(glossary, rowName), metricName) +
-        '</span>' + '</td>';
+        '<td class="left_column_td ' + tdClass + '">' +
+        '<span class="metric-name' +
+          (is_primary ? ' primary' : ' secondary') + (not_extend || !is_primary ? '' : ' expandable collapsed') + '">' +
+           initial_spaces_to_nbsp(addTooltipIfDefinitionExists(glossary, rowName), metricName) +
+        '</span></td>';
+          //(not_extend && metricName == '# possibly misassembled contigs' ? '&nbsp&nbsp&nbsp&nbsp' : not_extend ? '&nbsp&nbsp&nbsp&nbsp' : '')
 
     if (report_n > -1) {
         for (var not_aligned_n = 0; not_aligned_n < notAlignedContigs[report_n].length; not_aligned_n++) {
@@ -58,7 +54,7 @@ function fillOneRow(metric, mainMetrics, group_n, order, glossary, primary, rowN
     }
 
     for (var val_n = 0; val_n < values.length; val_n++) {
-        value = values[order[val_n]];
+        var value = values[order[val_n]];
 
         if (value === null || value === '') {
             table += '<td><span>-</span></td>';
@@ -82,42 +78,87 @@ function fillOneRow(metric, mainMetrics, group_n, order, glossary, primary, rowN
     }
 
     return table;
-
 }
 
-function buildTotalReport(assembliesNames, report, order, date, minContig, glossary, qualities, mainMetrics, reports) {
-    $('#report_date').html('<p>' + date + '</p>');
-    $('#mincontig').html('<p>All statistics are based on contigs of size >= ' + minContig +
-        '<span class="rhs">&nbsp;</span>bp, unless otherwise noted (e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs.)</p>');
 
-//    $('#extended_link').css('width', '183');
+function buildGenomeTable(reports, group_n, numColumns) {
+    var tableGenome = '';
+    tableGenome += '<div class="report" id="ref_report">';
+    tableGenome += '<table cellspacing="0" id="refgenome">';
+    tableGenome += '<tr class="top_row_tr"><td class="left_column_td"><span>' + 'Reference' + '</span></td>';
+    var colNames = ['Size, bp', 'GC, %', 'Genes', 'Operons'];
+    for (var col_n = 0; col_n < numColumns; col_n++) {
+        var columnName = colNames[col_n];
+        tableGenome += '<td class="second_through_last_col_headers_td">' +
+            '<span class="assembly_name">' + columnName + '</span>' +
+        '</td>';
+    }
+    for (var report_n = 0; report_n < reports.length; report_n++ ) {
+        var trClass = 'content-row';
+        var refName = reports[report_n].name;
+        if (refName == 'not_aligned') continue;
+        tableGenome +=
+            '<tr class="' + trClass + '">' +
+            '<td class="left_column_td">' +
+                '<span class="metric-name">' +
+                    '<a href="../' + refName + '_quast_output/report.html">' + refName + '</a>' +
+                '</span>' +
+            '</td>';
+        var metrics = reports[report_n].report[group_n][1];
+        for (var metric_n = 0; metric_n < metrics.length; metric_n++) {
+            var metric = metrics[metric_n];
+            if (metric.metricName == 'Reference name') continue;
 
-    $('#extended_link').append('' +
-        '<div id="extended_report_link_div" style="float: left;"><a class="dotted-link" id="extended_report_link">Extended report</a>' +
-        '</div>' +
-        '<div style="float: left;"><span id="report_legend" style="display: none;"></span>' +
-        '</div>' +
-        '<div style="clear: both;">' +
-        '</div>');
+            var value = metric.values[0];
 
-    $('#extended_report_link').click(function() {
-        $('.row_to_hide').toggleClass('row_hidden');
+            if (value === null || value === '') {
+                tableGenome += '<td><span>-</span></td>';
+            } else {
+                if (typeof value === 'number') {
+                    tableGenome +=
+                        '<td number="' + value + '"><span>'
+                        + toPrettyString(value) + '</span></td>';
+                } else {
+                    var result = /([0-9\.]+)(.*)/.exec(value);
+                    var num = parseFloat(result[1]);
+                    var rest = result[2];
+//                        alert('value = ' + value + ' result = ' + result);
 
-        var link = $('#extended_report_link');
-        if (link.html() == 'Extended report') {
-            link.html('Short report');
-        } else {
-            link.html('Extended report');
+//                        var num = parseFloat(value);
+
+                    if (num !== null) {
+                        tableGenome += '<td number="' + num + '"><span>' + toPrettyString(num) + rest + '</span></td>';
+                    } else {
+                        tableGenome += '<td><span>' + value + '</span></td>';
+                    }
+                }
+            }
         }
-    });
+    }
+
+    tableGenome += '</table>';
+
+    tableGenome += '</div>';
+    return tableGenome;
+}
+
+
+function buildTotalReport(assembliesNames, report, order, date, minContig, glossary,
+                          qualities, mainMetrics, reports) {
+    $('#report_date').html('<p>' + date + '</p>');
+    $('#mincontig').html('<p>All statistics are based on contigs of size &ge; ' + minContig +
+        '<span class="rhs">&nbsp;</span>bp, unless otherwise noted (e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs.)</p>');
+    $('#per_ref_msg').html('<p>Rows show values for the whole assembly (column name) vs. combined reference (concatenation of input references).<br>' +
+        'Clicking on a row with <span style="color: #CCC">+</span> sign will expand values for contigs aligned to each of input references separately.<br>' +
+        'Note that some metrics (e.g. # contigs) may not sum up, because one contig may be aligned to several references and thus, counted several times.</p>');
 
     var table = '';
     table += '<table cellspacing="0" class="report_table draggable" id="main_report_table">';
-    var refNames = []
+    var refNames = [];
     for (var report_n = 0; report_n < reports.length; report_n++) {
-                var refName = reports[report_n].referenceName;
-                refNames.push(refName);
-            }
+        var refName = reports[report_n].referenceName;
+        refNames.push(refName);
+    }
     reports = refNames.map(function (name, report_n) {
     return {
         name: name,
@@ -136,7 +177,7 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
             }
         }
     }
-    notExtendedMetrics = ['    # interspecies translocations', '# possibly misassembled contigs'];
+    var notExtendedMetrics = ['    # interspecies translocations'];
 
     for (var group_n = 0; group_n < report.length; group_n++) {
         var group = report[group_n];
@@ -159,20 +200,34 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
             var refGenes = referenceValues['Reference genes'];
             var refOperons = referenceValues['Reference operons'];
 
+            var numColumns = 0;
+
             if (refName) {
                 $('#reference_name').find('.val').html(refName);
             }
             $('#reference_name').show();
 
-            if (refLen)
+            if (refLen) {
                 $('#reference_length').show().find('.val').html(toPrettyString(refLen));
-            if (refGC)
+                numColumns++;
+            }
+            if (refGC) {
                 $('#reference_gc').show().find('.val').html(toPrettyString(refGC));
-            if (refGenes)
+                numColumns++;
+            }
+            if (refGenes) {
                 $('#reference_genes').show().find('.val').html(toPrettyString(refGenes));
-            if (refOperons)
+                numColumns++;
+            }
+            if (refOperons) {
                 $('#reference_operons').show().find('.val').html(toPrettyString(refOperons));
+                numColumns++;
+            }
 
+            $('#main_ref_genome').html(buildGenomeTable(reports, group_n, numColumns));
+            //$('#data_set_p').click(function() {
+            //    $('#refgenome').toggle();
+            //});
             continue;
         }
 
@@ -220,194 +275,28 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
     }
     table += '</table>';
 
-    (function() {
-        $(function() {
-            $('tr.group_empty').removeClass('row_hidden');
-        });
-    })();
+    //table += '<p id="extended_link"><a class="dotted-link" id="extended_report_link" onclick="extendedLinkClick($(this))">Extended report</a></p>';
+    table += biuldExtendedLinkClick();
 
-    $('#report').append(table);
-
-    var RED_HUE = 0;
-    var GREEN_HUE = 120;
-    var GREEN_HSL = 'hsl(' + GREEN_HUE + ', 80%, 40%)';
-
-    var legend = '<span>';
-    var step = 6;
-    for (var hue = RED_HUE; hue < GREEN_HUE + step; hue += step) {
-        var lightness = (Math.pow(hue-75, 2))/350 + 35;
-        legend += '<span style="color: hsl(' + hue + ', 80%, ' + lightness + '%);">';
-
-        switch (hue) {
-            case RED_HUE:
-                legend += 'w'; break;
-            case RED_HUE + step:
-                legend += 'o'; break;
-            case RED_HUE + 2 * step:
-                legend += 'r'; break;
-            case RED_HUE + 3 * step:
-                legend += 's'; break;
-            case RED_HUE + 4 * step:
-                legend += 't'; break;
-
-            case GREEN_HUE - 3 * step:
-                legend += 'b'; break;
-            case GREEN_HUE - 2 * step:
-                legend += 'e'; break;
-            case GREEN_HUE - step:
-                legend += 's'; break;
-            case GREEN_HUE:
-                legend += 't'; break;
-
-            default:
-                legend += '.';
-        }
-        legend += '</span>';
-    }
-    legend += '</span>';
-    $('#extended_report_link_div').width($('#top_left_td').outerWidth());
-
-    $('#report_legend').append(legend);
-
-    $(".report_table td[number]").mouseenter(function() {
-        if (dragTable && dragTable.isDragging)
-            return;
-
-        var cells = $(this).parent().find('td[number]');
-        var numbers = $.map(cells, function(cell) { return $(cell).attr('number'); });
-        var quality = $(this).parent().attr('quality');
-
-        var min = Math.min.apply(null, numbers);
-        var max = Math.max.apply(null, numbers);
-
-        var maxHue = GREEN_HUE;
-        var minHue = RED_HUE;
-
-        if (quality == 'Less is better') {
-            maxHue = RED_HUE;
-            minHue = GREEN_HUE;
-        }
-
-        if (max == min) {
-            $(cells).css('color', GREEN_HSL);
-        } else {
-            var k = (maxHue - minHue) / (max - min);
-            var hue = 0;
-            var lightness = 0;
-            cells.each(function(i) {
-                var number = numbers[i];
-                hue = Math.round(minHue + (number - min)*k);
-                lightness = Math.round((Math.pow(hue-75, 2))/350 + 35);
-//                $(this).css('color', 'hsl(' + hue + ', 80%, 35%)');
-                $(this).css('color', 'hsl(' + hue + ', 80%, ' + lightness + '%)');
-            });
-        }
-
-        if (numbers.length > 1)
-            $('#report_legend').show('fast');
-
-    }).mouseleave(function() {
-        $(this).parent().find('td[number]').css('color', 'black');
-    });
+    setUpHeatMap(table);
 }
 
-function toggleSecondary(caller)
-{
-	if(!caller.hasClass('primary') || caller.hasClass('not_extend'))
-		return;
-	var nextRow = caller.next('.content-row');
-    var sign = nextRow.css('display') == 'none' ? '&minus;' : '+';
-    var leftColumn = caller.context.firstChild;
-    var index = leftColumn.innerHTML.indexOf('>') + 1
-    leftColumn.innerHTML = leftColumn.innerHTML.substr(0,index) + sign + leftColumn.innerHTML.substr(index+1)
+
+function toggleSecondary(caller) {
+    if (!caller.hasClass('primary') || caller.hasClass('not_extend')) {
+        return;
+    }
+    var nextRow = caller.next('.content-row');
+    $(caller).find('.metric-name').toggleClass('collapsed').toggleClass('expanded');
+
+    //var sign = nextRow.css('display') == 'none' ? '&minus;' : '+';
+    //var sign_span = '<span class="expand_sign" style="color: gray; cursor: pointer">' + sign + '</span>';
+    //var leftColumn = caller.context.firstChild;
+    //var index = leftColumn.innerHTML.indexOf('>') + 1;
+    //leftColumn.innerHTML = leftColumn.innerHTML.substr(0, index) + sign_span + leftColumn.innerHTML.substr(index+1);
     while (!nextRow.hasClass('primary') && (nextRow.length > 0)) {
         nextRow.toggleClass('secondary_hidden');
         nextRow.css('background-color', '#F5F5DC');
         nextRow = nextRow.next('.content-row');
     }
 }
-//
-//function buildNewTotalReport(report, glossary) {
-//    var table = '';
-//    table += '<table cellspacing="0" class="report-table">';
-//
-//    for (var col = 0; col < report.header.length; col++) {
-//        var keyCell;
-//
-//        if (report.header[col] == '# misassemblies') {
-//            table += '<tr class="subheader-tr"><td colspan="' + (report.results.length+1) + '"><b>Structural variations</b></td></tr>'
-//        }
-//        if (report.header[col] == 'Genome fraction (%)') {
-//            table += '<tr class="subheader-tr"><td colspan="' + (report.results.length+1) + '"><b>Genes and operons</b></td></tr>'
-//        }
-//        if (report.header[col] == 'NA50') {
-//            table += '<tr class="subheader-tr"><td colspan="' + (report.results.length+1) + '"><b>Aligned</b></td></tr>'
-//        }
-//
-//        if (col == 0) {
-//            keyCell = '<span class="report-table-header">Basic stats</span>';
-//            table += '<tr><td><span style="">' + keyCell + '</span></td>';
-//        } else {
-//            keyCell = addTooltipIfDefinitionExists(glossary, report.header[col]);
-//            table += '<tr class="content-row"><td><span style="">' + keyCell + '</span></td>';
-//        }
-//
-//        for (var row = 0; row < report.results.length; row++) {
-//            var value = report.results[row][col];
-//            var valueCell = value;
-//
-//            if (col == 0) {
-//                valueCell = '<span class="report-table-header">' + value + '</span>';
-//                table += '<td><span>' + valueCell + '</span></td>';
-//
-//            } else {
-//                if (value == 'None' /* && report.header[i].substr(0,2) == 'NG' */) {
-//                    valueCell = '-';
-//                    table += '<td><span>' + valueCell + '</span></td>';
-//
-//                } else {
-//                    if (typeof value == 'number') {
-//                        valueCell = toPrettyString(value);
-//                        table += '<td number="' + value + '"><span>' + valueCell + '</span></td>';
-//                    } else {
-//                        valueCell = toPrettyString(value);
-//                        table += '<td><span>' + valueCell + '</span></td>';
-//                    }
-//                }
-//            }
-//        }
-//        table += '</tr>\n';
-//    }
-//    table += '</table>';
-//
-//    $(document).ready(function() {
-//        $(".report-table td:[number]").mouseenter(function() {
-//            var cells = $(this).parent().find('td:[number]');
-//            var numbers = $.map(cells, function(cell) { return $(cell).attr('number'); });
-//
-//            var min = Math.min.apply(null, numbers);
-//            var max = Math.max.apply(null, numbers);
-//
-//            var RED_HUE = 0;
-//            var GREEN_HUE = 130;
-//
-//            if (max == min) {
-//                $(cells).css('color', 'hsl(' + GREEN_HUE + ', 80%, 50%)');
-//            } else {
-//                var k = (GREEN_HUE - RED_HUE) / (max - min);
-//
-//                cells.each(function(i) {
-//                    var number = numbers[i];
-//                    var hue = (number - min)*k;
-//                    $(this).css('color', 'hsl(' + hue + ', 80%, 50%)');
-//                });
-//            }
-//        }).mouseleave(function() {
-//            $(this).parent().find('td:[number]').css('color', 'black');
-//        });
-//    });
-//
-//    $('#report').append(table);
-//}
-//
-//

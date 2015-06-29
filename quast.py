@@ -12,8 +12,6 @@ import shutil
 import getopt
 import re
 
-quast_dirpath = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-sys.path.append(os.path.join(quast_dirpath, 'libs'))
 from libs import qconfig
 qconfig.check_python_version()
 
@@ -26,7 +24,7 @@ logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 logger.set_up_console_handler()
 
 from site import addsitedir
-addsitedir(os.path.join(quast_dirpath, 'libs', 'site_packages'))
+addsitedir(os.path.join(qconfig.LIBS_LOCATION, 'site_packages'))
 
 
 def _set_up_output_dir(output_dirpath, json_outputpath,
@@ -115,7 +113,7 @@ def correct_fasta(original_fpath, corrected_fpath, min_contig,
 
             for (chr_name, chr_seq) in modified_fasta_entries:
                 if len(chr_seq) > qconfig.MAX_REFERENCE_LENGTH:
-                    logger.warning("Skipping chromosome " + chr_name + " because it length is greater than " +
+                    logger.warning("Skipping chromosome " + chr_name + " because its length is greater than " +
                             str(qconfig.MAX_REFERENCE_LENGTH) + " (Nucmer's constraint).")
                     continue
                 cur_len += len(chr_seq)
@@ -144,12 +142,10 @@ def _handle_fasta(contigs_fpath, corr_fpath, reporting):
         return False
 
     # correcting
-    if qconfig.no_check:
-        shutil.copy2(contigs_fpath, corr_fpath)
-    else:
+    if not qconfig.no_check:
         if not correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig):
             return False
-
+    
     ## filling column "Assembly" with names of assemblies
     report = reporting.get(corr_fpath)
     report.add_field(reporting.Fields.CHAFFCONTIG_PERCENT,('%.2f' % (sum(l for l in lengths if l < qconfig.min_contig)*100.0 / float(sum(l for l in lengths)))))
@@ -176,6 +172,8 @@ def _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels):
     broken_scaffolds = [corrected_fpaths[i][1] for i in range(len(corrected_fpaths)) if corrected_fpaths[i][1]]
     corrected_fpaths = [corrected_fpaths[i][0] for i in range(len(corrected_fpaths))]
     for i, (contigs_fpath, corr_fpath) in enumerate(corrected_fpaths):
+        if qconfig.no_check:
+            corr_fpath = contigs_fpath
         qconfig.assembly_labels_by_fpath[corr_fpath] = labels[i]
         if _handle_fasta(contigs_fpath, corr_fpath, reporting):
             corrected_contigs_fpaths.append(corr_fpath)
@@ -362,9 +360,9 @@ def process_labels(contigs_fpaths, labels, all_labels_from_dirs):
 
 
 def main(args):
-    if ' ' in quast_dirpath:
+    if ' ' in qconfig.QUAST_HOME:
         logger.error('QUAST does not support spaces in paths. \n'
-                     'You are trying to run it from ' + str(quast_dirpath) + '\n'
+                     'You are trying to run it from ' + str(qconfig.QUAST_HOME) + '\n'
                      'Please, put QUAST in a different directory, then try again.\n',
                      to_stderr=True,
                      exit_with_code=3)
@@ -393,16 +391,16 @@ def main(args):
         if opt == '--test':
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
-                        ('-1', 'test_data/reads1.fastq.gz'),
-                        ('-2', 'test_data/reads2.fastq.gz'),
-                        ('-R', 'test_data/reference.fasta.gz'),   # for compiling MUMmer
-                        ('-O', 'test_data/operons.gff'),
-                        ('-G', 'test_data/genes.gff'),
+                        ('-1', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reads1.fastq.gz')),
+                        ('-2', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reads2.fastq.gz')),
+                        ('-R', os.path.join(qconfig.QUAST_HOME, 'test_data', 'test_data/reference.fasta.gz')),   # for compiling MUMmer
+                        ('-O', os.path.join(qconfig.QUAST_HOME, 'test_data', 'test_data/operons.gff')),
+                        ('-G', os.path.join(qconfig.QUAST_HOME, 'test_data', 'test_data/genes.gff')),
                         ('--gage', ''), # for compiling GAGE Java classes
                         ('--find-conserved-genes', ''),  # for compiling BUSCO
                         ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')] # for compiling GlimmerHMM
-            contigs_fpaths += ['test_data/contigs_1.fasta',
-                               'test_data/contigs_2.fasta']
+            contigs_fpaths += [os.path.join(qconfig.QUAST_HOME, 'test_data', 'contigs_1.fasta'),
+                               os.path.join(qconfig.QUAST_HOME, 'test_data', 'contigs_2.fasta')]
             qconfig.test = True
 
         if opt.startswith('--help'):
@@ -531,6 +529,13 @@ def main(args):
         elif opt == '--no-gc':
             qconfig.no_gc = True
 
+        elif opt == '--fast':  # --no-check, --no-gc, --no-plots, --no-snps
+            qconfig.no_check = True
+            qconfig.no_gc = True
+            qconfig.show_snps = False
+            qconfig.draw_plots = False
+            qconfig.html_report = False
+
         elif opt in ('-m', '--meta'):
             qconfig.meta = True
 
@@ -570,7 +575,10 @@ def main(args):
     corrected_dirpath = os.path.join(output_dirpath, qconfig.corrected_dirname)
 
     logger.set_up_file_handler(output_dirpath)
-    logger.print_command_line([os.path.realpath(__file__)] + args, wrap_after=None)
+    args = [os.path.realpath(__file__)]
+    for k, v in options: args.extend([k, v])
+    args.extend(contigs_fpaths)
+    logger.print_command_line(args, wrap_after=None)
     logger.start()
 
     if existing_alignments:
@@ -634,6 +642,8 @@ def main(args):
     for contigs_fpath in contigs_fpaths:
         report = reporting.get(contigs_fpath)
         report.add_field(reporting.Fields.NAME, qutils.label_from_fpath(contigs_fpath))
+
+    qconfig.assemblies_num = len(contigs_fpaths)
 
     if not contigs_fpaths:
         logger.error("None of the assembly files contains correct contigs. "
@@ -720,7 +730,7 @@ def main(args):
             from libs import genemark
             genemark.do(contigs_fpaths, qconfig.genes_lengths, os.path.join(output_dirpath, 'predicted_genes'), qconfig.prokaryote,
                         qconfig.meta)
-
+            
     else:
         logger.info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
@@ -810,5 +820,4 @@ if __name__ == '__main__':
     except Exception:
         _, exc_value, _ = sys.exc_info()
         logger.exception(exc_value)
-        logger.error('exception caught!', exit_with_code=1)
-
+        logger.error('exception caught!', exit_with_code=1, to_stderr=True)

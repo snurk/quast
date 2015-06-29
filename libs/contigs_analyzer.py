@@ -161,15 +161,14 @@ def check_nucmer_successful_check(fpath, contigs_fpath, ref_fpath):
 
 
 def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_fpath, bed_fpath, parallel_by_chr):
-    assembly_name = qutils.name_from_fpath(contigs_fpath)
-    assembly_label = qutils.label_from_fpath(contigs_fpath)
+    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     logger.info('  ' + qutils.index_to_str(index) + assembly_label)
 
     # run plantakolya tool
-    log_out_fpath = os.path.join(output_dirpath, "contigs_report_" + assembly_name + '.stdout')
-    log_err_fpath = os.path.join(output_dirpath, "contigs_report_" + assembly_name + '.stderr')
-    misassembly_fpath = os.path.join(output_dirpath, "contigs_report_" + assembly_name + '.mis_contigs.info')
+    log_out_fpath = os.path.join(output_dirpath, "contigs_report_" + assembly_label + '.stdout')
+    log_err_fpath = os.path.join(output_dirpath, "contigs_report_" + assembly_label + '.stderr')
+    misassembly_fpath = os.path.join(output_dirpath, "contigs_report_" + assembly_label + '.mis_contigs.info')
     planta_out_f = open(log_out_fpath, 'w')
     planta_err_f = open(log_err_fpath, 'w')
     misassembly_file = open(misassembly_fpath, 'w')
@@ -304,11 +303,11 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
         if not os.path.isfile(coords_fpath):
             print >> planta_err_f, qutils.index_to_str(index) + 'Nucmer failed for', contigs_fpath + ':', coords_fpath, 'doesn\'t exist.'
-            logger.info('  ' + qutils.index_to_str(index) + 'Nucmer failed for ' + '\'' + assembly_name + '\'.')
+            logger.info('  ' + qutils.index_to_str(index) + 'Nucmer failed for ' + '\'' + assembly_label + '\'.')
             return NucmerStatus.FAILED, {}, []
         if len(open(coords_fpath).readlines()[-1].split()) < 13:
             print >> planta_err_f, qutils.index_to_str(index) + 'Nucmer: nothing aligned for', contigs_fpath
-            logger.info('  ' + qutils.index_to_str(index) + 'Nucmer: nothing aligned for ' + '\'' + assembly_name + '\'.')
+            logger.info('  ' + qutils.index_to_str(index) + 'Nucmer: nothing aligned for ' + '\'' + assembly_label + '\'.')
             return NucmerStatus.NOT_ALIGNED, {}, []
 
         if qconfig.show_snps:
@@ -1419,7 +1418,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                      qutils.name_from_fpath(contigs_fpath) + '.mis_contigs.fa'),
         fasta)
 
-    alignment_tsv_fpath = os.path.join(output_dirpath, "alignments_" + assembly_name + '.tsv')
+    alignment_tsv_fpath = os.path.join(output_dirpath, "alignments_" + assembly_label + '.tsv')
     logger.debug('  ' + qutils.index_to_str(index) + 'Alignments: ' + qutils.relpath(alignment_tsv_fpath))
     alignment_tsv_f = open(alignment_tsv_fpath, 'w')
     for ref_name, aligns in ref_aligns.iteritems():
@@ -1442,9 +1441,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
 
 def plantakolya_process(cyclic, nucmer_output_dirpath, contigs_fpath, i, output_dirpath, ref_fpath, bed_fpath, parallel_by_chr=False):
-    assembly_name = qutils.name_from_fpath(contigs_fpath)
+    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
-    nucmer_fname = os.path.join(nucmer_output_dirpath, assembly_name)
+    nucmer_fname = os.path.join(nucmer_output_dirpath, assembly_label)
     nucmer_is_ok, result, aligned_lengths = plantakolya(cyclic, i, contigs_fpath, nucmer_fname,
                                                         output_dirpath, ref_fpath, bed_fpath, parallel_by_chr=parallel_by_chr)
 
@@ -1481,10 +1480,16 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
             logger.info('Failed aligning the contigs for all the assemblies. Only basic stats are going to be evaluated.')
             return dict(zip(contigs_fpaths, [NucmerStatus.FAILED] * len(contigs_fpaths))), None
 
-    nucmer_output_dir = os.path.join(output_dir, 'nucmer_output')
+    nucmer_output_dirname = 'nucmer_output'
+    nucmer_output_dir = os.path.join(output_dir, nucmer_output_dirname)
     if not os.path.isdir(nucmer_output_dir):
         os.mkdir(nucmer_output_dir)
-
+    if reference.endswith(COMBINED_REF_FNAME):
+        from libs import search_references_meta
+        if search_references_meta.is_quast_first_run:
+            nucmer_output_dir = os.path.join(nucmer_output_dir, 'aux')
+            if not os.path.isdir(nucmer_output_dir):
+                os.mkdir(nucmer_output_dir)
     n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
     from joblib import Parallel, delayed
     if not qconfig.splitted_ref:
@@ -1524,6 +1529,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
         for row in all_rows:
             print >> txt_file, '  '.join('%-*s' % (colwidth, cell) for colwidth, cell
                                          in zip(colwidths, [row['metricName']] + map(val_to_str, row['values'])))
+
 
     if reference.endswith(COMBINED_REF_FNAME):
         ref_misassemblies = [result['istranslocations_by_refs'] for result in results]
@@ -1602,6 +1608,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
         report.add_field(reporting.Fields.MIS_LOCAL, region_misassemblies.count(Misassembly.LOCAL))
         if reference.endswith(COMBINED_REF_FNAME):
             report.add_field(reporting.Fields.MIS_ISTRANSLOCATIONS, region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION))
+        if qconfig.meta:
             report.add_field(reporting.Fields.CONTIGS_WITH_ISTRANSLOCATIONS, contigs_with_istranslocations)
 
         # for unaligned report:

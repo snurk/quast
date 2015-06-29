@@ -1,5 +1,5 @@
 ############################################################################
-# Copyright (c) 2011-2014 Saint-Petersburg Academic University
+# Copyright (c) 2011-2015 Saint-Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -9,7 +9,8 @@ import os
 import platform
 import sys
 
-LIBS_LOCATION = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+QUAST_HOME = os.path.abspath(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+LIBS_LOCATION = os.path.join(QUAST_HOME, 'libs')
 
 SUPPORTED_PYTHON_VERSIONS = ['2.5', '2.6', '2.7']
 
@@ -33,9 +34,9 @@ MAX_REFERENCE_FILE_LENGTH = 50000000  # Max length of one part of reference
 
 # available options
 long_options = "output-dir= save-json-to= genes= operons= coverage= reference= reads1= reads2= contig-thresholds= min-contig= "\
-               "gene-thresholds= save-json gage eukaryote archaea glimmer no-plots no-html help debug "\
+               "gene-thresholds= save-json gage eukaryote archaea glimmer no-plots no-html no-check no-gc help debug "\
                "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
-               "find-conserved-genes strict-NA meta labels= test help-hidden no-snps".split()
+               "find-conserved-genes strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number=".split()
 short_options = "o:G:C:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
 
 # default values for options
@@ -54,7 +55,6 @@ mincluster = 65
 estimated_reference_size = None
 strict_NA = False
 scaffolds = False
-search_snps = True
 draw_plots = True
 html_report = True
 save_json = False
@@ -116,7 +116,8 @@ downloaded_refs = False
 identity_threshold = 90 #  min % identity
 min_length = 300
 min_bitscore = 1000
-max_references = 50
+max_references = 30
+
 
 def check_python_version():
     if sys.version[0:3] not in SUPPORTED_PYTHON_VERSIONS:
@@ -126,7 +127,7 @@ def check_python_version():
 
 
 def quast_version():
-    version_fpath = os.path.join(LIBS_LOCATION, '..', 'VERSION')
+    version_fpath = os.path.join(QUAST_HOME, 'VERSION')
     version = "unknown"
     build = "unknown"
     if os.path.isfile(version_fpath):
@@ -158,7 +159,7 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "Options:"
     print >> sys.stderr, "-o  --output-dir  <dirname>   Directory to store all result files [default: quast_results/results_<datetime>]"
     if meta:
-        print >> sys.stderr, "-R                <filename>  Reference genomes (accepts multiple fasta files with multiple sequences each)"
+        print >> sys.stderr, "-R                <filename>  Comma-separated list of reference genomes or directory with reference genomes"
     else:
         print >> sys.stderr, "-R                <filename>  Reference genome file"
     print >> sys.stderr, "-1  --reads1                    File with forward reads"
@@ -181,12 +182,15 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "                                      for eukaryotes (--eukaryote), or MetaGeneMark for metagenomes (--meta)"
     print >> sys.stderr, "    --glimmer                         Predict genes with GlimmerHMM instead of GeneMark-ES"
     print >> sys.stderr, "-S  --gene-thresholds                 Comma-separated list of threshold lengths of genes to search with Gene Finding module"
-    print >> sys.stderr, "                                      [default is %s]" % genes_lengths
+    print >> sys.stderr, "                                      [default: %s]" % genes_lengths
     print >> sys.stderr, "-e  --eukaryote                       Genome is eukaryotic"
     print >> sys.stderr, "--archaea                              Genome is archaeal. BUSCO does not work with archaeal genomes."
     if not meta:
         print >> sys.stderr, "-m  --meta                            Use MetaGeneMark for gene prediction. "
-    print >> sys.stderr, "    --est-ref-size <int>              Estimated reference size (for computing NGx metrics without a reference)"
+        print >> sys.stderr, "    --est-ref-size <int>              Estimated reference size (for computing NGx metrics without a reference)"
+    else:
+        print >> sys.stderr, "    --max-ref-number <int>            Maximum number of references (per each assembly) to download after looking in SILVA database." \
+                             "                                      Set 0 for not looking in SILVA at all [default: %s]" % max_references
     print >> sys.stderr, "    --gage                            Use GAGE (results are in gage_report.txt)"
     print >> sys.stderr, "-b  --find-conserved-genes            Use BUSCO for finding conserved orthologs"
     print >> sys.stderr, "-t  --contig-thresholds               Comma-separated list of contig length thresholds [default: %s]" % contig_thresholds
@@ -197,8 +201,14 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "                                      good alignments [default is %s]" % ambiguity_usage
     print >> sys.stderr, "-n  --strict-NA                       Break contigs in any misassembly event when compute NAx and NGAx"
     print >> sys.stderr, "                                      By default, QUAST breaks contigs only by extensive misassemblies (not local ones)"
-    print >> sys.stderr, "    --no-plots                        Do not draw plots (to speed up computation)"
-    print >> sys.stderr, "    --no-snps                         Do not report SNPs (to make quast faster & reduce memory consumption on large genomes)"
+    print >> sys.stderr, ""
+    print >> sys.stderr, "Speedup options:"
+    print >> sys.stderr, "    --no-check                        Do not check and correct input fasta files"
+    print >> sys.stderr, "    --no-plots                        Do not draw plots"
+    print >> sys.stderr, "    --no-html                         Do not build html report"
+    print >> sys.stderr, "    --no-snps                         Do not report SNPs (may significantly reduce memory consumption on large genomes)"
+    print >> sys.stderr, "    --no-gc                           Do not compute GC% and GC-distribution"
+    print >> sys.stderr, "    --fast                            A combination of all speedup options"
     if show_hidden:
         print >> sys.stderr, ""
         print >> sys.stderr, "Hidden options:"
@@ -207,12 +217,16 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "-c  --mincluster   <int>    Nucmer's parameter: the minimum length of a cluster of matches [default: %s]" % mincluster
         print >> sys.stderr, "-j  --save-json             Save the output also in the JSON format"
         print >> sys.stderr, "-J  --save-json-to <path>   Save the JSON output to a particular path"
-        print >> sys.stderr, "    --no-html               Do not build html report"
-        print >> sys.stderr, "    --no-plots              Do not draw plots (to make quast faster)"
-        print >> sys.stderr, "    --no-check              Do not check correctness of fasta file"
-        print >> sys.stderr, "    --no-gc                 Do not compute GC% and GC-distribution"
+
     print >> sys.stderr, ""
-    print >> sys.stderr, "    --test                            Run QUAST on the data from the test_data folder, output to quast_test_output"
+    print >> sys.stderr, "Other:"
+    if meta:
+        print >> sys.stderr, "    --test                            Run MetaQUAST on the data from the test_data folder, output to quast_test_output"
+        print >> sys.stderr, "    --test-no-ref                     Run MetaQUAST without references on the data from the test_data folder, output to quast_test_output."
+        print >> sys.stderr, "                                      MetaQUAST will download SILVA 16S rRNA database (~170 Mb) for searching reference genomes."
+        print >> sys.stderr, "                                      Internet connection is required."
+    else:
+        print >> sys.stderr, "    --test                            Run QUAST on the data from the test_data folder, output to quast_test_output"
     print >> sys.stderr, "-h  --help                            Print this usage message"
     if show_hidden:
         print >> sys.stderr, "    --help-hidden                     Print this usage message with all hidden options"

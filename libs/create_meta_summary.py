@@ -13,6 +13,7 @@ from libs.log import get_logger
 import reporting
 logger = get_logger(qconfig.LOGGER_META_NAME)
 
+
 def get_results_for_metric(ref_names, metric, contigs_num, labels, output_dirpath, report_fname):
 
     all_rows = []
@@ -33,15 +34,17 @@ def get_results_for_metric(ref_names, metric, contigs_num, labels, output_dirpat
             break
         cur_ref_names.append(ref_name)
         next_values = map(lambda s: s.strip(), results_file.readline().split('\t'))
+        cur_results = [None] * len(labels)
         for j in range(contigs_num):
             values = next_values
-            if not values[0]:
-                metr_res = None
-            else:
+            if values[0]:
                 metr_res = values[columns.index(metric)].split()[0]
                 next_values = map(lambda s: s.strip(), results_file.readline().split('\t'))
-            all_rows[j + 1]['values'].append(metr_res)
-            results[i].append(metr_res)
+                index_contig = labels.index(values[0])
+                cur_results[index_contig] = metr_res
+        for j in range(contigs_num):
+            all_rows[j + 1]['values'].append(cur_results[j])
+            results[i].append(cur_results[j])
     if not cur_ref_names:
         cur_ref_names = ref_names
     return results, all_rows, cur_ref_names
@@ -76,7 +79,7 @@ def do(output_dirpath, summary_dirpath, labels, metrics, misassembl_metrics, ref
                         mis_results = []
                         report_fname = os.path.join('contigs_reports', qconfig.transposed_report_prefix + '_misassemblies' + '.tsv')
                         if ref_names[-1] == qconfig.not_aligned_name:
-                            cur_ref_names = ref_names[:-1]
+                                cur_ref_names = ref_names[:-1]
                         for misassembl_metric in misassembl_metrics:
                             results, all_rows, cur_ref_names = get_results_for_metric(cur_ref_names, misassembl_metric[len(reporting.Fields.TAB):], contigs_num, labels, output_dirpath, report_fname)
                             if results:

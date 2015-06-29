@@ -79,13 +79,12 @@ def chromosomes_names_dict(feature, regions, chr_names):
 
 def process_single_file(contigs_fpath, index, nucmer_path_dirpath, genome_stats_dirpath,
                         reference_chromosomes, genes_container, operons_container):
-    assembly_name = qutils.name_from_fpath(contigs_fpath)
-    assembly_label = qutils.label_from_fpath(contigs_fpath)
+    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
     results = dict()
     ref_lengths = {}
     logger.info('  ' + qutils.index_to_str(index) + assembly_label)
 
-    nucmer_base_fpath = os.path.join(nucmer_path_dirpath, assembly_name + '.coords')
+    nucmer_base_fpath = os.path.join(nucmer_path_dirpath, assembly_label + '.coords')
     if qconfig.use_all_alignments:
         nucmer_fpath = nucmer_base_fpath
     else:
@@ -148,7 +147,7 @@ def process_single_file(contigs_fpath, index, nucmer_path_dirpath, genome_stats_
     # counting genome coverage and gaps number
     covered_bp = 0
     gaps_count = 0
-    gaps_fpath = os.path.join(genome_stats_dirpath, assembly_name + '_gaps.txt')
+    gaps_fpath = os.path.join(genome_stats_dirpath, assembly_label + '_gaps.txt')
     gaps_file = open(gaps_fpath, 'w')
     for chr_name, chr_len in reference_chromosomes.iteritems():
         print >>gaps_file, chr_name
@@ -192,10 +191,10 @@ def process_single_file(contigs_fpath, index, nucmer_path_dirpath, genome_stats_
 
         total_full = 0
         total_partial = 0
-        found_fpath = os.path.join(genome_stats_dirpath, assembly_name + suffix)
+        found_fpath = os.path.join(genome_stats_dirpath, assembly_label + suffix)
         found_file = open(found_fpath, 'w')
-        print >>found_file, '%s\t\t%s\t%s' % ('ID or #', 'Start', 'End')
-        print >>found_file, '============================'
+        print >>found_file, '%s\t\t%s\t%s\t%s' % ('ID or #', 'Start', 'End', 'Type')
+        print >>found_file, '========================================='
 
         # 0 - gene is not found,
         # 1 - gene is found,
@@ -227,7 +226,7 @@ def process_single_file(contigs_fpath, index, nucmer_path_dirpath, genome_stats_
                             region_id = str(region.id)
                             if region_id == 'None':
                                 region_id = '# ' + str(region.number + 1)
-                            print >>found_file, '%s\t\t%d\t%d' % (region_id, region.start, region.end)
+                            print >>found_file, '%s\t\t%d\t%d\tcomplete' % (region_id, region.start, region.end)
                             feature_in_contigs[contig_id] += 1  # inc number of found genes/operons in id-th contig
 
                             cur_feature_is_found = True
@@ -239,12 +238,12 @@ def process_single_file(contigs_fpath, index, nucmer_path_dirpath, genome_stats_
                         break
                 if cur_feature_is_found:
                     break
-            ## adding info about partially found genes/operons
-            # if found_list[i] == 2:  # partial gene/operon
-            #     region_id = str(region.id)
-            #     if region_id == 'None':
-            #         region_id = '# ' + str(region.number + 1)
-            #     print >>found_file, '%s\t\t%d\t%d\tpartial' % (region_id, region.start, region.end)
+            # adding info about partially found genes/operons
+            if found_list[i] == 2:  # partial gene/operon
+                region_id = str(region.id)
+                if region_id == 'None':
+                    region_id = '# ' + str(region.number + 1)
+                print >>found_file, '%s\t\t%d\t%d\tpartial' % (region_id, region.start, region.end)
 
         results[field + "_full"] = total_full
         results[field + "_partial"] = total_partial
@@ -259,6 +258,9 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
        genes_fpaths, operons_fpaths, detailed_contigs_reports_dirpath, genome_stats_dirpath):
 
     nucmer_path_dirpath = os.path.join(detailed_contigs_reports_dirpath, 'nucmer_output')
+    from libs import search_references_meta
+    if search_references_meta.is_quast_first_run:
+        nucmer_path_dirpath = os.path.join(nucmer_path_dirpath, 'aux')
 
     logger.print_timestamp()
     logger.info('Running Genome analyzer...')

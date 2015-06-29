@@ -32,39 +32,6 @@ function showPlotWithInfo(info) {
 }
 
 
-function Range(from, to) {
-    var r  = [];
-    for (var i = from; i < to; i++) {
-        r.push(i);
-    }
-    return r;
-}
-
-
-function recoverOrderFromCookies() {
-    if (!navigator.cookieEnabled)
-        return null;
-
-    var order_string = readCookie("order");
-    if (!order_string)
-        return null;
-
-    var order = [];
-    var fail = false;
-    forEach(order_string.split(' '), function(val) {
-        val = parseInt(val);
-        if (isNaN(val))
-            fail = true;
-        else
-            order.push(val);
-    });
-
-    if (fail)
-        return null;
-
-    return order;
-}
-
 function buildReport() {
     var assembliesNames;
     var order;
@@ -142,16 +109,6 @@ function buildReport() {
         }
 
         $(switchSpan).click(getToggleFunction(name, title, drawPlot, data, refPlotValue, tickX));
-    }
-
-    function readJson(what) {
-        var result;
-        try {
-            result = JSON.parse($('#' + what + '-json').html());
-        } catch (e) {
-            result = null;
-        }
-        return result;
     }
 
     /****************/
@@ -262,7 +219,4 @@ function buildReport() {
 
     return 0;
 }
-
-
-
 

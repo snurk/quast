@@ -10,13 +10,15 @@ import shutil
 import tempfile
 
 from libs import reporting, qconfig, qutils
-from libs.fastaparser import read_fasta, write_fasta
+from libs.fastaparser import write_fasta
 
 from libs.log import get_logger
+
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
 LICENSE_LIMITATIONS_MODE = False
-OUTPUT_FASTA = False # whether output only .gff or with corresponding .fasta files
+OUTPUT_FASTA = False  # whether output only .gff or with corresponding .fasta files
+
 
 def gc_content(sequence):
     GC_count = sequence.count('G') + sequence.count('C')
@@ -38,11 +40,11 @@ def gmhmm_p(tool_exec, fasta_fpath, heu_fpath, out_fpath, err_file, index):
 
     return return_code == 0 and os.path.isfile(out_fpath)
 
+
 def install_genemark(tool_dirpath):
-    """Installation instructions for GeneMark Suite.
+    """Installation instructions for GeneMark.
     Please, copy key "gm_key" into users home directory as:
     cp gm_key ~/.gm_key
-    (genemark_suite_linux_XX/gmsuite/INSTALL)
     """
     import subprocess
     import filecmp
@@ -58,7 +60,7 @@ def install_genemark(tool_dirpath):
         line = proc.stdout.readline()
         if line.find('license period has ended') != -1:
             logger.warning('License period for GeneMark has ended! \n' \
-                           'To update license, please visit http://topaz.gatech.edu/license_download.cgi page and fill in the form.\n' \
+                           'To update license, please visit http://exon.gatech.edu/GeneMark/license_download.cgi page and fill in the form.\n' \
                            'You should choose GeneMarkS tool and your operating system (note that GeneMark is free for non-commercial use).\n' \
                            'Download the license key and replace your ~/.gm_key with the updated version. After that you can restart QUAST.\n')
             return False
@@ -88,6 +90,7 @@ def parse_gmhmm_out(out_fpath):
                 else:
                     seq.append(line.strip())
 
+
 def parse_gtf_out(out_fpath):
     with open(out_fpath) as f:
         for line in f:
@@ -102,7 +105,7 @@ def parse_gtf_out(out_fpath):
 def add_genes_to_gff(genes, gff_fpath, prokaryote):
     gff = open(gff_fpath, 'w')
     if prokaryote:
-        gff.write('##gff out for GeneMark.hmm PROKARYOTIC\n')
+        gff.write('##gff out for GeneMarkS PROKARYOTIC\n')
     else:
         gff.write('##gff out for GeneMark-ES EUKARYOTIC\n')
     gff.write('##gff-version 3\n')
@@ -135,7 +138,7 @@ def gmhmm_p_everyGC(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath, nu
     fasta_name = qutils.name_from_fpath(fasta_fpath)
     return_code = qutils.call_subprocess(
         ['perl', tool_exec_fpath, '--name', fasta_name, '--clean', '--out', tmp_dirpath,
-         fasta_fpath ],
+         fasta_fpath],
         stdout=err_file,
         stderr=err_file,
         indent='    ' + qutils.index_to_str(index))
@@ -177,7 +180,7 @@ def gm_es(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath, num_threads)
     err_file = open(err_fpath, 'w')
     tmp_dirpath += qutils.name_from_fpath(fasta_fpath)
     if not os.path.isdir(tmp_dirpath):
-            os.mkdir(tmp_dirpath)
+        os.mkdir(tmp_dirpath)
     return_code = qutils.call_subprocess(
         ['perl', '-I', libs_dirpath, tool_exec_fpath, '--ES', '--cores', str(num_threads), '--sequence', fasta_fpath,
          '--out', tmp_dirpath],
@@ -194,13 +197,13 @@ def gm_es(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath, num_threads)
     return genes
 
 
-def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath, tmp_dirpath, gmhmm_p_function, prokaryote, num_threads):
-    assembly_name = qutils.name_from_fpath(contigs_fpath)
-    assembly_label = qutils.label_from_fpath(contigs_fpath)
+def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath, tmp_dirpath, gmhmm_p_function,
+                  prokaryote, num_threads):
+    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     logger.info('  ' + qutils.index_to_str(index) + assembly_label)
 
-    err_fpath = os.path.join(out_dirpath, assembly_name + '_genemark.stderr')
+    err_fpath = os.path.join(out_dirpath, assembly_label + '_genemark.stderr')
 
     genes = gmhmm_p_function(tool_dirpath, contigs_fpath, err_fpath, index, tmp_dirpath, num_threads)
 
@@ -209,10 +212,10 @@ def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath,
         count = None  # [None] * len(gene_lengths)
     else:
         tool_name = "genemark"
-        out_gff_fpath = os.path.join(out_dirpath, assembly_name + '_' + tool_name + '_genes.gff')
+        out_gff_fpath = os.path.join(out_dirpath, assembly_label + '_' + tool_name + '_genes.gff')
         add_genes_to_gff(genes, out_gff_fpath, prokaryote)
         if OUTPUT_FASTA:
-            out_fasta_fpath = os.path.join(out_dirpath, assembly_name + '_' + tool_name + '_genes.fasta')
+            out_fasta_fpath = os.path.join(out_dirpath, assembly_label + '_' + tool_name + '_genes.fasta')
             add_genes_to_fasta(genes, out_fasta_fpath)
 
         count = [sum([gene[3] - gene[2] > x for gene in genes]) for x in gene_lengths]
@@ -236,7 +239,7 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
         tool_dirname = 'genemark'
         gmhmm_p_function = gmhmm_p_metagenomic
     elif prokaryote:
-        tool_name = 'GeneMark'
+        tool_name = 'GeneMarkS'
         tool_dirname = 'genemark'
         gmhmm_p_function = gmhmm_p_everyGC
     else:
@@ -261,7 +264,7 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
             os.mkdir(tmp_dirpath)
 
         n_jobs = min(len(fasta_fpaths), qconfig.max_threads)
-        num_threads = max(1, qconfig.max_threads//n_jobs)
+        num_threads = max(1, qconfig.max_threads // n_jobs)
         from joblib import Parallel, delayed
         results = Parallel(n_jobs=n_jobs)(delayed(predict_genes)(
             index, fasta_fpath, gene_lengths, out_dirpath, tool_dirpath, tmp_dirpath, gmhmm_p_function, prokaryote, num_threads)
@@ -275,6 +278,11 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
                 report.add_field(reporting.Fields.PREDICTED_GENES_UNIQUE, unique_count)
             if count is not None:
                 report.add_field(reporting.Fields.PREDICTED_GENES, count)
+            if unique_count is None and count is None:
+                logger.error('  ' + qutils.index_to_str(i) +
+                     'Failed predicting genes in ' + qutils.label_from_fpath(fasta_path) + '. ' +
+                     ('File may be too small for GeneMark-ES. Try to use GeneMarkS instead (remove --eukaryote option).'
+                         if tool_name == 'GeneMark-ES' and os.path.getsize(fasta_path) < 2000000 else ''))
 
         if not qconfig.debug:
             shutil.rmtree(tmp_dirpath)
