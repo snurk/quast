@@ -150,6 +150,12 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
 
+    from libs import search_references_meta
+    if search_references_meta.is_quast_first_run:
+        output_dir = os.path.join(output_dir, 'aux')
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
+
     logger.print_timestamp()
     logger.info('Running reads aligner...')
 

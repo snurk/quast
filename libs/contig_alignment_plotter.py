@@ -793,7 +793,8 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
 
         for i, chr in enumerate(chr_names):
             with open(html_saver.get_real_path('_chr_templ.html'), 'r') as template:
-                with open(os.path.join(output_dir_path, '_{chr}.html'.format(**locals())), 'w') as result:
+                short_chr = chr[:30]
+                with open(os.path.join(output_dir_path, '_{short_chr}.html'.format(**locals())), 'w') as result:
                     for line in template:
                         result.write(line)
                         if line.find('<body>') != -1:
@@ -808,7 +809,8 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     result.write(line)
                     if line.find('<!--- references: ---->') != -1:
                         for i, chr in enumerate(chr_names):
-                            p = '_{chr}.html'.format(**locals())
+                            short_chr = chr[:30]
+                            p = '_{short_chr}.html'.format(**locals())
                             t = chr.replace('_', ' ')
                             result.write('<a href="{p}"><div class="block">{t}</div></a>'.format(**locals()))
 

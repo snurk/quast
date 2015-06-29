@@ -393,9 +393,9 @@ def main(args):
             options += [('-o', 'quast_test_output'),
                         ('-1', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reads1.fastq.gz')),
                         ('-2', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reads2.fastq.gz')),
-                        ('-R', os.path.join(qconfig.QUAST_HOME, 'test_data', 'test_data/reference.fasta.gz')),   # for compiling MUMmer
-                        ('-O', os.path.join(qconfig.QUAST_HOME, 'test_data', 'test_data/operons.gff')),
-                        ('-G', os.path.join(qconfig.QUAST_HOME, 'test_data', 'test_data/genes.gff')),
+                        ('-R', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reference.fasta.gz')),   # for compiling MUMmer
+                        ('-O', os.path.join(qconfig.QUAST_HOME, 'test_data', 'operons.gff')),
+                        ('-G', os.path.join(qconfig.QUAST_HOME, 'test_data', 'genes.gff')),
                         ('--gage', ''), # for compiling GAGE Java classes
                         ('--find-conserved-genes', ''),  # for compiling BUSCO
                         ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')] # for compiling GlimmerHMM
