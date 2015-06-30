@@ -752,7 +752,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     c = list(line.split())
                     name = qutils.correct_name(c[0])
                     cur_len[name] += int(c[2])
-                    if index % 100 == 0:
+                    if index % 100 == 0 and index > 0:
                         cov_data[name].append(cur_len[name]/100)
                         cur_len[name] = 0
                     if c[2] == '0':
@@ -760,15 +760,16 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
 
             data_str = 'var coverage_data = {};\n'
             for chr in chr_names:
-                data_str += 'coverage_data["{chr}"] = ['.format(**locals())
-                for e in cov_data[chr]:
-                    data_str += '{e},'.format(**locals())
-                    if len(data_str) > 10000 and e != cov_data[chr][-1]:
-                        result.write(data_str)
-                        data_str = ''
-                data_str = data_str[:-1] + '];\n'
-                result.write(data_str)
-                data_str = ''
+                if cov_data[chr]:
+                    data_str += 'coverage_data["{chr}"] = [ '.format(**locals())
+                    for e in cov_data[chr]:
+                        data_str += '{e},'.format(**locals())
+                        if len(data_str) > 10000 and e != cov_data[chr][-1]:
+                            result.write(data_str)
+                            data_str = ''
+                    data_str = data_str[:-1] + '];\n'
+                    result.write(data_str)
+                    data_str = ''
 
             data_str = 'var not_covered = {};\n'
             for chr in chr_names:
