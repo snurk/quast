@@ -546,9 +546,6 @@ def main(args):
         elif opt == '-L':
             all_labels_from_dirs = True
 
-        elif opt == '--glimmer':
-            qconfig.glimmer = True
-
         elif opt == '--archaea':
             qconfig.archaea = True
 
