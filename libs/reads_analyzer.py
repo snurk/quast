@@ -1,4 +1,6 @@
+import pipes
 import shutil
+import subprocess
 from libs import reporting, qconfig, qutils
 
 from libs.log import get_logger
@@ -18,7 +20,7 @@ def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpa
     res_fpath = os.path.join(res_path, assembly_name + '.res')
     logger.info('  ' + qutils.index_to_str(index) + assembly_name)
 
-    if os.path.isfile(res_fpath):
+    if os.path.isfile(res_fpath) and os.path.getsize(res_fpath) > 0:
         logger.info('  ' + qutils.index_to_str(index) + 'Using existing BWA alignments...')
         return res_fpath
     sam_fpath = os.path.join(output_dirpath, assembly_name + '.sam')
@@ -34,20 +36,51 @@ def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpa
     qutils.assert_file_exists(bam_fpath, 'bam file')
     qutils.call_subprocess([samtools_fpath('samtools'), 'flagstat', bam_fpath], stdout=open(res_fpath, 'w'),
                            stderr=open(err_path, 'a'))
-
+    logger.info('  ' + qutils.index_to_str(index) + 'Analysis is finished.')
     return res_fpath
 
+
 def get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath):
-    bamsorted_fpath = os.path.join(output_dirpath, ref_name + '.sorted')
-    qutils.call_subprocess([samtools_fpath('samtools'), 'sort',  '-@', str(qconfig.max_threads), bam_fpath, bamsorted_fpath], stdout=open(err_path, 'w'),
-                           stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'depth', bamsorted_fpath + '.bam'], stdout=open(cov_fpath, 'w'),
-                           stderr=open(err_path, 'a'))
-    qutils.assert_file_exists(cov_fpath, 'coverage file')
+    if not os.path.isfile(cov_fpath):
+        bamsorted_fpath = os.path.join(output_dirpath, ref_name + '.sorted')
+        qutils.call_subprocess([samtools_fpath('samtools'), 'sort',  '-@', str(qconfig.max_threads), bam_fpath, bamsorted_fpath], stdout=open(err_path, 'w'),
+                               stderr=open(err_path, 'a'))
+        qutils.call_subprocess([samtools_fpath('samtools'), 'depth', bamsorted_fpath + '.bam'], stdout=open(cov_fpath, 'w'),
+                               stderr=open(err_path, 'a'))
+        qutils.assert_file_exists(cov_fpath, 'coverage file')
     return cov_fpath
 
-def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
 
+def get_insert_size(ref_fpath, output_dirpath, err_path, res_fpath):
+    insert_size = 0
+    if os.path.isfile(res_fpath) and os.path.getsize(res_fpath) > 0:
+        first_line = open(res_fpath).readline().rstrip()
+        if 'insert' in first_line:
+            insert_size = first_line.split(':')[1]
+        return insert_size
+    ref_name = qutils.name_from_fpath(ref_fpath)
+    bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
+    ls = subprocess.Popen([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-f66', bam_fpath],
+                          stdout=subprocess.PIPE,
+                          stderr=open(err_path, 'a'))
+    ls = subprocess.Popen(['cut', '-f', '9'], stdin=ls.stdout, stdout=subprocess.PIPE,
+                          stderr=open(err_path, 'a'))
+    ls = subprocess.Popen(['head', '-n', '10000'], stdin=ls.stdout, stdout=subprocess.PIPE,
+                          stderr=open(err_path, 'a'))
+    ls = subprocess.Popen(['sed', "s/^-//"], stdin=ls.stdout, stdout=subprocess.PIPE,
+                          stderr=open(err_path, 'a'))
+    output = ls.communicate()[0]
+    if output:
+        insert_sizes = output.split('\n')
+        insert_sizes = [int(i) for i in insert_sizes if i != '']
+        if len(insert_sizes) > 0:
+            insert_size = int(sum(insert_sizes) / len(insert_sizes))
+    with open(res_fpath, 'w') as res_file:
+        res_file.writelines('Mean insert size:' + str(insert_size) + '\n')
+    return insert_size
+
+
+def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
     ref_name = qutils.name_from_fpath(ref_fpath)
     logger.info('  Running LUMPY for %s...' % ref_name)
     bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
@@ -62,14 +95,14 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
         return bed_fpath, cov_fpath
 
     cov_fpath = get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath)
-    ##preprocessing for lumpy
+    # preprocessing for lumpy
     vcfoutput_dirpath = os.path.join(output_dirpath, 'lumpy_output')
 
     bamdiscordants_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.bam')
     splitreads_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.split')
     bamsplitter_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.bam')
     qutils.call_subprocess([samtools_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
-    discordsorted_fpath= os.path.join(vcfoutput_dirpath, ref_name + '.discordants.sorted')
+    discordsorted_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.sorted')
     splitsorted_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.sorted')
     readgroup_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.readgroup')
     histo_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.histo')
@@ -100,7 +133,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
     bam_info = open(temp_fpath).readline().split()
     if len(bam_info) < 10:
         logger.info('  Failed searching structural variations.')
-        return
+        return None, cov_fpath
     read_length = str(len(bam_info[9]))
     qutils.call_subprocess(
         [os.path.join(lumpytools_dirpath, 'scripts/pairend_distro.py'), '-r', read_length, '-X', '4', '-N', '10000',
@@ -110,7 +143,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
     bam_statistics = open(temp_fpath).readline()
     if len(bam_statistics) < 4:
         logger.info('  Failed searching structural variations.')
-        return
+        return None, cov_fpath
     mean = bam_statistics.split()[1]
     stdev = bam_statistics.split()[3]
     pe_files = 'id:%s,bam_file:%s.bam,histo_file:%s,mean:%s,stdev:%s,read_length:%s,min_non_overlap:%s,discordant_z:5,back_distance:10,weight:1,min_mapping_threshold:2' %\
@@ -123,6 +156,7 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
         stderr=open(err_path, 'a'))
     logger.info('  Structural variations saved to ' + bed_fpath)
     return bed_fpath, cov_fpath
+
 
 def bin_fpath(fname):
     return os.path.join(bwa_dirpath, fname)
@@ -235,10 +269,13 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     err_path = os.path.join(temp_output_dir, 'align_reads.err')
     logger.info('  ' + 'Logging to files %s and %s...' % (log_path, err_path))
     from joblib import Parallel, delayed
-    res_fpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(index, fpath, bwa_threads,
-                                                                        reads_fpaths, temp_output_dir, final_output_dir, log_path,
-                                                                        err_path) for (index, fpath) in enumerate(proc_files))
 
+    res_fpaths = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(index, fpath, bwa_threads, reads_fpaths,
+                        temp_output_dir, final_output_dir, log_path, err_path) for (index, fpath) in enumerate(proc_files))
+    insert_size_fpath = os.path.join(final_output_dir, 'ins_size.txt')
+    insert_size = get_insert_size(ref_fpath, temp_output_dir, err_path, insert_size_fpath)
+    if insert_size > 1000:
+        qconfig.len_extensive_misassembly = insert_size
     if ref_fpath:
         bed_fpath, cov_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
     else:
@@ -261,6 +298,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     for index, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
         results = open(res_fpaths[index])
+        assembly_label = qutils.label_from_fpath(contigs_fpath)
         for line in results:
             if 'total' in line:
                 report.add_field(reporting.Fields.TOTALREADS, line.split()[0])
@@ -273,6 +311,8 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
                 report.add_field(reporting.Fields.PROPERLYPAIR_READS, line.split()[0])
             elif 'mapped' in line and '%' in line:
                 report.add_field(reporting.Fields.MAPPED_READS, line.split()[0])
+                if line.split()[0] == '0':
+                    logger.info('  ' + qutils.index_to_str(index) + 'BWA: nothing aligned for ' + '\'' + assembly_label + '\'.')
             elif 'singletons' in line:
                 report.add_field(reporting.Fields.SINGLETONS, line.split()[0])
             elif 'different' in line and 'mapQ' not in line and len(contigs_fpaths) > 1:
@@ -287,7 +327,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
             report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
 
     if not qconfig.debug:
-       shutil.rmtree(temp_output_dir, ignore_errors=True)
+        shutil.rmtree(temp_output_dir, ignore_errors=True)
 
     reporting.save_reads(output_dir)
     logger.info('Done.')

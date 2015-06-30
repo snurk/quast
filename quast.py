@@ -424,6 +424,7 @@ def main(args):
     reads_fpath_f = ''
     reads_fpath_r = ''
     reads_inter_fpath = []
+    len_extensive_misassembly = None
 
     # Yes, this is a code duplicating. But OptionParser is deprecated since version 2.7.
     for opt, arg in options:
@@ -550,6 +551,9 @@ def main(args):
 
         elif opt == '--archaea':
             qconfig.archaea = True
+
+        elif opt == '--len-extensive-misassembly':
+            len_extensive_misassembly = int(arg)
         else:
             logger.error('Unknown option: %s. Use -h for help.' % (opt + ' ' + arg), to_stderr=True, exit_with_code=2)
 
@@ -622,6 +626,7 @@ def main(args):
         ref_fpath = _correct_reference(ref_fpath, corrected_dirpath)
     else:
         ref_fpath = ''
+        qconfig.no_check = True
 
     # PROCESSING CONTIGS
     logger.info()
@@ -638,12 +643,13 @@ def main(args):
         if reads_inter_fpath:
             bed_fpath, cov_fpath = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_inter_fpath, os.path.join(output_dirpath, 'reads_reports'))
 
-
     for contigs_fpath in contigs_fpaths:
         report = reporting.get(contigs_fpath)
         report.add_field(reporting.Fields.NAME, qutils.label_from_fpath(contigs_fpath))
 
     qconfig.assemblies_num = len(contigs_fpaths)
+    if len_extensive_misassembly:
+        qconfig.len_extensive_misassembly = len_extensive_misassembly
 
     if not contigs_fpaths:
         logger.error("None of the assembly files contains correct contigs. "
