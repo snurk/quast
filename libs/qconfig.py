@@ -35,13 +35,14 @@ MAX_REFERENCE_FILE_LENGTH = 50000000  # Max length of one part of reference
 # available options
 long_options = "output-dir= save-json-to= genes= operons= coverage= reference= reads1= reads2= contig-thresholds= min-contig= "\
                "gene-thresholds= save-json gage eukaryote archaea glimmer no-plots no-html no-check no-gc help debug "\
-               "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
+               "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding len-extensive-misassembly="\
                "find-conserved-genes strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number=".split()
 short_options = "o:G:C:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
 
 # default values for options
 contig_thresholds = "0,1000"
 min_contig = 500
+len_extensive_misassembly = 1000
 genes_lengths = "0,300,1500,3000"
 ref_fpath = ''
 with_gage = False
