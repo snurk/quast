@@ -1433,9 +1433,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         print >> planta_out_f, '\tCovered Bases: %d' % region_covered
         #print >> plantafile_out, '\tAmbiguous Bases (e.g. N\'s): %d' % region_ambig
         print >> planta_out_f, ''
-        print >> planta_out_f, '\tSNPs: %d' % region_snp
-        print >> planta_out_f, '\tInsertions: %d' % region_insertion
-        print >> planta_out_f, '\tDeletions: %d' % region_deletion
+        print >> planta_out_f, '\tSNPs: %d' % total_indels_info.mismatches
+        print >> planta_out_f, '\tInsertions: %d' % total_indels_info.insertions
+        print >> planta_out_f, '\tDeletions: %d' % total_indels_info.deletions
         #print >> plantafile_out, '\tList of indels lengths:', indels_list
         print >> planta_out_f, ''
         print >> planta_out_f, '\tPositive Gaps: %d' % len(gaps)
