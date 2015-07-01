@@ -80,7 +80,7 @@
     <a href="https://github.com/arq5x/lumpy-sv">lumpy</a> and <a href="http://gage.cbcb.umd.edu/index.html">GAGE</a>. In addition, MetaQUAST uses <a href="http://exon.gatech.edu/GeneMark/">MetaGeneMark</a>, <a href="http://blast.ncbi.nlm.nih.gov/Blast.cgi">BLAST</a>, and <a href="http://www.arb-silva.de/">SILVA</a> 16S rRNA database. These tools are built in into the QUAST package which is ready for use by academic, non-profit institutions and U.S. Government agencies. If you are not in one of these categories please refer to <a href="LICENSE">LICENSE</a> section 'Third-party tools incorporated into QUAST' for guidelines on how to complete the licensing process.     
     <br>
     <br>
-    Version 3.0 of QUAST was released under GPL v2 on XX June 2015. Note that some of build-in third-party tools are not under GPL v2. See <a href="LICENSE">LICENSE</a> for details.
+    Version 3.0 of QUAST was released under GPL v2 on XX July 2015. Note that some of build-in third-party tools are not under GPL v2. See <a href="LICENSE">LICENSE</a> for details.
 </p>
 
 <h2>Contents</h2>
@@ -437,6 +437,7 @@ By default, QUAST v.2.0 and higher filters out ambiguous and redundant alignment
 (or one set of non-overlapping or slightly overlapping alignments). This option makes QUAST count all alignments.
 
 <div class='option'>
+    <a name='ambiguity_usage'></a><code><b>--ambiguity-usage</b> &lt;<b>none</b>|<b>one</b>|<b>all</b>&gt;</code>
     <code><b>-b</b></code> (or <code>--find-conserved-genes</code>) <code>&lt;int&gt;</code>
 </div>
 Use BUSCO for finding conserved orthologs (429 groups for eukaryotic and 40 groups for prokaryotic organisms).
@@ -445,12 +446,18 @@ It allows to assess the completeness of genome assembly.
 <div class='option'>
     <code><b>--ambiguity-usage</b> &lt;<b>none</b>|<b>one</b>|<b>all</b>&gt;</code>
 </div>
-Way of processing equally good alignments (probably repeats):<br>
+Way of processing equally good alignments of a contig (probably repeats):<br>
 <table style="margin-left: 30px; font-size: 1em; vertical-align: bottom;">
     <tr><td style='width: 40px;'><code>none</code></td><td>skip all such alignments;</td></tr>
     <tr><td><code>one</code></td><td>take only one (the first one);</td></tr>
     <tr><td><code>all</code></td><td>use all alignments. Can cause a significant increase of <span class='metric-ref'># mismatches</span>
     (repeats are almost always inexact due to accumulated SNPs, indels, etc.).</td></tr>
+</table>
+This option is also used for processing internal overlaps between adjacent aligned blocks of a misassembled contig:
+<table style="margin-left: 30px; font-size: 1em; vertical-align: bottom;">
+    <tr><td style='width: 40px;'><code>none</code></td><td>exclude (remove) overlapped fragments from both blocks;</td></tr>
+    <tr><td><code>one</code></td><td>remove overlapped fragment from only one block (the shortest one);</td></tr>
+    <tr><td><code>all</code></td><td>use both blocks unchanged.</td></tr>
 </table>
 The default value is 'one'.
 
@@ -459,6 +466,13 @@ The default value is 'one'.
 </div>
 Break contigs at every misassembly event (including local ones) to compute <span class='metric-ref'>NAx</span> and
 <span class='metric-ref'>NGAx</span> statistics. By default, QUAST breaks contigs <i>only at extensive</i> misassemblies (not local ones).
+
+<div class='option'>
+    <a name='extensive_mis_size'></a><code><b>--extensive-mis-size</b></code> <code>&lt;int&gt;</code>
+</div>
+Lower threshold for the relocation size (gap or overlap size between left and right flanking sequence, see <a href="#sec3.1.2">section 3.1.2</a> for details).
+Shorter relocations are considered as local misassemblies. Does not affect other types of extensive misassemblies (inversions and translocations).
+The default value is 1000. Note that the threshold should be greater than maximum indel length which is 85 bp (Nucmer default value).
 </div>
 
 <br>
@@ -468,9 +482,17 @@ Speedup options:
 <div class='option'>
 <code><b>--no-check</b></code>
 </div>
-Do not check and correct input FASTA files. By default, QUAST corrects sequence names by replacing special characters (e.g. &amp;, &#124;, " ", etc) with underscore ("_"). QUAST also checks sequences itself and reports a presence of non-ACGTN characters. Alternative symbols (M, K, R, etc) are replaced with N.
-Note that uncorrected FASTA files may cause failing of third-party tools incorporated to QUAST, e.g. GAGE or Nucmer.
-
+    Do not check and correct input FASTA files (both reference and assemblies).
+    By default, QUAST corrects sequence names by replacing special characters
+    (all symbols except latin letters, numbers, underscores, dots, and minus signs) with underscore ("_").
+    QUAST also checks and corrects sequences itself. Lowercase letters are uppercased.
+    Alternative nucleotide symbols (M, K, R, etc) are replaced with N. If non-ACGTN characters
+    are present after this modifications the whole FASTA file is skipped from further processing.
+    <br>
+    <b>Note</b>: Use this option at your own risk. Incorrect FASTA files may cause failing of
+    third-party tools incorporated to QUAST, i.e. GAGE, Nucmer, GeneMark*, GlimmerHMM.
+    This option is useful for running QUAST without <code>-R</code> and <code>--gene-finding</code>
+    (no third-party tools will be run) or if you are absolutely sure that your FASTA files are correct.
 
 <div class='option'>
 <code><b>--no-plots</b></code>
@@ -495,7 +517,23 @@ Do not compute GC% and do not produce GC-distribution plots (both in HTML report
 <div class='option'>
 <code><b>--fast</b></code>
 </div>
-A shortcut for using all of speedup options at a time.
+A shortcut for using all of speedup options except --no-check.
+</div>
+
+<br>
+MetaQUAST only:
+<div class='options'>
+<div class='option'>
+    <code><b>--test-no-ref</b></code>
+</div>
+Run MetaQUAST on a data from the <code>test_data</code> folder, but without reference genomes. The tool will download
+    SILVA 16S rRNA gene database (170 Mb), which will be required if you plan to use MetaQUAST without references.
+     See <a href="#sec2.5">section 2.5</a> for details about algorithm of searching references.
+
+<div class='option'>
+    <a href='max_ref_num'></a><code><b>--max-ref-num</b></code> <code>&lt;int&gt;</code>
+</div>
+Maximum number of references (per each assembly) to download after searching in SILVA database. Default value is 30.
 </div>
 
 <br>
@@ -504,20 +542,12 @@ Other:
 <div class='option'>
     <code><b>--test</b></code>
 </div>
-Run the tool on a data from the <code>test_data</code> folder and check correctness of the evaluation process. Output is saved in quast_test_output.
+Run the tool on a data from the <code>test_data</code> folder and check correctness of the evaluation process. Output is saved in <code>quast_test_output</code>.
 
-<div class='option'>
-    <code><b>--test-no-ref</b></code> (MetaQUAST only)
-</div>
-Run MetaQUAST on a data from the <code>test_data</code> folder, but without reference genomes. The tool will download
-    SILVA 16S rRNA gene database (170 Mb), which will be required if you plan to use MetaQUAST without references.
-     See <a href="#sec2.5">section 2.5</a> for details about algorithm of searching references.
- 
 <div class='option'>
     <code><b>-h</b></code> (or <code>--help</code>)
 </div>
 Print help.
-
 </div>
 
 <a name="sec2.5"></a>
@@ -535,15 +565,17 @@ Print help.
 
 <p>If you run MetaQUAST without provided references, the tool will attempts to identify which organisms is presented in metagenome.
 MetaQUAST uses BLASTN for aligning contigs to FASTA file, containing small subunit ribosomal RNA sequences (SILVA rRNA database).
-50 reference genomes for organisms with maximal score are downloaded from NCBI database to <code>&lt;quast_output_dir&gt;/quast_downloaded_references/</code>.
+For each assembly, 30 reference genomes with maximal score are chosen (by default). Maximum number of references to download can be specified with the option <a href='#max_ref_num'><code>--max-ref-number</code></a>.
+<p>Reference genomes for the chosen organisms are downloaded from NCBI database to <code>&lt;quast_output_dir&gt;/quast_downloaded_references/</code>.
 After first running <code>quast.py</code>, MetaQUAST removes reference genomes with low genome fraction (less than 10%) and run <code>quast.py</code> with remaining references.
+Notable, for all references in combination MetaQUAST runs quast.py with option <a href='#ambiguity_usage'><code>--ambiguity-usage</code></a> 'all'.
 
-Usage:
+<p>Usage:
 <pre class="code">
     python metaquast.py contigs_1 contigs_2 ... -R reference_1,reference_2,reference_3,...
 </pre>
 
-<p>All options are the same as for quast.py, except for <code>-R</code>: it can accept multiple references (comma-separated without spaces in between) or directory with references.</p>
+<p>All options are the same as for <code>quast.py</code>, except for <code>-R</code>: it can accept multiple references (comma-separated without spaces in between) or directory with references.</p>
 
 <a name="sec3"></a>
 <h2>3. QUAST output</h2>
@@ -653,7 +685,8 @@ Note:
     <li>flanking sequences align to different strands or different chromosomes; 
     <li>flanking sequences align on different references (MetaQUAST only).
     </ul>
-    This metric requires a reference genome.</p>
+    This metric requires a reference genome. Note that default threshold of 1<span class="rhs">&nbsp;</span>kbp can be
+changed by <a href='#extensive_mis_size'><code>--extensive-mis-size</code></a> option.</p>
 
 <p><span class='metric-name'># misassembled contigs</span> is the number of contigs that contain misassembly events.</p>
 
@@ -718,7 +751,7 @@ Note:
 
 <p><a name='NAx'><a name='NGAx'></a><span class='metric-name'>NA50, NGA50, NA75, NGA75, LA50, LA75, LGA50, LGA75</span> ("A" stands for "aligned") are similar to
     the corresponding metrics without "A", but in this case aligned blocks instead of contigs are considered.<br>
-    Aligned blocks are obtained by breaking contigs in misassembly events and removing all unaligned bases.</p>
+    Aligned blocks are obtained by breaking contigs in misassembly events and removing all analigned bases.</p>
 
 <p><span class='metric-name'># reads</span> is the total number of reads.</p>
 
@@ -739,7 +772,8 @@ Note:
     and <span class='metric-ref'>inversions</span> (see below). For metagenomic assemblies, this classification also includes interspecies translocation.</p>
 
 <p><span class='metric-name'>Relocation</span> is a misassembly where the left flanking sequence aligns over 1<span class="rhs">&nbsp;</span>kbp away from the right flanking
-sequence on the reference, or they overlap by more than 1<span class="rhs">&nbsp;</span>kbp, and both flanking sequences align on the same chromosome. </p>
+sequence on the reference, or they overlap by more than 1<span class="rhs">&nbsp;</span>kbp, and both flanking sequences align on the same chromosome. Note that default threshold of 1<span class="rhs">&nbsp;</span>kbp can be
+changed by <a href='#extensive_mis_size'><code>--extensive-mis-size</code></a> option.</p></p>
 
 <p><span class='metric-name'>Translocation</span> is a misassembly where the flanking sequences align on different chromosomes. </p>
 
@@ -767,6 +801,9 @@ opposite strands of the same chromosome. </p>
 <p><span class='metric-name'># long indels (&gt;<span class="rhs">&nbsp;</span>5<span class="rhs">&nbsp;</span>bp)</span> is the number of indels of length <code>&gt;<span class="rhs">&nbsp;</span>5<span class="rhs">&nbsp;</span>bp</code>.</p>
 
 <p><span class='metric-name'>Indels length</span> is the total number of bases contained in all indels.</p>
+
+<p> Note: Nucmer's default maximum length of indel is 85 bp. All indels larger than 85 bp are considered as local misassemblies.
+</p>
 
 
 <a name="sec3.1.3"></a>
@@ -1096,6 +1133,22 @@ If you have both contigs.fasta and scaffolds.fasta it is better to specify both 
 <br>
 <br>
 To sum up, you should use "--scaffolds" option if you don't have original file with contigs but want to compare your scaffolds with it.
+<br>
+</p>
+
+<br>
+<p><b><i>
+Q7. Can I add new assemblies to existing QUAST report without need to realign already processed assemblies?
+    Or can I at least rerun existing QUAST report with slightly modified options set?
+</b></i></p>
+<p>
+Yes, sure! You just need to specify existing QUAST output directory with <code>-o</code> option and our tool
+    will reuse already generated Nucmer alignments and will run alignment process only for new assemblies.
+    Note that all of QUAST options except <code>--min-contig</code> do not affect Nucmer alignment process,
+    so you can rerun previous QUAST command with modified options and QUAST will reuse existing alignments also.
+    <br>
+    <i>Hint</i>: if you run QUAST without specifying output dir with <code>-o</code> option you can rerun it on the same directory
+    with <code>-o quast_results/latest</code>.
 <br>
 </p>
 <br>

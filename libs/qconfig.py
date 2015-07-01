@@ -35,14 +35,13 @@ MAX_REFERENCE_FILE_LENGTH = 50000000  # Max length of one part of reference
 # available options
 long_options = "output-dir= save-json-to= genes= operons= coverage= reference= reads1= reads2= contig-thresholds= min-contig= "\
                "gene-thresholds= save-json gage eukaryote archaea glimmer no-plots no-html no-check no-gc help debug "\
-               "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding len-extensive-misassembly= "\
+               "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding extensive-mis-size= "\
                "find-conserved-genes strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number= ".split()
-short_options = "o:G:C:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:L"
+short_options = "o:G:C:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:Lx:"
 
 # default values for options
 contig_thresholds = "0,1000"
 min_contig = 500
-len_extensive_misassembly = 1000
 genes_lengths = "0,300,1500,3000"
 ref_fpath = ''
 with_gage = False
@@ -88,8 +87,10 @@ not_aligned_name = "not_aligned"
 
 # other settings (mostly constants). Can't be changed by command-line options
 
-# for separating indels into short and long ones
-SHORT_INDEL_THRESHOLD = 5
+# indels and misassemblies
+SHORT_INDEL_THRESHOLD = 5 # for separating short and long indels
+MAX_INDEL_LENGTH = 85  # for separating indels and local misassemblies (Nucmer default value)
+extensive_misassembly_threshold = 1000  # for separating local and extensive misassemblies (relocation)
 
 # for parallelization
 DEFAULT_MAX_THREADS = 4  # this value is used if QUAST fails to determine number of CPUs
@@ -147,7 +148,10 @@ def quast_version():
 
 
 def usage(show_hidden=False, meta=False):
-    print >> sys.stderr, 'QUAST: QUality ASsessment Tool for Genome Assemblies'
+    if meta:
+        print >> sys.stderr, 'MetaQUAST: QUality ASsessment Tool for Metagenome Assemblies'
+    else:
+        print >> sys.stderr, 'QUAST: QUality ASsessment Tool for Genome Assemblies'
     version, build = quast_version()
     print >> sys.stderr, "Version", str(version),
     if build != "unknown":
@@ -196,20 +200,22 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "-b  --find-conserved-genes            Use BUSCO for finding conserved orthologs"
     print >> sys.stderr, "-t  --contig-thresholds               Comma-separated list of contig length thresholds [default: %s]" % contig_thresholds
     print >> sys.stderr, "-s  --scaffolds                       Assemblies are scaffolds, split them and add contigs to the comparison"
-    print >> sys.stderr, "-u  --use-all-alignments              Compute genome fraction, # genes, # operons in the v.1.0-1.3 style."
+    print >> sys.stderr, "-u  --use-all-alignments              Compute genome fraction, # genes, # operons in QUAST v.1.* style."
     print >> sys.stderr, "                                      By default, QUAST filters Nucmer\'s alignments to keep only best ones"
-    print >> sys.stderr, "-a  --ambiguity-usage <none|one|all>  Use none, one, or all alignments of a contig with multiple equally "
-    print >> sys.stderr, "                                      good alignments [default is %s]" % ambiguity_usage
+    print >> sys.stderr, "-a  --ambiguity-usage <none|one|all>  Use none, one, or all alignments (or aligned fragments internal overlaps) of a contig"
+    print >> sys.stderr, "                                      when all of them are equally good. [default is %s]" % ambiguity_usage
     print >> sys.stderr, "-n  --strict-NA                       Break contigs in any misassembly event when compute NAx and NGAx"
     print >> sys.stderr, "                                      By default, QUAST breaks contigs only by extensive misassemblies (not local ones)"
+    print >> sys.stderr, "-x  --extensive-mis-size  <int>       Lower threshold for extensive misassembly size. All relocations with inconsistency"
+    print >> sys.stderr, "                                      less than extensive-mis-size are counted as local misassemblies. [default is %s]" % extensive_misassembly_threshold
     print >> sys.stderr, ""
     print >> sys.stderr, "Speedup options:"
-    print >> sys.stderr, "    --no-check                        Do not check and correct input fasta files"
+    print >> sys.stderr, "    --no-check                        Do not check and correct input fasta files. Use at your own risk (see manual)"
     print >> sys.stderr, "    --no-plots                        Do not draw plots"
     print >> sys.stderr, "    --no-html                         Do not build html report"
     print >> sys.stderr, "    --no-snps                         Do not report SNPs (may significantly reduce memory consumption on large genomes)"
     print >> sys.stderr, "    --no-gc                           Do not compute GC% and GC-distribution"
-    print >> sys.stderr, "    --fast                            A combination of all speedup options"
+    print >> sys.stderr, "    --fast                            A combination of all speedup options except --no-check"
     if show_hidden:
         print >> sys.stderr, ""
         print >> sys.stderr, "Hidden options:"

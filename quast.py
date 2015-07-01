@@ -6,6 +6,7 @@
 # See file LICENSE for details.
 ############################################################################
 
+from os.path import basename
 import sys
 import os
 import shutil
@@ -17,7 +18,6 @@ qconfig.check_python_version()
 
 from libs import qutils, fastaparser
 from libs.qutils import assert_file_exists
-from libs.html_saver import json_saver
 
 from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
@@ -58,7 +58,7 @@ def _set_up_output_dir(output_dirpath, json_outputpath,
         latest_symlink = 'latest'
         if os.path.islink(latest_symlink):
             os.remove(latest_symlink)
-        os.symlink(output_dirpath, latest_symlink)
+        os.symlink(basename(output_dirpath), latest_symlink)
 
         os.chdir(prev_dirpath)
 
@@ -250,12 +250,12 @@ def _correct_reference(ref_fpath, corrected_dirpath):
     name, fasta_ext = qutils.splitext_for_fasta_file(ref_fname)
     corr_fpath = qutils.unique_corrected_fpath(
         os.path.join(corrected_dirpath, name + fasta_ext))
-
-    if not correct_fasta(ref_fpath, corr_fpath, qconfig.min_contig, is_reference=True):
-        ref_fpath = ''
-    else:
-        logger.info('  %s ==> %s' % (ref_fpath, qutils.name_from_fpath(corr_fpath)))
-        ref_fpath = corr_fpath
+    if not qconfig.no_check:
+        if not correct_fasta(ref_fpath, corr_fpath, qconfig.min_contig, is_reference=True):
+            ref_fpath = ''
+        else:
+            logger.info('  %s ==> %s' % (ref_fpath, qutils.name_from_fpath(corr_fpath)))
+            ref_fpath = corr_fpath
 
     return ref_fpath
 
@@ -424,7 +424,7 @@ def main(args):
     reads_fpath_f = ''
     reads_fpath_r = ''
     reads_inter_fpath = []
-    len_extensive_misassembly = None
+    extensive_misassembly_threshold = None
 
     # Yes, this is a code duplicating. But OptionParser is deprecated since version 2.7.
     for opt, arg in options:
@@ -512,6 +512,12 @@ def main(args):
         elif opt in ('-n', "--strict-NA"):
             qconfig.strict_NA = True
 
+        elif opt in ('-x', "--extensive-mis-size"):
+            if int(arg) <= qconfig.MAX_INDEL_LENGTH:
+                logger.error("--extensive-mis-size should be greater than maximum indel length (%d)!"
+                             % qconfig.MAX_INDEL_LENGTH, 1, to_stderr=True)
+            qconfig.extensive_misassembly_threshold = int(arg)
+
         elif opt == '--no-snps':
             qconfig.show_snps = False
 
@@ -530,8 +536,8 @@ def main(args):
         elif opt == '--no-gc':
             qconfig.no_gc = True
 
-        elif opt == '--fast':  # --no-check, --no-gc, --no-plots, --no-snps
-            qconfig.no_check = True
+        elif opt == '--fast':  # --no-gc, --no-plots, --no-snps
+            #qconfig.no_check = True  # too risky to include
             qconfig.no_gc = True
             qconfig.show_snps = False
             qconfig.draw_plots = False
@@ -548,9 +554,6 @@ def main(args):
 
         elif opt == '--archaea':
             qconfig.archaea = True
-
-        elif opt == '--len-extensive-misassembly':
-            len_extensive_misassembly = int(arg)
         else:
             logger.error('Unknown option: %s. Use -h for help.' % (opt + ' ' + arg), to_stderr=True, exit_with_code=2)
 
@@ -629,8 +632,8 @@ def main(args):
     logger.info()
     logger.info('Contigs:')
 
+    old_contigs_fpaths = contigs_fpaths
     contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
-    qconfig.assemblies_num = len(contigs_fpaths)
     bed_fpath, cov_fpath = None, None
 
     if qconfig.reads:
@@ -645,8 +648,8 @@ def main(args):
         report.add_field(reporting.Fields.NAME, qutils.label_from_fpath(contigs_fpath))
 
     qconfig.assemblies_num = len(contigs_fpaths)
-    if len_extensive_misassembly:
-        qconfig.len_extensive_misassembly = len_extensive_misassembly
+    if extensive_misassembly_threshold:
+        qconfig.extensive_misassembly_threshold = extensive_misassembly_threshold
 
     if not contigs_fpaths:
         logger.error("None of the assembly files contains correct contigs. "
@@ -676,6 +679,12 @@ def main(args):
         except:
             all_pdf_file = None
 
+    if json_output_dirpath:
+        from libs.html_saver import json_saver
+        if json_saver.simplejson_error:
+            json_output_dirpath = None
+
+
     ########################################################################
     ### Stats and plots
     ########################################################################
@@ -692,7 +701,7 @@ def main(args):
         ########################################################################
         from libs import contigs_analyzer
         nucmer_statuses, aligned_lengths_per_fpath = contigs_analyzer.do(
-            ref_fpath, contigs_fpaths, qconfig.prokaryote, os.path.join(output_dirpath, 'contigs_reports'), bed_fpath)
+            ref_fpath, contigs_fpaths, qconfig.prokaryote, os.path.join(output_dirpath, 'contigs_reports'), old_contigs_fpaths, bed_fpath)
         for contigs_fpath in contigs_fpaths:
             if nucmer_statuses[contigs_fpath] == contigs_analyzer.NucmerStatus.OK:
                 aligned_contigs_fpaths.append(contigs_fpath)

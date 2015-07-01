@@ -97,6 +97,21 @@ class Mappings(object):
         f.close()
 
 
+class IndelsInfo(object):
+    def __init__(self):
+        self.mismatches = 0
+        self.insertions = 0
+        self.deletions = 0
+        self.indels_list = []
+
+    def __add__(self, other):
+        self.mismatches += other.mismatches
+        self.insertions += other.insertions
+        self.deletions += other.deletions
+        self.indels_list += other.indels_list
+        return self
+
+
 def clear_files(fpath, nucmer_fpath):
     if qconfig.debug:
         return
@@ -160,7 +175,7 @@ def check_nucmer_successful_check(fpath, contigs_fpath, ref_fpath):
     return True
 
 
-def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_fpath, bed_fpath, parallel_by_chr):
+def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_fpath, old_contigs_fpath, bed_fpath, parallel_by_chr):
     assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     logger.info('  ' + qutils.index_to_str(index) + assembly_label)
@@ -177,10 +192,11 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 ' and ' + os.path.basename(log_err_fpath) + '...')
     maxun = 10
     epsilon = 0.99
-    smgap = qconfig.len_extensive_misassembly
+    smgap = qconfig.extensive_misassembly_threshold
     umt = 0.5  # threshold for misassembled contigs with aligned less than $umt * 100% (Unaligned Missassembled Threshold)
     ort = 0.9  # threshold for skipping aligns that significantly overlaps with adjacent aligns (Overlap Relative Threshold)
     oat = 25   # threshold for skipping aligns that significantly overlaps with adjacent aligns (Overlap Absolute Threshold)
+    odgap = 1000 # threshold for detecting aligns that significantly overlaps with adjacent aligns (Overlap Detecting Gap)
     nucmer_successful_check_fpath = nucmer_fpath + '.sf'
     coords_fpath = nucmer_fpath + '.coords'
     delta_fpath = nucmer_fpath + '.delta'
@@ -202,7 +218,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     if os.path.isfile(nucmer_successful_check_fpath) and\
        os.path.isfile(coords_fpath) and\
        (os.path.isfile(show_snps_fpath) or not qconfig.show_snps):
-        if check_nucmer_successful_check(nucmer_successful_check_fpath, contigs_fpath, ref_fpath):
+        if check_nucmer_successful_check(nucmer_successful_check_fpath, old_contigs_fpath, ref_fpath):
             print >> planta_out_f, '\tUsing existing Nucmer alignments...'
             logger.info('  ' + qutils.index_to_str(index) + 'Using existing Nucmer alignments... ')
             using_existing_alignments = True
@@ -330,7 +346,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     print >> planta_err_f, qutils.index_to_str(index) + 'Show-snps failed for', contigs_fpath, '\n'
                     return __fail(contigs_fpath, index)
 
-        create_nucmer_successful_check(nucmer_successful_check_fpath, contigs_fpath, ref_fpath)
+        create_nucmer_successful_check(nucmer_successful_check_fpath, old_contigs_fpath, ref_fpath)
 
     # Loading the alignment files
     print >> planta_out_f, 'Parsing coords...'
@@ -353,23 +369,22 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         aligns.setdefault(mapping.contig, []).append(mapping)
     avg_idy = sum_idy / num_idy if num_idy else 0
 
-
     #### auxiliary functions ####
     def distance_between_alignments(align1, align2, pos_strand, cyclic_ref_len=None):
-        '''
-        returns distance (in reference) between two alignments
-        '''
+        # returns distance (in reference) between two alignments
         if pos_strand:            # alignment 1 should be earlier in reference
             distance = align2.s1 - align1.e1 - 1
         else:                     # alignment 2 should be earlier in reference
             distance = align1.s1 - align2.e1 - 1
         cyclic_moment = False
         if cyclic_ref_len is not None:
+            cyclic_distance = distance
             if align1.e1 < align2.e1 and (cyclic_ref_len - align2.e1 + align1.s1 - 1) < smgap:
-                distance += cyclic_ref_len * (-1 if pos_strand else 1)
-                cyclic_moment = True
+                cyclic_distance += cyclic_ref_len * (-1 if pos_strand else 1)
             elif align1.e1 >= align2.e1 and (cyclic_ref_len - align1.e1 + align2.s1 - 1) < smgap:
-                distance += cyclic_ref_len * (1 if pos_strand else -1)
+                cyclic_distance += cyclic_ref_len * (1 if pos_strand else -1)
+            if abs(cyclic_distance) < abs(distance):
+                distance = cyclic_distance
                 cyclic_moment = True
         return distance, cyclic_moment
 
@@ -437,21 +452,72 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     region_struct_variations.relocations.append((align1, align2))
         return region_struct_variations
 
+    def exclude_internal_overlaps(align1, align2):
+        def __shift_start(align, new_start):
+            if qconfig.debug:
+                print >> planta_out_f, '\t\t\t\tchanging %s' % str(align),
+            if align.s2 < align.e2:
+                align.s1 += (new_start - align.s2)
+                align.s2 = new_start
+                align.len2 = align.e2 - align.s2 + 1
+            else:
+                align.e1 -= (new_start - align.e2)
+                align.e2 = new_start
+                align.len2 = align.s2 - align.e2 + 1
+            align.len1 = align.e1 - align.s1 + 1
+            if qconfig.debug:
+                print >> planta_out_f, 'to %s' % str(align)
+
+        def __shift_end(align, new_end):
+            if qconfig.debug:
+                print >> planta_out_f, '\t\t\t\tchanging %s' % str(align),
+            if align.s2 < align.e2:
+                align.e1 -= (align.e2 - new_end)
+                align.e2 = new_end
+                align.len2 = align.e2 - align.s2 + 1
+            else:
+                align.s1 += (align.s2 - new_end)
+                align.s2 = new_end
+                align.len2 = align.s2 - align.e2 + 1
+            align.len1 = align.e1 - align.s1 + 1
+            if qconfig.debug:
+                print >> planta_out_f, 'to %s' % str(align)
+
+        if qconfig.ambiguity_usage == 'all':
+            return
+        distance_on_contig = min(align2.e2, align2.s2) - max(align1.e2, align1.s2) - 1
+        if distance_on_contig >= 0:  # no overlap
+            return
+        if qconfig.debug:
+            print >> planta_out_f, '\t\t\tExcluding internal overlap of size %d ' \
+                                   '(ambiguity_usage is "%s"):' % (-distance_on_contig, qconfig.ambiguity_usage)
+        if qconfig.ambiguity_usage == 'one':  # left only one of two copies (remove overlap from shorter alignment)
+            if align1.len2 >= align2.len2:
+                __shift_start(align2, max(align1.e2, align1.s2) + 1)
+            else:
+                __shift_end(align1, min(align2.e2, align2.s2) - 1)
+        else:  # ambiguity_usage == 'none':  removing both copies
+            new_end = min(align2.e2, align2.s2) - 1
+            __shift_start(align2, max(align1.e2, align1.s2) + 1)
+            __shift_end(align1, new_end)
+
     def check_chr_for_refs(chr1, chr2):
         return ref_labels_by_chromosomes[chr1] == ref_labels_by_chromosomes[chr2]
 
-    def check_ns_between_aligns(contig_seq, align1, align2):
-        return contig_seq[max(align1.e2, align1.s2): min(align2.e2, align2.s2) - 1] == \
-               "N" * (min(align2.e2, align2.s2) - max(align1.e2, align1.s2) - 1)
+    def count_not_ns_between_aligns(contig_seq, align1, align2):
+        gap_in_contig = contig_seq[max(align1.e2, align1.s2): min(align2.e2, align2.s2) - 1]
+        return len(gap_in_contig) - gap_in_contig.count('N')
 
     def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, contig_seq, references_misassemblies, region_struct_variations, misassemblies_matched_sv):
         misassembly_internal_overlap = 0
-        prev = sorted_aligns[0].clone()
+        prev = sorted_aligns[0]
         cur_aligned_length = prev.len2
         is_misassembled = False
         contig_is_printed = False
+        indels_info = IndelsInfo()
 
         for i in range(len(sorted_aligns) - 1):
+            exclude_internal_overlaps(sorted_aligns[i], sorted_aligns[i+1])
             print >> planta_out_f, '\t\t\tReal Alignment %d: %s' % (i+1, str(sorted_aligns[i]))
             is_extensive_misassembly, aux_data = is_misassembly(sorted_aligns[i], sorted_aligns[i+1],
                 reg_lens if cyclic else None)
@@ -506,8 +572,27 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             elif not is_sv:
                 if inconsistency == 0 and cyclic_moment:
                     print >> planta_out_f, '\t\t\t  Fake misassembly (caused by linear representation of circular genome) between these two alignments'
-                elif inconsistency == 0 and check_ns_between_aligns(contig_seq, sorted_aligns[i], sorted_aligns[i+1]):
-                    print >> planta_out_f, '\t\t\t  Fake misassembly between these two alignments: inconsistency = 0, gap is filled with Ns'
+                elif abs(inconsistency) <= qconfig.MAX_INDEL_LENGTH and \
+                        count_not_ns_between_aligns(contig_seq, sorted_aligns[i], sorted_aligns[i+1]) <= qconfig.MAX_INDEL_LENGTH:
+                    print >> planta_out_f, '\t\t\t  Fake misassembly between these two alignments: inconsistency =', inconsistency,
+                    print >> planta_out_f, ', gap in the contig is small or absent or filled mostly with Ns',
+                    not_ns_number = count_not_ns_between_aligns(contig_seq, sorted_aligns[i], sorted_aligns[i+1])
+                    if inconsistency == 0:
+                        print >> planta_out_f, '(no indel; %d mismatches)' % not_ns_number
+                        indels_info.mismatches += not_ns_number
+                    else:
+                        indel_length = abs(inconsistency)
+                        indel_class = 'short' if indel_length <= qconfig.SHORT_INDEL_THRESHOLD else 'long'
+                        indel_type = 'insertion' if inconsistency < 0 else 'deletion'
+                        mismatches = max(0, not_ns_number - indel_length)
+                        print >> planta_out_f, '(%s indel: %s of length %d; %d mismatches)' % \
+                                               (indel_class, indel_type, indel_length, mismatches)
+                        indels_info.indels_list.append(indel_length)
+                        if indel_type == 'insertion':
+                            indels_info.insertions += indel_length
+                        else:
+                            indels_info.deletions += indel_length
+                        indels_info.mismatches += mismatches
                 else:
                     if qconfig.strict_NA:
                         aligned_lengths.append(cur_aligned_length)
@@ -523,7 +608,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     print >> planta_out_f, 'Inconsistency =', inconsistency, "(linear representation of circular genome)" if cyclic_moment else ""
                     region_misassemblies.append(Misassembly.LOCAL)
 
-            prev = sorted_aligns[i+1].clone()
+            prev = sorted_aligns[i+1]
             cur_aligned_length += prev.len2 - (-distance_on_contig if distance_on_contig < 0 else 0)
 
         #Record the very last alignment
@@ -533,7 +618,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         print >> coords_filtered_file, str(prev)
         aligned_lengths.append(cur_aligned_length)
 
-        return is_misassembled, misassembly_internal_overlap, references_misassemblies, misassemblies_matched_sv
+        return is_misassembled, misassembly_internal_overlap, references_misassemblies, indels_info, misassemblies_matched_sv
     #### end of aux. functions ###
 
     # Loading the assembly contigs
@@ -636,6 +721,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         struct_variations = region_struct_variations.get_count()
     else:
         struct_variations = 0
+
+    # for counting SNPs and indels (both original (.all_snps) and corrected from Nucmer's local misassemblies)
+    total_indels_info = IndelsInfo()
 
     print >> planta_out_f, 'Analyzing contigs...'
 
@@ -874,7 +962,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         for i in range(1, len(sorted_aligns) - 1):
                             succ_start = min(sorted_aligns[i + 1].s2, sorted_aligns[i + 1].e2)
                             gap = succ_start - prev_end - 1
-                            if gap > smgap:
+                            if gap > odgap:
                                 prev_end = max(sorted_aligns[i].s2, sorted_aligns[i].e2)
                                 continue
                             overlap = 0
@@ -918,6 +1006,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                             print >> planta_out_f, '\t\tAlignment: %s' % str(align)
                             print >> coords_filtered_file, str(align)
                             aligned_lengths.append(align.len2)
+                            ref_aligns.setdefault(align.ref, []).append(align)
 
                         #Increment tally of partially unaligned contigs
                         partially_unaligned += 1
@@ -934,9 +1023,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         continue
 
                     ### processing misassemblies
-                    is_misassembled, current_mio, references_misassemblies, misassemblies_matched_sv = process_misassembled_contig(sorted_aligns, cyclic,
+                    is_misassembled, current_mio, references_misassemblies, indels_info, misassemblies_matched_sv = process_misassembled_contig(sorted_aligns, cyclic,
                          aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, seq, references_misassemblies, region_struct_variations, misassemblies_matched_sv)
                     misassembly_internal_overlap += current_mio
+                    total_indels_info += indels_info
                     if is_misassembled:
                         misassembled_contigs[contig] = len(assembly[contig])
                     if qconfig.meta and (ctg_len - aligned_bases_in_contig >= qconfig.min_contig):
@@ -964,9 +1054,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
     region_covered = 0
     region_ambig = 0
-    region_snp = 0
-    region_insertion = 0
-    region_deletion = 0
     gaps = []
     neg_gaps = []
     redundant = []
@@ -974,7 +1061,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     snip_right = 0
 
     # for counting short and long indels
-    indels_list = []
+    # indels_list = []  # -- defined earlier
     prev_snp = None
     cur_indel = 0
 
@@ -1246,17 +1333,17 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
                             #If SNP is an insertion, record
                             if snp == 'I':
-                                region_insertion += 1
+                                total_indels_info.insertions += 1
                                 if pos_strand: contig_estimate += 1
                                 else: contig_estimate -= 1
                             #If SNP is a deletion, record
                             if snp == 'D':
-                                region_deletion += 1
+                                total_indels_info.deletions += 1
                                 if pos_strand: contig_estimate -= 1
                                 else: contig_estimate += 1
                             #If SNP is a mismatch, record
                             if snp == 'S':
-                                region_snp += 1
+                                total_indels_info.mismatches += 1
 
                             if cur_snp.type == 'D' or cur_snp.type == 'I':
                                 if prev_snp and (prev_snp.ref == cur_snp.ref) and (prev_snp.ctg == cur_snp.ctg) and \
@@ -1266,7 +1353,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                                     cur_indel += 1
                                 else:
                                     if cur_indel:
-                                        indels_list.append(cur_indel)
+                                        total_indels_info.indels_list.append(cur_indel)
                                     cur_indel = 1
                                 prev_snp = cur_snp
 
@@ -1288,7 +1375,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 snip_right = 0
 
                 if cur_indel:
-                    indels_list.append(cur_indel)
+                    total_indels_info.indels_list.append(cur_indel)
                 prev_snp = None
                 cur_indel = 0
 
@@ -1299,8 +1386,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         nothing_aligned = False
 
     ##### getting results from Plantagora's algorithm
-    SNPs = region_snp
-    indels = region_insertion + region_deletion
+    SNPs = total_indels_info.mismatches
+    indels_list = total_indels_info.indels_list
     total_aligned_bases = region_covered
     print >> planta_out_f, 'Analysis is finished!'
     if qconfig.show_snps:
@@ -1441,11 +1528,12 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
 
 def plantakolya_process(cyclic, nucmer_output_dirpath, contigs_fpath, i, output_dirpath, ref_fpath, bed_fpath, parallel_by_chr=False):
+    contigs_fpath, old_contigs_fpath = contigs_fpath
     assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     nucmer_fname = os.path.join(nucmer_output_dirpath, assembly_label)
     nucmer_is_ok, result, aligned_lengths = plantakolya(cyclic, i, contigs_fpath, nucmer_fname,
-                                                        output_dirpath, ref_fpath, bed_fpath, parallel_by_chr=parallel_by_chr)
+                                                        output_dirpath, ref_fpath, old_contigs_fpath, bed_fpath, parallel_by_chr=parallel_by_chr)
 
     clear_files(contigs_fpath, nucmer_fname)
     return nucmer_is_ok, result, aligned_lengths
@@ -1458,7 +1546,7 @@ def all_required_binaries_exist(mummer_dirpath):
     return True
 
 
-def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
+def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fpath):
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
 
@@ -1495,15 +1583,15 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
     if not qconfig.splitted_ref:
         statuses_results_lengths_tuples = Parallel(n_jobs=n_jobs)(delayed(plantakolya_process)(
         cyclic, nucmer_output_dir, fname, i, output_dir, reference, bed_fpath)
-             for i, fname in enumerate(contigs_fpaths))
+             for i, fname in enumerate(zip(contigs_fpaths, old_contigs_fpaths)))
     else:
         if len(contigs_fpaths) >= len(qconfig.splitted_ref):
             statuses_results_lengths_tuples = Parallel(n_jobs=n_jobs)(delayed(plantakolya_process)(
         cyclic, nucmer_output_dir, fname, i, output_dir, reference, bed_fpath)
-             for i, fname in enumerate(contigs_fpaths))
+             for i, fname in enumerate(zip(contigs_fpaths, old_contigs_fpaths)))
         else:
             statuses_results_lengths_tuples = []
-            for i, contigs_fpath in enumerate(contigs_fpaths):
+            for i, contigs_fpath in enumerate(zip(contigs_fpaths, old_contigs_fpaths)):
                 statuses_results_lengths_tuples.append(plantakolya_process(cyclic, nucmer_output_dir, contigs_fpath, i,
                                                                            output_dir, reference, bed_fpath, parallel_by_chr=True))
 
@@ -1532,23 +1620,24 @@ def do(reference, contigs_fpaths, cyclic, output_dir, bed_fpath):
 
 
     if reference.endswith(COMBINED_REF_FNAME):
-        ref_misassemblies = [result['istranslocations_by_refs'] for result in results]
-        all_rows = []
-        cur_ref_names = []
-        row = {'metricName': 'Assembly', 'values': cur_ref_names}
-        all_rows.append(row)
-        for fpath in contigs_fpaths:
-            all_rows[0]['values'].append(qutils.name_from_fpath(fpath))
-        for k in ref_misassemblies[0].keys():
-            row = {'metricName': k, 'values': []}
-            for index, fpath in enumerate(contigs_fpaths):
-                row['values'].append(ref_misassemblies[index][k])
+        ref_misassemblies = [result['istranslocations_by_refs'] for result in results if result]
+        if ref_misassemblies:
+            all_rows = []
+            cur_ref_names = []
+            row = {'metricName': 'Assembly', 'values': cur_ref_names}
             all_rows.append(row)
+            for fpath in contigs_fpaths:
+                all_rows[0]['values'].append(qutils.name_from_fpath(fpath))
+            for k in ref_misassemblies[0].keys():
+                row = {'metricName': k, 'values': []}
+                for index, fpath in enumerate(contigs_fpaths):
+                    row['values'].append(ref_misassemblies[index][k])
+                all_rows.append(row)
 
-        misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs.info')
-        print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecies translocations by references: \n'
-        print_file(all_rows, len(ref_misassemblies[0]), misassembly_by_ref_fpath)
-        logger.info('  Information about interspecies translocations by references is saved to ' + misassembly_by_ref_fpath)
+            misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs.info')
+            print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecies translocations by references: \n'
+            print_file(all_rows, len(ref_misassemblies[0]), misassembly_by_ref_fpath)
+            logger.info('  Information about interspecies translocations by references is saved to ' + misassembly_by_ref_fpath)
 
     def save_result(result):
         report = reporting.get(fname)
