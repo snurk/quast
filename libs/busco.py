@@ -54,6 +54,9 @@ def do(contigs_fpaths, out_dirpath, clade):
     open(err_path, 'w').close()
     results = []
     for index, contigs_fpath in enumerate(contigs_fpaths):
+        if not os.path.isabs(contigs_fpath):
+            current_dir = os.getcwd()
+            contigs_fpath = os.path.join(current_dir, contigs_fpath)
         results.append(busco_v1.do(['-n', str(index), '-in', contigs_fpath,'-o', qutils.name_from_fpath(contigs_fpath), '-l', clade, '-m', 'genome', '-f', '-c', str(qconfig.max_threads)],
                                                          out_dirpath))
     logger.print_timestamp()
