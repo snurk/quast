@@ -5,25 +5,27 @@
 # Copyright (C) 2015 E. Zdobnov lab: F. Simao Neto
 # <felipe.simao@unige.ch> based on code by R. Waterhouse.
 
-#BUSCO is free software: you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation, either version 3 of the License, or
-#(at your option) any later version.
+# BUSCO is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
-#BUSCO is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# BUSCO is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#-------------------------------------------------------------------------------#
+# -------------------------------------------------------------------------------#
+import Queue
 
 import os
 from os.path import join as join
 import argparse
 from collections import deque
+import threading
 import time
 import platform
 from libs import qconfig, qutils
@@ -48,59 +50,38 @@ else:
     hmmer_dirpath = join(busco_dirpath, 'hmmer-3.1b2/src')
     augustus_dirpath = join(busco_dirpath, 'augustus-3.0.3/bin')
 
+
 def hmmer_fpath(fname):
     return join(hmmer_dirpath, fname)
+
 
 def blast_fpath(fname):
     blast_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast', qconfig.platform_name)
     return os.path.join(blast_dirpath, fname)
 
+
 def august_fpath(fname):
     return join(augustus_dirpath, fname)
 
 
-def parallel_augustus(data, profile, assembly_name, target_species, clade, aug_out_path, mainout, err_path):
-    if len(data) > 1:
-        for z in range(0, len(data)):
-            scaffold = data[z][0] + assembly_name + '_.temp'
-            cmd = august_fpath('augustus') + (
-                ' --proteinprofile=%(clade)s/%(prot_profile)s --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
-                {'prot_profile': 'prfl/%s.prfl' % profile, 'start_coord': data[z][1], 'end_coord': data[z][2],
-                 'clade': join(busco_dirpath, clade), 'species': target_species,
-                 'scaffold': join(mainout, scaffold)})
-            out_aug = open(join(aug_out_path, '%s.out.%s' % (profile, (z + 1))), 'w')
-            qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
-            logger.debug('')
-    else:
-        scaffold = data[0][0] + assembly_name + '_.temp'
-        cmd = august_fpath('augustus') + (
-            ' --proteinprofile=%(clade)s/%(prot_profile)s --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
-            {'prot_profile': 'prfl/%s.prfl' % profile, 'start_coord': data[0][1], 'end_coord': data[0][2],
-             'clade': join(busco_dirpath, clade), 'species': target_species,
-             'scaffold': join(mainout, scaffold)})
-        out_aug = open(join(mainout, 'augustus/%s.out' % profile), 'w')
-        qutils.call_subprocess(shlex.split(cmd), stdout=out_aug, stderr=open(err_path, 'a'))
-        logger.debug('')
-
-
 def do(f_args, output_dir):
-    #------------------------------------ Argument parser START ----------------------------------------#
+    # ------------------------------------ Argument parser START ----------------------------------------#
     start_time = time.time()
     parser = argparse.ArgumentParser(
         description='Welcome to the Benchmarking set of Universal Single Copy Orthologs (BUSCO).\n\n For further usage information, please check the README file provided with this distrubution.',
         usage='busco_v1.py -in [SEQUENCE_FILE] -l [LINEAGE] -o [OUTPUT_NAME] [OTHER OPTIONS]')
     parser.add_argument('-g', '--genome', '-in', metavar='FASTA FILE', type=str,
-                        help='Input file in fasta format.\nCan be a genome, proteome or transcriptome. Default analysis is run on the genome mode, for other files please specify the mode with (-m [MODE])\n')  #genome assembly file
+                        help='Input file in fasta format.\nCan be a genome, proteome or transcriptome. Default analysis is run on the genome mode, for other files please specify the mode with (-m [MODE])\n')  # genome assembly file
     parser.add_argument('-c', '--cpu', metavar='N', type=str,
-                        help='Number of threads/cores to use.')  #Number of available threads
+                        help='Number of threads/cores to use.')  # Number of available threads
     parser.add_argument('-a', '--abrev', '-o', metavar='output', type=str,
-                        help='How to name output and temporary files.')  #Four letter abbreviation for use with genome assembly
+                        help='How to name output and temporary files.')  # Four letter abbreviation for use with genome assembly
     parser.add_argument('--ev', '-e', '-ev', metavar='N', type=float,
-                        help='E-value cutoff for BLAST searches. (Default: 0.01)')  #evalue option
+                        help='E-value cutoff for BLAST searches. (Default: 0.01)')  # evalue option
     parser.add_argument('-m', '--mode', metavar='mode', type=str,
                         help='which module to run the analysis to run, valid modes are \'all\'(genome assembly), \'OGS\' (gene set / proteome) and \'Trans\' (transcriptome).\n Defaults to \'all\'')
     parser.add_argument('-l', '--clade', '--lineage', metavar='lineage', type=str,
-                        help='Which BUSCO lineage to be used.')  #lineage
+                        help='Which BUSCO lineage to be used.')  # lineage
     parser.add_argument('-f', action='store_true', default=False, dest='force',
                         help='Force rewrting of existing files. Must be used when output files with the provided name already exist.')
     parser.add_argument('-sp', '--species', default='generic', metavar='species', type=str,
@@ -121,7 +102,7 @@ def do(f_args, output_dir):
     log_path = join(output_dir, 'busco.log')
     err_path = join(output_dir, 'busco.err')
     logger.info('  ' + qutils.index_to_str(index) + assembly_name)
-    
+
     if os.path.isfile(summary_path):
         logger.info('  ' + qutils.index_to_str(index) + 'Using existing BUSCO files...')
         results = open(summary_path)
@@ -142,36 +123,9 @@ def do(f_args, output_dir):
                 'A run with that name already exists!\nIf are sure you wish to rewrite existing files please use the -f option')
             raise SystemExit
 
-    target_species = 'generic'
-    if args['species'] != 'generic':
-        if args['species'] not in ['human', 'fly', 'generic', 'arabidopsis', 'brugia', 'aedes', 'tribolium',
-                                   'schistosoma',
-                                   'tetrahymena', 'galdieria', 'maize', 'toxoplasma', 'caenorhabditis', '(elegans)',
-                                   'aspergillus_fumigatus', 'aspergillus_nidulans', '(anidulans)', 'aspergillus_oryzae',
-                                   'aspergillus_terreus', 'botrytis_cinerea', 'candida_albicans',
-                                   'candida_guilliermondii',
-                                   'candida_tropicalis', 'chaetomium_globosum', 'coccidioides_immitis', 'coprinus',
-                                   'coprinus_cinereus', 'coyote_tobacco', 'cryptococcus_neoformans_gattii',
-                                   'cryptococcus_neoformans_neoformans_B', 'cryptococcus_neoformans_neoformans_JEC21',
-                                   '(cryptococcus)', 'debaryomyces_hansenii', 'encephalitozoon_cuniculi_GB',
-                                   'eremothecium_gossypii', 'fusarium_graminearum', '(fusarium)',
-                                   'histoplasma_capsulatum',
-                                   '(histoplasma)', 'kluyveromyces_lactis', 'laccaria_bicolor', 'lamprey',
-                                   'leishmania_tarentolae', 'lodderomyces_elongisporus', 'magnaporthe_grisea',
-                                   'neurospora_crassa', '(neurospora)', 'phanerochaete_chrysosporium',
-                                   '(pchrysosporium)',
-                                   'pichia_stipitis', 'rhizopus_oryzae', 'saccharomyces_cerevisiae_S288C',
-                                   'saccharomyces_cerevisiae_rm11-1a_1', '(saccharomyces)', 'schizosaccharomyces_pombe',
-                                   'thermoanaerobacter_tengcongensis', 'trichinella', 'ustilago_maydis', '(ustilago)',
-                                   'yarrowia_lipolytica', 'nasonia', 'tomato', 'chlamydomonas', 'amphimedon',
-                                   'pneumocystis', 'wheat', 'chicken']:
-            logger.info('Invalid gene predictor species parameters, please check the file \'Possible_species.txt\'')
-            raise SystemExit
-        else:
-            target_species = args['species']
-            logger.info(target_species)
+    target_species = args['species']
 
-    ev_cut = 0.01  #default e-value cuttof
+    ev_cut = 0.01  # default e-value cuttof
     try:
         if args['ev'] != ev_cut and args['ev'] is not None:
             logger.info('WARNING: You are using a custom e-value cutoff')
@@ -179,54 +133,32 @@ def do(f_args, output_dir):
     except:
         pass
 
+    valid_clade_info = {'bacteria': 107114, 'eukaryota': 41317}
+    # print(args['clade'])
     try:
-        if args['clade'] is not None:
+        if args['clade'] != None:
             clade = args['clade']
-            if clade.startswith(('m', 'M')):
-                clade = 'metazoa'
-                Z = 91897
-                maxflank = 20000
-            elif clade.startswith(('a', 'A')):
-                clade = 'arthropoda'
-                Z = 102785
-                maxflank = 20000
-            elif clade.startswith(('v', 'V')):
-                clade = 'vertebrata'
-                Z = 143785
-                maxflank = 30000
-            elif clade.startswith(('f', 'F')):
-                clade = 'fungi'
-                Z = 174195
-                maxflank = 20000
+            if clade.startswith(('b', 'B')):
+                clade = 'bacteria'
+                maxflank = 5000
             elif clade.startswith(('eu', 'Eu', 'E')):
                 clade = 'eukaryota'
-                Z = 41317
                 maxflank = 20000
-            elif clade.startswith(('example', 'ex')):
-                clade = 'example'
-                Z = 102785
-                maxflank = 20000
-            elif clade.startswith(('b', 'B')):
-                clade = 'bacteria'
-                Z = 13245
-                maxflank = 5000
-            elif clade.startswith(('o', 'O')):  #got to add a way to specify Z and flank size for other clades
-                clade = 'other'
+            clade_name = clade.strip('/').split('/')[-1].lower()
+            if clade_name in valid_clade_info:
+                Z = valid_clade_info[clade_name]
+            else:
                 try:
-                    Z = args['dbsize']
+                    Z = args['dbsize'];
                 except:
-                    logger.info('Please indicate the size of the HMM database using the (-Z integer)')
+                    print('Please indicate the size of the custom HMM database using the (-Z integer)')
                     raise SystemExit
-                try:
-                    maxflank = args['flanks']
-                except:
-                    maxflank = 20000
-                    logger.info('Using default maximum flank size (20000 bp)')
     except:
-        logger.info('Please indicate a BUSCO clade: (E)ukaryota, (M)etazoa, (A)rthropoda, (V)ertebrata or (F)ungi')
+        print(
+        'Please indicate the full path to a BUSCO clade: Eukaryota, Metazoa, Arthropoda, Vertebrata or Fungi\nExample: -l /path/to/Arthropoda')
         raise SystemExit
 
-    cpus = 1  #1 core default
+    cpus = 1  # 1 core default
     try:
         if args['cpu'] != cpus and args['cpu'] is not None:
             cpus = args['cpu']
@@ -234,8 +166,8 @@ def do(f_args, output_dir):
         pass
 
     modes = ['all', 'blast', 'hmmer', 'augustus', 'parser', 'hmmer+', 'OGS', 'transcriptome', 'trans', 'ogs',
-             'genome']  #valid modes
-    mode = 'genome'  #unless otherwise specified, run on all (mode for genome assembly)
+             'genome']  # valid modes
+    mode = 'genome'  # unless otherwise specified, run on all (mode for genome assembly)
     try:
         if args['mode'] is not None and args['mode'] in modes:
             mode = args['mode']
@@ -251,10 +183,68 @@ def do(f_args, output_dir):
         raise SystemExit
     flank = 5000
 
-    #------------------------------------ Argument parser END ----------------------------------------#
+    # ------------------------------------ Argument parser END ----------------------------------------#
+    def startQueue(commands, cpus):
+        exitFlag = 0
+        queueLock = threading.Lock()
+        threadList=[]
+        for i in range(int(cpus)):
+            threadList.append("Thread-%s" % str(i+1))
+        workQueue = Queue.Queue(len(commands))
+
+        class myThread (threading.Thread):
+            def __init__(self, threadID, name, q):
+                threading.Thread.__init__(self)
+                self.threadID = threadID
+                self.name = name
+                self.q = q
+
+            def run(self):
+                process_data(self.name, self.q)#,self.alpha)
+
+        def process_data(threadName, q):
+            while not exitFlag:
+                if not workQueue.empty():
+                    data = q.get()
+                    qutils.call_subprocess(shlex.split(data[0]), stdout=data[1], stderr=open(err_path, 'a'))
+                    q.task_done()
+                time.sleep(1)
+
+        threads = []
+        threadID = 1
+        needed = len(commands)
+        mark = 0
+
+        # Create new threads
+        for tName in threadList:
+            mark += 1
+            thread = myThread(threadID, tName, workQueue)
+            thread.start()
+            threads.append(thread)
+            threadID += 1
+            if mark >= needed:
+                break
+
+        # Fill the queue
+        queueLock.acquire()
+        for word in commands:
+            workQueue.put(word)
+        queueLock.release()
+
+        # Wait for queue to empty
+        while not workQueue.empty():
+            pass
+        # Notify threads it's time to exit
+        exitFlag = 1
+
+        # Wait for all threads to complete
+        for t in threads:
+            t.join()
+        exitFlag = 0
+
     def measuring(nested):
         if isinstance(nested, str):
-            return '0'
+            return ('0')
         scaffolds = list(nested.keys())
         if len(nested) == 1:
             total_len = [0]
@@ -270,9 +260,7 @@ def do(f_args, output_dir):
         except:
             pass
 
-
     def extract(path, group):
-
         count = 0
         if group.endswith(('.1', '.2', '.3')):
             f = open('%saugustus/%s' % (path, group))
@@ -281,9 +269,12 @@ def do(f_args, output_dir):
             f = open('%saugustus/%s.out' % (path, group))
             out = open('%saugustus_proteins/%s.fas' % (path, group), 'w')
         check = 0
-        for line in f:
+        while True:
+            line = f.readline()
+            if not line:
+                break
             if line.startswith('# start gene'):
-                line = f.next()
+                line = f.readline()
                 line = line.split()
                 places = [line[0], line[3], line[4]]
             elif line.startswith('# protein'):
@@ -305,23 +296,22 @@ def do(f_args, output_dir):
                     out.write(line)
         out.close()
 
-
     def disentangle(deck):
         structure = deque([deck.popleft()])
         try:
             while 1:
                 temp = deck.popleft()
-                start = temp[0]
+                start = temp[0];
                 end = temp[1]
                 for i in range(0, len(structure)):
-                    ds = structure[i][0]
+                    ds = structure[i][0];
                     de = structure[i][1]
                     if start < ds and end < ds:  #fully before
                         if i == 0:  #first entry, just appendleft
                             structure.appendleft(temp)
                             break
                         else:
-                            new = structure[0:i]
+                            new = structure[0:i];
                             new.append(temp)
                             for z in range(i, len(structure)):
                                 new.append(structure[z])
@@ -359,6 +349,7 @@ def do(f_args, output_dir):
     #---------------------------BLAST steps START -------------------------------------------#
 
     #Make a blast database and run tblastn
+
 
     if mode == 'genome' or mode == 'blast' or mode == 'trans':
         logger.debug('  ' + qutils.index_to_str(index) + 'Running tBlastN')
@@ -517,8 +508,7 @@ def do(f_args, output_dir):
     #Step-3
     #Extract candidate contigs/scaffolds from genome assembly (necessary because augustus doesn't handle multi-fasta files when running on a specific target region)
     if mode == 'genome' or mode == 'augustus':
-
-        #target_species=species_list[0]
+        # target_species=species_list[0]
         logger.debug('  ' + qutils.index_to_str(index) + 'pre-Augustus scaffold extraction  ')
         coord = open(coord_path)
         dic = {}
@@ -552,9 +542,9 @@ def do(f_args, output_dir):
         aug_out_path = join(mainout, 'augustus')
         if not os.path.exists(aug_out_path):
             os.makedirs(aug_out_path)
-
-        f = open(coord_path)
         dic = {}
+        commands = []
+        f = open(coord_path)
         for i in f:
             i = i.strip().split('\t')
             name = i[0]
@@ -562,31 +552,38 @@ def do(f_args, output_dir):
                 dic[name] = [[i[1], i[2], i[3]]]  #scaffold,start and end
             elif name in dic:
                 dic[name].append([i[1], i[2], i[3]])
+        for i in dic:
+            if len(dic[i]) > 1:
+                for z in range(0, len(dic[i])):
+                    command = august_fpath('augustus') + (' --proteinprofile=%(prot_profile)s --predictionStart=%(start_coord)s '
+                    '--predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' % {
+                    'prot_profile': join(busco_dirpath, clade, 'prfl/' + i + '.prfl'), 'start_coord': dic[i][z][1], 'end_coord': dic[i][z][2],
+                    'species': target_species, 'scaffold': join(mainout, dic[i][z][0] + args['abrev'] + '_.temp')})
+                    out_aug = open(join(mainout, 'augustus/%s.out.%s' % (i, str(z+1))), 'w')
+                    commands.append((command, out_aug))
+            else:
+                command = august_fpath('augustus') + (' --proteinprofile=%(prot_profile)s --predictionStart=%(start_coord)s '
+                '--predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\" ' % {
+                'prot_profile': join(busco_dirpath, clade, 'prfl/' + i + '.prfl'), 'start_coord': dic[i][0][1], 'end_coord': dic[i][0][2],
+                'species': target_species, 'scaffold': join(mainout, dic[i][0][0] + args['abrev'] + '_.temp')})
+                out_aug = open(join(mainout, 'augustus/%s.out' % i), 'w')
+                commands.append((command, out_aug))
+        startQueue(commands, cpus)
+        # ---------------------------AUGUSTUS steps END -------------------------------------------#
+        # ---------------------------HMMER steps START -------------------------------------------#
 
-        from joblib import Parallel, delayed
-        Parallel(n_jobs=int(cpus))(delayed(parallel_augustus)(dic[i], i, assembly_name, target_species, clade, aug_out_path, mainout, err_path) for i in dic.keys())
-
-
-    #---------------------------AUGUSTUS steps END -------------------------------------------#
-
-    #---------------------------HMMER steps START -------------------------------------------#
-
-    if mode == 'genome' or mode == 'hmmer':  #should be augustus
-        #STEP-1 EXTRACT AUGUSTUS PROTEINS
+    if mode == 'genome' or mode == 'hmmer':  # should be augustus\
+        # STEP-1 EXTRACT AUGUSTUS PROTEINS
         logger.debug('  ' + qutils.index_to_str(index) + 'Extracting predicted proteins  ')
         files = os.listdir(join(mainout, 'augustus'))
         count = 0
         check = 0
         aug_prot_path = join(mainout, 'augustus_proteins')
         for i in files:
-            if args['species'] != 'brugia':
-                cmd = sed_cmd + ' \'1,18d\' %saugustus/%s' % (mainout, i)
-            else:
-                cmd = sed_cmd + ' \'1,15d\' %saugustus/%s' % (mainout, i)
-            qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+            cmd = sed_cmd + " \'1,3d\' %saugustus/%s" % (mainout, i)
+            #qutils.call_subprocess(shlex.split(cmd), stderr=open(err_path, 'a'))
         if not os.path.exists(aug_prot_path):
             os.makedirs(aug_prot_path)
-
         for i in files:
             f = open(join(mainout, 'augustus/%s' % i))
             if i.endswith('.out'):
@@ -637,8 +634,8 @@ def do(f_args, output_dir):
                     ' --domtblout %(output_file)s.out -Z %(db_size)s --cpu %(cpu)s %(group_file)s.hmm %(input_file)s ' %
                     {'input_file': fpath, 'db_size': Z, 'cpu': cpus,
                      'group_file': join(busco_dirpath, clade, 'hmms', name),
-                     'output_file': join(hmmer_out_path, name)})
-                qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+                     'output_file': join(hmmer_out_path, name), 'erroutput': err_path})
+                qutils.call_subprocess(shlex.split(cmd), stdout=open(os.devnull, 'w'), stderr=open(err_path, 'a'))
             elif i.endswith(('.1', '.2', '.3')):
                 name = i[:-6]
                 cmd = hmmer_fpath('hmmsearch') + (
@@ -646,7 +643,7 @@ def do(f_args, output_dir):
                     {'input_file': fpath, 'db_size': Z, 'cpu': cpus,
                      'group_file': join(busco_dirpath, clade, 'hmms', name),
                      'output_file': join(hmmer_out_path, '%s.out.%s' % (name, i[-1]))})
-                qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+                qutils.call_subprocess(shlex.split(cmd), stdout=open(os.devnull, 'w'), stderr=open(err_path, 'a'))
 
     #Run HMMer (transcriptome mode)
     if mode == 'trans' or mode == 'transcriptome':
@@ -707,9 +704,7 @@ def do(f_args, output_dir):
                      'output_file': join(hmmer_out_path, name)})
                 qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
-
     ###  *get list to be re-run
-
     if mode == 'genome' or mode == 'hmmer':
         logger.debug('  ' + qutils.index_to_str(index) + 'Parsing HMMER results  ')
         #Open the output file if no name was specified the default name will be used
@@ -732,9 +727,6 @@ def do(f_args, output_dir):
                 dic[name] = [[i[1], i[2], i[3]]]  #scaffold,start and end
             elif name in dic:
                 dic[name].append([i[1], i[2], i[3]])
-
-    ###   
-
 
     ####Make summary
 
@@ -1088,82 +1080,99 @@ def do(f_args, output_dir):
         prokaryotic = ''
         if clade == 'bacteria':
             prokaryotic = '--prokaryotic'
-        cmd = join(augustus_short_dirpath, 'scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s --out=%s %s' % (
-            assembly_name, join(augustus_short_dirpath, 'config/'), output_dir, prokaryotic))  #create new species config file from template
+        cmd = join(augustus_short_dirpath,
+                   'scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s %s' % (
+                       assembly_name, join(augustus_short_dirpath, 'config/'),
+                       prokaryotic))  # create new species config file from template
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-        cmd = 'cat %sgb/*.gb > %straining_set_%s' % (mainout, mainout, assembly_name)
-        qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+        gb_dir = mainout + 'gb'
+        filenames = [os.path.join(gb_dir, fname) for fname in next(os.walk(gb_dir))[2] if fname.endswith('.gb')]
+        train_set_fpath = '%straining_set_%s' % (mainout, assembly_name)
+        with open(train_set_fpath, 'w') as outfile:
+            for file in filenames:
+                with open(file) as infile:
+                    outfile.write(infile.read())
         cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s' % (
-            assembly_name, mainout, assembly_name))  #train on new training set (complete single copy buscos
+            assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
         if args['long']:
-            logger.info('  ' + qutils.index_to_str(index) + 'Optimizing augustus metaparameters, this may take around 20 hours')
+            logger.info(
+                '  ' + qutils.index_to_str(index) + 'Optimizing augustus metaparameters, this may take around 20 hours')
             cmd = join(augustus_short_dirpath,
-                               'scripts/optimize_augustus.pl --species=%s %straining_set_%s --AUGUSTUS_CONFIG_PATH=%s' % (
-                                   assembly_name, mainout, assembly_name,
-                                   join(augustus_short_dirpath, 'config/')))
+                       'scripts/optimize_augustus.pl --species=%s %straining_set_%s --AUGUSTUS_CONFIG_PATH=%s' % (
+                           assembly_name, mainout, assembly_name,
+                           join(augustus_short_dirpath, 'config/')))
             qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'),
-                                   stderr=open(err_path, 'a'))  #train on new training set (complete single copy buscos)
+                                   stderr=open(err_path, 'a'))  # train on new training set (complete single copy buscos)
             cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s' % (
-                assembly_name, mainout, assembly_name))  #train on new training set (complete single copy buscos)
-            out_aug = open(join(mainout, 'augustus/train.log'), 'w')
+                assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos)
             qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-
-        logger.info('  ' + qutils.index_to_str(index) + 'Re-running failed predictions with different constraints, total number %s  ' % len(re_run))
-        done = []
-        target_species = assembly_name
-
-        for item in re_run:
-            if item not in dic:  #no coordinates found
-                pass
-            elif len(dic[item]) > 1:  #more than one target coordinate
-                count = 0
-                for entry in dic[item]:
-                    count += 1
-                    cmd = august_fpath('augustus') + (
-                        ' --proteinprofile=%(clade)s/%(prot_profile)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
-                        {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
-                         'clade': join(busco_dirpath, clade),
-                         'species': target_species, 'scaffold': entry[0] + assembly_name + '_.temp'})
-                    out_aug = join(mainout, 'augustus/%s.out.%s' % (item, count))
-                    qutils.call_subprocess(shlex.split(cmd), stdout=open(out_aug, 'w'), stderr=open(err_path, 'a'))
-                    cmd = sed_cmd + ' \'1,18d\' %s' % out_aug
-                    qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-                    addendum = item + '.out.' + str(count)
-                    extract(mainout, addendum)
-                    cmd = hmmer_fpath('hmmsearch') + (
-                        ' --domtblout %(output_file)s -Z %(db_size)s --cpu %(cpu)s %(group_file)s.hmm %(input_file)s ' %
-                        {'input_file': join(aug_prot_path, '%s.fas.%s' % (item, count)), 'db_size': Z,
-                         'cpu': cpus,
-                         'group_file': join(busco_dirpath, clade, 'hmms', item),
-                         'output_file': join(hmmer_out_path, '%s.out.%s' % (item, count))})
-                    qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-            elif len(dic[item]) == 1:
-                entry = dic[item][0]
-                try:
-                    cmd = august_fpath('augustus') + (
-                        ' --proteinprofile=%(clade)s/%(prot_profile)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
-                        {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
-                         'clade': join(busco_dirpath, clade),
-                         'species': target_species, 'scaffold': entry[0] + assembly_name + '_.temp'})
-                    out_aug = join(mainout, 'augustus/%s.out' % item), 'w'
-                    qutils.call_subprocess(shlex.split(cmd), stdout=open(out_aug, 'w'), stderr=open(err_path, 'a'))
-                    cmd = sed_cmd + ' \'1,18d\' %s' % out_aug
-                    qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-                    extract(mainout, item)
-                    name = item
-                    cmd = hmmer_fpath('hmmsearch') + (
-                        ' --domtblout %(output_file)s.out -Z %(db_size)s  --cpu %(cpu)s %(group_file)s.hmm %(input_file)s.fas' %
-                        {'input_file': mainout + 'augustus_proteins/' + name, 'db_size': Z, 'cpu': cpus,
-                         'group_file': join(busco_dirpath, clade, 'hmms', name),
-                         'output_file': join(hmmer_out_path, name)})
-                    qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-                except:
+        if len(re_run) > 0:
+            logger.info('  ' + qutils.index_to_str(
+                index) + 'Re-running failed predictions with different constraints, total number %s  ' % len(re_run))
+            target_species = assembly_name
+            commands = []
+            hammers = []
+            seds = []
+            ripped = []
+            for item in re_run:
+                if item not in dic:  # no coordinates found
                     pass
-                    #missing(mainout,assembly_name,'missing_buscos_list_')
+                elif len(dic[item]) > 1:  # more than one target coordinate
+                    count = 0
+                    for entry in dic[item]:
+                        count += 1
+                        command = august_fpath('augustus') + (
+                            ' --proteinprofile=%(clade)s/%(prot_profile)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' %
+                            {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
+                             'clade': join(busco_dirpath, clade),
+                             'species': target_species, 'scaffold': join(mainout, entry[0] + assembly_name + '_.temp')})
+                        out_aug = open(join(mainout, 'augustus/%s.out.%s' % (item, count)), 'w')
+                        commands.append((command, out_aug))
+                        command = sed_cmd + ' \'1,3d\' %s' % (mainout + 'augustus/' + item + '.out.' + str(count))
+                        log_out = open(os.devnull, 'w')
+                        seds.append((command, log_out))
+                        ripped.append(item + '.out.' + str(count))
+                        command = hmmer_fpath('hmmsearch') + (
+                            ' --domtblout %(output_file)s -Z %(db_size)s --cpu %(cpu)s %(group_file)s.hmm %(input_file)s' %
+                            {'input_file': join(aug_prot_path, '%s.fas.%s' % (item, count)), 'db_size': Z,
+                             'cpu': cpus,
+                             'group_file': join(busco_dirpath, clade, 'hmms', item),
+                             'output_file': join(hmmer_out_path, '%s.out.%s' % (item, count))})
+                        hammers.append((command, log_out))
+                elif len(dic[item]) == 1:
+                    entry = dic[item][0]
+                    try:
+                        command = august_fpath('augustus') + (
+                            ' --proteinprofile=%(clade)s/%(prot_profile)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s -'
+                            '-species=%(species)s \"%(scaffold)s\" ' %
+                            {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
+                             'clade': join(busco_dirpath, clade),
+                             'species': target_species, 'scaffold': join(mainout, entry[0] + assembly_name + '_.temp')})
+                        out_aug = open(join(mainout, 'augustus/%s.out' % item), 'w')
+                        log_out = open(os.devnull, 'w')
+                        commands.append((command, out_aug))
+                        command = sed_cmd + ' \'1,3d\' %s' % (mainout + 'augustus/' + item + '.out')
+                        seds.append((command, log_out))
+                        ripped.append(item)
+                        command = hmmer_fpath('hmmsearch') + (
+                            ' --domtblout %(output_file)s.out -Z %(db_size)s  --cpu %(cpu)s %(group_file)s.hmm %(input_file)s.fas' %
+                            {'input_file': mainout + 'augustus_proteins/' + item, 'db_size': Z, 'cpu': cpus,
+                             'group_file': join(busco_dirpath, clade, 'hmms', item),
+                             'output_file': join(hmmer_out_path, item)})
+                        log_out = open(os.devnull, 'w')
+                        hammers.append((command, log_out))
+                    except:
+                        pass
+                        # missing(mainout,assembly_name,'missing_buscos_list_')
 
-    ###retraining and running over
+            ###retraining and running over
+            startQueue(commands, cpus)
+            startQueue(seds, cpus)
+            for entry in ripped:
+                extract(mainout,entry)
+            startQueue(hammers, cpus)
 
     shutil.rmtree(join(augustus_short_dirpath, 'config/species', assembly_name), ignore_errors=True)
 

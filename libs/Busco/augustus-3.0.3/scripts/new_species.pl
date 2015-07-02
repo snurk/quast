@@ -83,9 +83,7 @@ if ($exists) {
 	print "Already have files for species $species. Ignoring.\n" if (!$silent);
 	exit(0);
     } else {
-	print STDERR "If you are sure you want to delete the existing parameters for $species, delete the files ";
-	print STDERR "for $species and run again.\nOtherwise use another name for that species.\n";
-	exit(1);
+    rmdir $speciesdir or die "$!: for directory $speciesdir\n";
     }
 }
 

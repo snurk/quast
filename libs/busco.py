@@ -3,7 +3,6 @@ import platform
 from Busco import busco_v1
 from libs import reporting, qconfig, qutils
 from libs.log import get_logger
-import shlex
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
 busco_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'Busco')
@@ -47,7 +46,6 @@ def do(contigs_fpaths, out_dirpath, clade):
     if not os.path.isdir(out_dirpath):
         os.makedirs(out_dirpath)
 
-    from joblib import Parallel, delayed
     log_path = os.path.join(out_dirpath, 'busco.log')
     err_path = os.path.join(out_dirpath, 'busco.err')
     open(log_path, 'w').close()
