@@ -20,6 +20,7 @@ def do(contigs_fpaths, out_dirpath, clade):
 
     logger.print_timestamp()
     logger.info('Running BUSCO...')
+    current_dir = os.getcwd()
     if qconfig.archaea:
         logger.info('BUSCO does not work with archaeal genomes.')
         return
@@ -53,7 +54,6 @@ def do(contigs_fpaths, out_dirpath, clade):
     results = []
     for index, contigs_fpath in enumerate(contigs_fpaths):
         if not os.path.isabs(contigs_fpath):
-            current_dir = os.getcwd()
             contigs_fpath = os.path.join(current_dir, contigs_fpath)
         results.append(busco_v1.do(['-n', str(index), '-in', contigs_fpath,'-o', qutils.name_from_fpath(contigs_fpath), '-l', clade, '-m', 'genome', '-f', '-c', str(qconfig.max_threads)],
                                                          out_dirpath))
