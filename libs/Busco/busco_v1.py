@@ -664,7 +664,7 @@ def do(f_args, output_dir):
                     grouplist.append(group)
                     cmd = hmmer_fpath('hmmsearch') + (
                         ' --domtblout %(output_file)s.out.1 -Z %(db_size)s --cpu %(cpu)s %(group_file)s.hmm %(input_file)s ' % \
-                        {'input_file': fpath, 'db_size': Z, 'cpu': cpus,
+                        {'input_file': fpath, 'db_size': Z, 'cpu': '1',
                          'group_file': join(busco_dirpath, clade, 'hmms', group),
                          'output_file': join(hmmer_out_path, group)})
                     qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
@@ -672,12 +672,11 @@ def do(f_args, output_dir):
                     grouplist.append(group)
                     cmd = hmmer_fpath('hmmsearch') + (
                         ' --domtblout %(output_file)s.out.%(count)s -Z %(db_size)s --cpu %(cpu)s %(group_file)s.hmm %(input_file)s ' % \
-                        {'input_file': fpath, 'db_size': Z, 'cpu': cpus,
+                        {'input_file': fpath, 'db_size': Z, 'cpu': '1',
                          'group_file': join(busco_dirpath, clade, 'hmms', group),
                          'output_file': join(hmmer_out_path, group),
                          'count': str(grouplist.count(group))})
                     qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-
 
     #OGS/Proteome module
     if mode == 'OGS':
@@ -1071,10 +1070,18 @@ def do(f_args, output_dir):
                 elif check == 1:
                     out.write(line)
         f.close()
-        for entry in chosen:
-            cmd = join(augustus_short_dirpath, 'scripts/gff2gbSmallDNA.pl %sgffs/%s %s 1000 %sgb/%s.raw.gb' % (
-                mainout, entry, args['genome'], mainout, entry[:-4]))
-            qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+        gb_dir = mainout + 'gffs'
+        filenames = [os.path.join(gb_dir, fname) for fname in next(os.walk(gb_dir))[2] if fname.endswith('.out')]
+        train_set_fpath2 = '%straining_set_%s.gb' % (mainout, assembly_name)
+        with open(train_set_fpath2, 'w') as outfile:
+            for file in filenames:
+                with open(file) as infile:
+                    outfile.write(infile.read())
+        train_set_fpath = 'training_set_%s' % assembly_name
+        cmd = join(augustus_short_dirpath, 'scripts/gff2gbSmallDNA.pl %s %s 1000 %s%s' % (
+            train_set_fpath2, args['genome'], mainout, train_set_fpath))
+        qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+
         logger.debug('  ' + qutils.index_to_str(index) + 'Training augustus gene predictor')
         os.chdir(augustus_short_dirpath)
         prokaryotic = ''
@@ -1085,15 +1092,8 @@ def do(f_args, output_dir):
                        assembly_name, join(augustus_short_dirpath, 'config/'),
                        prokaryotic))  # create new species config file from template
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-        gb_dir = mainout + 'gb'
-        filenames = [os.path.join(gb_dir, fname) for fname in next(os.walk(gb_dir))[2] if fname.endswith('.gb')]
-        train_set_fpath = '%straining_set_%s' % (mainout, assembly_name)
-        with open(train_set_fpath, 'w') as outfile:
-            for file in filenames:
-                with open(file) as infile:
-                    outfile.write(infile.read())
-        cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s' % (
-            assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos
+        cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s --stopCodonExcludedFromCDS=false ' % (
+            assembly_name, mainout, assembly_name)) # train on new training set (complete single copy buscos
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
         if args['long']:
@@ -1259,7 +1259,7 @@ def do(f_args, output_dir):
         summary = open(summary_path, 'w')
 
         logger.info('  %sComplete BUSCOs found: %s (%s duplicated), partially recovered: %s,\
-                    total groups: %s' % (qutils.index_to_str(index), len(set(unique)), len(mcc), fcc, totalbuscos))
+                    total groups: %s' % (qutils.index_to_str(index), len(set(cc)), len(mcc), fcc, totalbuscos))
 
         summary.write(
             '#Summarized BUSCO benchmarking for file: %s\n#BUSCO was run in mode: %s\n\n' % (args['genome'], mode))

@@ -83,7 +83,7 @@ if ($exists) {
 	print "Already have files for species $species. Ignoring.\n" if (!$silent);
 	exit(0);
     } else {
-    rmdir $speciesdir or die "$!: for directory $speciesdir\n";
+    exit(0);
     }
 }
 
