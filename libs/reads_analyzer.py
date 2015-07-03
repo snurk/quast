@@ -154,9 +154,12 @@ def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
                            stderr=open(err_path, 'a'))
     qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_fpath, '-o', bed_fpath],
         stderr=open(err_path, 'a'))
-    logger.info('  Structural variations saved to ' + bed_fpath)
-    return bed_fpath, cov_fpath
-
+    if os.path.exists(bed_fpath):
+        logger.info('  Structural variations saved to ' + bed_fpath)
+        return bed_fpath, cov_fpath
+    else:
+        logger.info('  Failed searching structural variations.')
+        return None, cov_fpath
 
 def bin_fpath(fname):
     return os.path.join(bwa_dirpath, fname)
@@ -204,7 +207,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
         if return_code != 0 or not all_required_binaries_exist(bwa_dirpath, 'bwa'):
             logger.error('Failed to compile BWA (' + bwa_dirpath + ')! '
                                                                    'Try to compile it manually. ' + (
-                             'You can restart Quast with the --debug flag '
+                             'You can restart QUAST with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed aligning the reads.')
             return None, None
@@ -221,7 +224,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
         if return_code != 0 or not all_required_binaries_exist(samtools_dirpath, 'samtools'):
             logger.error('Failed to compile SAMtools (' + samtools_dirpath + ')! '
                                                                              'Try to compile it manually. ' + (
-                             'You can restart Quast with the --debug flag '
+                             'You can restart QUAST with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed aligning the reads.')
             return None, None
@@ -238,7 +241,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
         if return_code != 0 or not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
             logger.error('Failed to compile LUMPY (' + lumpytools_dirpath + ')! '
                                                                                'Try to compile it manually. ' + (
-                             'You can restart Quast with the --debug flag '
+                             'You can restart QUAST with the --debug flag '
                              'to see the command line.' if not qconfig.debug else ''))
             logger.info('Failed searching structural variations.')
             return None, None
