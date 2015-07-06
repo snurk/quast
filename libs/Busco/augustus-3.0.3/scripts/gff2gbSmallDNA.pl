@@ -33,7 +33,7 @@ my $num_ambig_utr_mgs = 0;
 
 GetOptions( 'good=s' => \$good, 'bad=s' => \$bad, 'overlap!' => \$overlap);
 
-my $gfffilename = $ARGV[0];
+my $gfffilenames = $ARGV[0];
 my $seqfilename = $ARGV[1];
 my $flank = $ARGV[2];
 my $outputfilename = $ARGV[3];
@@ -57,7 +57,6 @@ if (defined($good)){
 
 my $minContigLen = 3*$flank;
 
-open(GFFFILE, "<$gfffilename") || die "Couldn't open $gfffilename.\n";
 
 #
 # If exception file exists, read in the names of the genes that should be skipped.
@@ -87,16 +86,20 @@ my $cdsNumber = 0;
 my $mrnaNumber = 0;
 my $utrNumber = 0;
 
+my $fileNumber = 0;
 #
 # Read in and store all annotations
 #
-
+foreach my $gfffilename (split(",", $gfffilenames)){
+open(GFFFILE, "<$gfffilename") || die "Couldn't open $gfffilename.\n";
+$fileNumber++;
 while (<GFFFILE>) {
     s/#.*//;
     next unless /\S/;
     
     my @f = split /\t/, $_, 9;
     if (@f < 8) { warn @f,"Not GFF format"; next }
+
     $seqname = $f[0];
     $type = $f[2];
     $begin = $f[3];
@@ -137,16 +140,17 @@ while (<GFFFILE>) {
 		$annos{$seqname}=\%newanno;
 	    }
 	    $annotation = $annos{$seqname};
-	    if (exists($annotation->{$fkey.$genename})){
+	    if (exists($annotation->{$fkey.$genename.$fileNumber})){
 		# just add the exon
-		insertExon($annotation->{$fkey.$genename}, $begin, $end);
+		insertExon($annotation->{$fkey.$genename.$fileNumber}, $begin, $end);
 	    } else {
 		my @newgbfkey;
 		push @newgbfkey, ($fkey, $genename, $strand, $begin, $end);
-		$annotation->{$fkey.$genename}=\@newgbfkey;
+		$annotation->{$fkey.$genename.$fileNumber}=\@newgbfkey;
 	    }
 	}
     }
+}
 }
 
 #

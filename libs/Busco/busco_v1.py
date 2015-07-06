@@ -716,7 +716,7 @@ def do(f_args, output_dir):
                 score_dic[i[0]] = float(i[1])
             except:
                 pass
-        totalbuscos = len(list(score_dic.keys()))
+        totalbuscos = float(len(list(score_dic.keys())))
         f = open(coord_path)
         dic = {}
         for i in f:
@@ -889,17 +889,17 @@ def do(f_args, output_dir):
     if mode != 'OGS' and mode != 'trans':
         summary.write('Summarized benchmarks in BUSCO notation:\n\tC:%s%%[D:%s%%],F:%s%%,M:%s%%,n:%s\n\n' % (
             shrink((len(set(cc)) + len(set(mcc))) / totalbuscos), shrink(len(set(mcc)) / totalbuscos),
-            shrink(fcc / totalbuscos), shrink((totalbuscos - (len(set(cc)) + fcc)) / totalbuscos), totalbuscos))
+            shrink(fcc / totalbuscos), shrink((totalbuscos - (len(set(cc)) + fcc)) / totalbuscos), int(totalbuscos)))
     elif mode == 'OGS':
         summary.write('Summarized benchmarks in BUSCO notation:\n\tC:%s%%[D:%s%%],F:%s%%,M:%s%%,n:%s\n\n' % (
             shrink((len(set(cc)) + len(set(mcc))) / totalbuscos), shrink(len(set(mcc)) / totalbuscos),
             shrink(len(fcc) / totalbuscos),
             shrink((totalbuscos - (len(set(cc)) + len(set(mcc)) + len(fcc))) / totalbuscos),
-            totalbuscos))
+            int(totalbuscos)))
     elif mode == 'trans':
         summary.write('Summarized benchmarks in BUSCO notation:\n\tC:%s%%[D:%s%%],F:%s%%,M:%s%%,n:%s\n\n' % (
             shrink(len(set(cc)) / totalbuscos), shrink(len(set(mcc)) / totalbuscos), shrink(fcc / totalbuscos),
-            shrink((totalbuscos - (len(set(cc)) + fcc)) / totalbuscos), totalbuscos))
+            shrink((totalbuscos - (len(set(cc)) + fcc)) / totalbuscos), int(totalbuscos)))
 
     summary.write('Representing:\n')
     if mode != 'trans' and mode != 'OGS':
@@ -912,13 +912,13 @@ def do(f_args, output_dir):
         summary.write('\t%s\tComplete Single-copy BUSCOs\n' % (len(set(cc)) - len(set(mcc))))
         summary.write('\t%s\tComplete Duplicated BUSCOs\n' % (len(set(mcc))))
     if mode != 'OGS':
-        summary.write('\t%s\tFragmented BUSCOs\n' % (fcc))
-        summary.write('\t%s\tMissing BUSCOs\n' % (totalbuscos - (len(set(cc)) + fcc)))
+        summary.write('\t%s\tFragmented BUSCOs\n' % fcc)
+        summary.write('\t%s\tMissing BUSCOs\n' % (int(totalbuscos) - (len(set(cc)) + fcc)))
     elif mode == 'OGS':
         summary.write('\t%s\tFragmented BUSCOs\n' % (len(fcc)))
-        summary.write('\t%s\tMissing BUSCOs\n' % (totalbuscos - (len(set(cc)) + len(set(mcc)) + len(fcc))))
+        summary.write('\t%s\tMissing BUSCOs\n' % (int(totalbuscos) - (len(set(cc)) + len(set(mcc)) + len(fcc))))
 
-    summary.write('\t%s\tTotal BUSCO groups searched\n' % (totalbuscos))
+    summary.write('\t%s\tTotal BUSCO groups searched\n' % int(totalbuscos))
     summary.close()
     summary = open(join(mainout, 'full_table_%s' % assembly_name), 'w')
     #write correct header
@@ -1070,18 +1070,11 @@ def do(f_args, output_dir):
                 elif check == 1:
                     out.write(line)
         f.close()
-        gb_dir = mainout + 'gffs'
-        filenames = [os.path.join(gb_dir, fname) for fname in next(os.walk(gb_dir))[2] if fname.endswith('.out')]
-        train_set_fpath2 = '%straining_set_%s.gb' % (mainout, assembly_name)
-        with open(train_set_fpath2, 'w') as outfile:
-            for file in filenames:
-                with open(file) as infile:
-                    outfile.write(infile.read())
-        train_set_fpath = 'training_set_%s' % assembly_name
-        cmd = join(augustus_short_dirpath, 'scripts/gff2gbSmallDNA.pl %s %s 1000 %s%s' % (
-            train_set_fpath2, args['genome'], mainout, train_set_fpath))
+        train_set_fpath = '%straining_set_%s' % (mainout, assembly_name)
+        gff_files = ','.join('%sgffs/%s' % (mainout, entry) for entry in chosen)
+        cmd = join(augustus_short_dirpath, 'scripts/gff2gbSmallDNA.pl %s %s 1000 %s' % (
+            gff_files, args['genome'], train_set_fpath))
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-
         logger.debug('  ' + qutils.index_to_str(index) + 'Training augustus gene predictor')
         os.chdir(augustus_short_dirpath)
         prokaryotic = ''
@@ -1093,7 +1086,7 @@ def do(f_args, output_dir):
                        prokaryotic))  # create new species config file from template
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
         cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s --stopCodonExcludedFromCDS=false ' % (
-            assembly_name, mainout, assembly_name)) # train on new training set (complete single copy buscos
+            assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos
         qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
         if args['long']:
@@ -1259,21 +1252,21 @@ def do(f_args, output_dir):
         summary = open(summary_path, 'w')
 
         logger.info('  %sComplete BUSCOs found: %s (%s duplicated), partially recovered: %s,\
-                    total groups: %s' % (qutils.index_to_str(index), len(set(cc)), len(mcc), fcc, totalbuscos))
+                    total groups: %s' % (qutils.index_to_str(index), len(set(cc)), len(mcc), fcc, int(totalbuscos)))
 
         summary.write(
             '#Summarized BUSCO benchmarking for file: %s\n#BUSCO was run in mode: %s\n\n' % (args['genome'], mode))
         summary.write('Summarized benchmarks in BUSCO notation:\n\tC:%s%%[D:%s%%],F:%s%%,M:%s%%,n:%s\n\n' % (
             shrink(len(set(cc)) / totalbuscos), shrink(len(set(mcc)) / totalbuscos), shrink(fcc / totalbuscos),
-            shrink((totalbuscos - (len(set(cc)) + fcc)) / totalbuscos), totalbuscos))
+            shrink((totalbuscos - (len(set(cc)) + fcc)) / totalbuscos), int(totalbuscos)))
 
         summary.write('Representing:\n')
         summary.write('\t%s\tComplete Single-Copy BUSCOs\n' % (len(set(cc))))
         summary.write('\t%s\tComplete Duplicated BUSCOs\n' % (len(set(mcc))))
         summary.write('\t%s\tFragmented BUSCOs\n' % fcc)
-        summary.write('\t%s\tMissing BUSCOs\n' % (totalbuscos - (len(set(cc)) + fcc)))
+        summary.write('\t%s\tMissing BUSCOs\n' % (int(totalbuscos) - (len(set(cc)) + fcc)))
 
-        summary.write('\t%s\tTotal BUSCO groups searched\n' % totalbuscos)
+        summary.write('\t%s\tTotal BUSCO groups searched\n' % int(totalbuscos))
         summary.close()
         summary = open(join(mainout, 'full_table_%s' % assembly_name), 'w')
         summary.write('#BUSCO_group\tStatus\tScaffold\tStart\tEnd\tBitscore\tLength\n')
