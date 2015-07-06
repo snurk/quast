@@ -34,9 +34,9 @@ MAX_REFERENCE_FILE_LENGTH = 50000000  # Max length of one part of reference
 
 # available options
 long_options = "output-dir= save-json-to= genes= operons= coverage= reference= reads1= reads2= contig-thresholds= min-contig= "\
-               "gene-thresholds= save-json gage eukaryote archaea glimmer no-plots no-html no-check no-gc help debug "\
-               "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding extensive-mis-size= "\
-               "find-conserved-genes strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number= ".split()
+               "gene-thresholds= err-fpath= save-json gage eukaryote archaea glimmer no-plots no-html no-check no-check-meta no-gc help debug "\
+               "ambiguity-usage= scaffolds threads= mincluster= est-ref-size= use-all-alignments gene-finding "\
+               "find-conserved-genes strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number= extensive-mis-size= ".split()
 short_options = "o:G:C:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:Lx:"
 
 # default values for options
@@ -63,10 +63,15 @@ debug = False
 test = False
 no_check = False
 busco = False
+no_check_meta = False  # for metaQUAST, without checking min-contig
 no_gc = False
 show_snps = True
 glimmer = False
 archaea = False
+
+# the following 2 are for web-quast:
+error_log_fname = 'error.log'
+save_error = False
 
 default_results_root_dirname = "quast_results"
 output_dirname = "results_" + datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
