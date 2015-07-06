@@ -258,7 +258,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
 
     if qconfig.html_report:
         from libs.html_saver import html_saver
-        html_saver.save_coord(results_dir, json_vals_x, json_vals_y, 'coord' + title)
+        html_saver.save_coord(results_dir, json_vals_x, json_vals_y, 'coord' + title, contigs_fpaths)
 
     if with_title:
         matplotlib.pyplot.title(title)

@@ -40,22 +40,24 @@ var nx = {
         var coordX = data.coord_x;
         var coordY = data.coord_y;
 
+        var cur_filenames = data.filenames;
         var info = nx[name];
 
         if (!info.isInitialized) {
-            var plotsN = filenames.length;
+            var plotsN = cur_filenames.length;
             info.series = new Array(plotsN);
 
             for (var i = 0; i < plotsN; i++) {
+                var index = $.inArray(cur_filenames[order[i]], filenames);
                 var plot_coordX = coordX[order[i]];
                 var plot_coordY = coordY[order[i]];
                 var size = plot_coordX.length;
 
                 info.series[i] = {
                     data: [],
-                    label: filenames[order[i]],
+                    label: filenames[index],
                     number: i,
-                    color: colors[order[i]],
+                    color: colors[index],
                 };
                 info.series[i].data.push([0.0, plot_coordY[0]]);
                 var currentLen = 0;

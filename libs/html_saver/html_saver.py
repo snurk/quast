@@ -166,8 +166,8 @@ def save_total_report(results_dirpath, min_contig, ref_fpath):
         log.info('  HTML version (interactive tables and plots) saved to ' + os.path.join(results_dirpath, report_fname))
 
 
-def save_coord(results_dirpath, coord_x, coord_y, name_coord):  # coordinates for Nx, NAx, NGx, NGAX
-    json_fpath = json_saver.save_coord(results_dirpath, coord_x, coord_y, name_coord)
+def save_coord(results_dirpath, coord_x, coord_y, name_coord, contigs_fpaths):  # coordinates for Nx, NAx, NGx, NGAX
+    json_fpath = json_saver.save_coord(results_dirpath, coord_x, coord_y, name_coord, contigs_fpaths)
     if json_fpath:
         append(results_dirpath, json_fpath, name_coord)
 

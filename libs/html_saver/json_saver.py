@@ -112,11 +112,12 @@ def save_tick_x(output_dirpath, tick_x):
     return save(output_dirpath + tick_x_fn, {'tickX': tick_x})
 
 
-def save_coord(output_dirpath, coord_x, coord_y, name_coord):
+def save_coord(output_dirpath, coord_x, coord_y, name_coord, contigs_fpaths):
     coord_fn = prefix_fn + 'coord' + name_coord + suffix_fn
     return save(output_dirpath + coord_fn, {
         'coord_x': coord_x,
-        'coord_y': coord_y
+        'coord_y': coord_y,
+        'filenames': map(qutils.label_from_fpath, contigs_fpaths)
     })
 
 

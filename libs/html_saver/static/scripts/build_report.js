@@ -10,7 +10,7 @@ function showPlotWithInfo(info) {
             do {
                 var series = info.series[i];
                 i++;
-            } while (series.number != number && i <= info.series.length);
+            } while (i <= info.series.length && (series == null || series.number != number));
             //
             if (i <= info.series.length) {
                 newSeries.push(series);
@@ -158,6 +158,7 @@ function buildReport() {
         makePlot('nx', 'Nx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
+                filenames: coordNx.filenames
             },
             null, null
         );
@@ -167,6 +168,7 @@ function buildReport() {
         makePlot('nax', 'NAx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
+                filenames: coordNx.filenames
             },
             null, null
         );
@@ -176,6 +178,7 @@ function buildReport() {
         makePlot('ngx', 'NGx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
+                filenames: coordNx.filenames
             },
             null, null
         );
@@ -185,6 +188,7 @@ function buildReport() {
         makePlot('ngax', 'NGAx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
+                filenames: coordNx.filenames
             },
             null, null
         );
@@ -200,6 +204,7 @@ function buildReport() {
         makePlot('genes', 'Genes', gns.draw,  {
                 filesFeatureInContigs: genesInContigs.genes_in_contigs,
                 kind: 'gene',
+                filenames: genesInContigs.filenames
             },
             genesInContigs.ref_genes_number, tickX
         );
@@ -208,6 +213,7 @@ function buildReport() {
         makePlot('operons', 'Operons', gns.draw, {
                 filesFeatureInContigs: operonsInContigs.operons_in_contigs,
                 kind: 'operon',
+                filenames: operonsInContigs.filenames
             },
             operonsInContigs.ref_operons_number, tickX
         );
