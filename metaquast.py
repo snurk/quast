@@ -84,7 +84,7 @@ def parallel_partition_contigs(asm, assemblies_by_ref, corrected_dirpath, alignm
     return assemblies_by_ref, not_aligned_asm
 
 
-def _partition_contigs(assemblies, ref_fpaths, corrected_dirpath, alignments_fpath_template):
+def _partition_contigs(assemblies, ref_fpaths, corrected_dirpath, alignments_fpath_template, labels):
     # not_aligned_anywhere_dirpath = os.path.join(output_dirpath, 'contigs_not_aligned_anywhere')
     # if os.path.isdir(not_aligned_anywhere_dirpath):
     #     os.rmdir(not_aligned_anywhere_dirpath)
@@ -99,7 +99,13 @@ def _partition_contigs(assemblies, ref_fpaths, corrected_dirpath, alignments_fpa
     assemblies_dicts = [assembly[0] for assembly in assemblies]
     assemblies_by_ref = {}
     for k in assemblies_dicts[0].keys():
-        assemblies_by_ref[k] = set([val for sublist in (assemblies_dicts[i][k] for i in range(len(assemblies_dicts))) for val in sublist])
+        assemblies_by_ref[k] = []
+        not_sorted_assemblies = set([val for sublist in (assemblies_dicts[i][k] for i in range(len(assemblies_dicts))) for val in sublist])
+        for label in labels:  # sort by label
+            for assembly in not_sorted_assemblies:
+                if assembly.label == label:
+                    assemblies_by_ref[k].append(assembly)
+                    break
     not_aligned_assemblies = [assembly[1] for assembly in assemblies]
     return assemblies_by_ref, not_aligned_assemblies
 
@@ -273,9 +279,10 @@ def remove_unaligned_downloaded_refs(output_dirpath, ref_fpaths, chromosomes_by_
         aligned_len = 0
         all_len = 0
         for chromosome in chromosomes_by_refs[ref]:
-            aligned_len += int(refs_len[chromosome[0]][1])
-            all_len += int(refs_len[chromosome[0]][0])
-        if aligned_len > all_len * 0.1:
+            if chromosome[0] in refs_len:
+                aligned_len += int(refs_len[chromosome[0]][1])
+                all_len += int(refs_len[chromosome[0]][0])
+        if aligned_len > all_len * 0.1 and aligned_len > 0:
             corr_refs.append(ref_fpath)
     return corr_refs
 
@@ -389,7 +396,7 @@ def main(args):
             if opt in quast_py_args and arg in quast_py_args:
                 quast_py_args = __remove_from_quast_py_args(quast_py_args, opt, arg)
             if os.path.isdir(arg):
-                ref_fpaths = [os.path.join(arg,fn) for fn in next(os.walk(arg))[2] if qutils.check_is_fasta_file(fn)]
+                ref_fpaths = [os.path.join(arg,file) for (path, dirs, files) in os.walk(arg) for file in files if qutils.check_is_fasta_file(file)]
             else:
                 ref_fpaths = arg.split(',')
                 for i, ref_fpath in enumerate(ref_fpaths):
@@ -532,6 +539,7 @@ def main(args):
 
     # Running QUAST(s)
     quast_py_args += ['--meta']
+    quast_py_args += ['--combined-ref']
     downloaded_refs = False
 
     # SEARCHING REFERENCES
@@ -594,7 +602,7 @@ def main(args):
 
     if downloaded_refs:
         logger.info()
-        logger.info('Removing downloaded references with low genome fraction..')
+        logger.info('Excluding downloaded references with low genome fraction from further analysis..')
         corr_ref_fpaths = remove_unaligned_downloaded_refs(output_dirpath, ref_fpaths, chromosomes_by_refs)
         if corr_ref_fpaths and corr_ref_fpaths != ref_fpaths:
             logger.info()
@@ -614,9 +622,9 @@ def main(args):
                 json_texts = json_texts[:-1]
                 json_texts.append(json_saver.json_text)
         elif corr_ref_fpaths == ref_fpaths:
-            logger.info('All downloaded references have genome fraction more than 10%')
+            logger.info('All downloaded references have genome fraction more than 10%. Nothing was excluded.')
         else:
-            logger.info('All downloaded references have low genome fraction')
+            logger.info('All downloaded references have low genome fraction. Nothing was excluded for now.')
 
     quast_py_args += ['--no-check-meta']
     assemblies = correct_assemblies
@@ -625,19 +633,20 @@ def main(args):
         qconfig.contig_thresholds = ['None']
     quast_py_args += ['-t']
     quast_py_args += qconfig.contig_thresholds
+    quast_py_args.remove('--combined-ref')
 
     logger.info()
     logger.info('Partitioning contigs into bins aligned to each reference..')
 
     assemblies_by_reference, not_aligned_assemblies = _partition_contigs(
         assemblies, corrected_ref_fpaths, corrected_dirpath,
-        os.path.join(output_dirpath, 'combined_quast_output', 'contigs_reports', 'alignments_%s.tsv'))
+        os.path.join(output_dirpath, 'combined_quast_output', 'contigs_reports', 'alignments_%s.tsv'), labels)
 
     ref_names = []
     for ref_name, ref_assemblies in assemblies_by_reference.iteritems():
         logger.info('')
         if not ref_assemblies:
-            logger.info('No contigs were aligned to the reference ' + ref_name)
+            logger.info('No contigs were aligned to the reference ' + ref_name + ', skipping..')
         else:
             ref_names.append(ref_name)
             run_name = 'for the contigs aligned to ' + ref_name
@@ -682,7 +691,7 @@ def main(args):
             from libs.html_saver import html_saver
             html_saver.create_meta_report(summary_dirpath, json_texts)
 
-    quast._cleanup(corrected_dirpath, '')
+    quast._cleanup(corrected_dirpath)
     logger.info('')
     logger.info('MetaQUAST finished.')
     logger.finish_up(numbers=tuple(total_num_notifications), check_test=test_mode)

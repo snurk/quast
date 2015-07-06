@@ -25,7 +25,7 @@ logger.set_up_console_handler()
 
 from site import addsitedir
 addsitedir(os.path.join(qconfig.LIBS_LOCATION, 'site_packages'))
-COMBINED_REF_FNAME = 'combined_reference.fasta'
+is_combined_ref = False
 
 def _set_up_output_dir(output_dirpath, json_outputpath,
                        make_latest_symlink, save_json):
@@ -174,7 +174,7 @@ def _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels):
     broken_scaffolds = [corrected_fpaths[i][1] for i in range(len(corrected_fpaths)) if corrected_fpaths[i][1]]
     corrected_fpaths = [corrected_fpaths[i][0] for i in range(len(corrected_fpaths))]
     for i, (contigs_fpath, corr_fpath) in enumerate(corrected_fpaths):
-        if qconfig.no_check:
+        if qconfig.no_check_meta:
             corr_fpath = contigs_fpath
         qconfig.assembly_labels_by_fpath[corr_fpath] = labels[i]
         if _handle_fasta(contigs_fpath, corr_fpath, reporting):
@@ -252,7 +252,7 @@ def _correct_reference(ref_fpath, corrected_dirpath):
     name, fasta_ext = qutils.splitext_for_fasta_file(ref_fname)
     corr_fpath = qutils.unique_corrected_fpath(
         os.path.join(corrected_dirpath, name + fasta_ext))
-    if not ref_fpath.endswith(COMBINED_REF_FNAME):
+    if not qconfig.is_combined_ref:
         if not correct_fasta(ref_fpath, corr_fpath, qconfig.min_contig, is_reference=True):
             ref_fpath = ''
         else:
@@ -419,6 +419,7 @@ def main(args):
 
     labels = None
     all_labels_from_dirs = False
+    qconfig.is_combined_ref = False
 
     ref_fpath = ''
     genes_fpaths = []
@@ -433,6 +434,12 @@ def main(args):
         if opt in ('-o', "--output-dir"):
             output_dirpath = os.path.abspath(arg)
             qconfig.make_latest_symlink = False
+            if ' ' in output_dirpath:
+                logger.error('QUAST does not support spaces in paths. \n'
+                             'You have specified ' + str(output_dirpath) + ' as an output path.\n'
+                             'Please, use a different directory.\n',
+                             to_stderr=True,
+                             exit_with_code=3)
 
         elif opt in ('-G', "--genes"):
             genes_fpaths.append(assert_file_exists(arg, 'genes'))
@@ -472,8 +479,11 @@ def main(args):
             if qconfig.max_threads < 1:
                 qconfig.max_threads = 1
 
-        elif opt in ('-c', "--mincluster"):
-            qconfig.mincluster = int(arg)
+        elif opt in ('-c', "--min-cluster"):
+            qconfig.min_cluster = int(arg)
+
+        elif opt in ('-i', "--min-alignment"):
+            qconfig.min_alignment = int(arg)
 
         elif opt == "--est-ref-size":
             qconfig.estimated_reference_size = int(arg)
@@ -564,6 +574,12 @@ def main(args):
 
         elif opt == '--archaea':
             qconfig.archaea = True
+            
+        elif opt == '--glimmer':
+            qconfig.glimmer = True
+
+        elif opt == '--combined-ref':
+            qconfig.is_combined_ref = True
         else:
             logger.error('Unknown option: %s. Use -h for help.' % (opt + ' ' + arg), to_stderr=True, exit_with_code=2)
 
@@ -625,7 +641,7 @@ def main(args):
     from libs import reporting
     reload(reporting)
 
-    if ref_fpath.endswith(COMBINED_REF_FNAME):
+    if qconfig.is_combined_ref:
         corrected_dirpath = os.path.join(output_dirpath, '..', qconfig.corrected_dirname)
     else:
         if os.path.isdir(corrected_dirpath):
@@ -760,7 +776,6 @@ def main(args):
         logger.info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
 
-
     if qconfig.busco:
         ########################################################################
         ### BUSCO
@@ -827,14 +842,14 @@ def main(args):
     if contig_alignment_plot_fpath:
         logger.info('  Contig alignment plot: %s' % contig_alignment_plot_fpath)
 
-    _cleanup(corrected_dirpath, ref_fpath)
+    _cleanup(corrected_dirpath)
     logger.finish_up(check_test=qconfig.test)
     return 0
 
 
-def _cleanup(corrected_dirpath, ref_fpath):
+def _cleanup(corrected_dirpath):
     # removing correcting input contig files
-    if not qconfig.debug and not ref_fpath.endswith(COMBINED_REF_FNAME):
+    if not qconfig.debug and not qconfig.is_combined_ref:
         shutil.rmtree(corrected_dirpath)
 
 
