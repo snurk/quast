@@ -791,7 +791,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 with open(os.path.join(output_dir_path, '_{short_chr}.html'.format(**locals())), 'w') as result:
                     for line in template:
                         if line.find('<script type="text/javascript" src=""></script>') != -1:
-                            result.write('<script type="text/javascript" src="data_{short_chr}.js"></script>";\n'.format(**locals()))
+                            result.write('<script type="text/javascript" src="data_{short_chr}.js"></script>\n'.format(**locals()))
                         else:
                             result.write(line)
                             if line.find('<body>') != -1:
