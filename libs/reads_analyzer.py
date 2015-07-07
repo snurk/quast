@@ -278,7 +278,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     insert_size_fpath = os.path.join(final_output_dir, 'ins_size.txt')
     insert_size = get_insert_size(ref_fpath, temp_output_dir, err_path, insert_size_fpath)
     if insert_size > 1000:
-        qconfig.len_extensive_misassembly = insert_size
+        qconfig.extensive_misassembly_threshold = insert_size
     if ref_fpath:
         bed_fpath, cov_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
     else:

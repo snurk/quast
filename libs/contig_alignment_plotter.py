@@ -630,7 +630,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
             if last_contig_id not in misassembled_id_to_structure:
                 misassembled_id_to_structure[last_contig_id] = [False]
 
-            if line.find('Alignment') != -1 or line.find('most') != -1:
+            if (line.find('Alignment') != -1 or line.find('most ') != -1) and line.find('Excluding') == -1:
                 l = line.split(':')[1].split(' ')
                 misassembled_id_to_structure[last_contig_id].append([l[1], l[2], l[4], l[5], l[10], qutils.correct_name(l[12])])
 
@@ -654,7 +654,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 else:
                     logger.warning('reference name ' + ref_name + ' not found in file with reference!\nCannot draw contig alignment plot!')
                     return None
-            elif split_line and split_line[0] == 'Align':
+            elif split_line and split_line[0] == 'Align' and 'Excluding' not in split_line and 'Fake' not in split_line:
                 unshifted_start = int(split_line[2])
                 unshifted_end = int(split_line[3])
                 start = unshifted_start + cur_shift
@@ -756,7 +756,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         cov_data[name].append(cur_len[name]/100)
                         cur_len[name] = 0
                     if c[2] == '0':
-                        not_covered[name].append(c[0])
+                        not_covered[name].append(c[1])
 
             data_str = 'var coverage_data = {};\n'
             for chr in chr_names:
