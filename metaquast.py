@@ -51,7 +51,7 @@ def parallel_partition_contigs(asm, assemblies_by_ref, corrected_dirpath, alignm
     if os.path.exists(alignments_fpath_template % asm.name):
         for line in open(alignments_fpath_template % asm.name):
             values = line.split()
-            if values[0] in contigs_analyzer.ref_labels_by_chromosomes[values[0]]:
+            if values[0] in contigs_analyzer.ref_labels_by_chromosomes.keys():
                 ref_name = contigs_analyzer.ref_labels_by_chromosomes[values[0]]
                 ref_contigs_names = values[1:]
                 ref_contigs_fpath = os.path.join(
@@ -225,7 +225,7 @@ def _correct_references(ref_fpaths, corrected_dirpath):
         fastaparser.write_fasta(corr_seq_fpath, [(corr_seq_name, seq)], 'a')
         fastaparser.write_fasta(combined_ref_fpath, [(corr_seq_name, seq)], 'a')
 
-        contigs_analyzer.ref_labels_by_chromosomes[corr_seq_name] = ref_name
+        contigs_analyzer.ref_labels_by_chromosomes[corr_seq_name] = qutils.name_from_fpath(corr_seq_fpath)
         chromosomes_by_refs[ref_name].append((corr_seq_name, len(seq)))
 
         return corr_seq_name, corr_seq_fpath
@@ -247,13 +247,14 @@ def _correct_references(ref_fpaths, corrected_dirpath):
         common_ref_fasta_ext = ref_fasta_ext
         chromosomes_by_refs[ref_name] = []
 
+        corr_seq_fpath = None
         for i, (seq_name, seq) in enumerate(fastaparser.read_fasta(ref_fpath)):
             total_references += 1
             corr_seq_name, corr_seq_fpath = correct_seq(seq_name, seq, ref_name, ref_fasta_ext, total_references, ref_fpath)
             if not corr_seq_name:
                 break
-        if corr_seq_name:
-            logger.info('  ' + ref_fpath + ' ==> ' + corr_seq_name + '')
+        if corr_seq_fpath:
+            logger.info('  ' + ref_fpath + ' ==> ' + qutils.name_from_fpath(corr_seq_fpath) + '')
 
     logger.info('  All references combined in ' + COMBINED_REF_FNAME)
 
@@ -318,7 +319,6 @@ def main(args):
         qconfig.usage(meta=True)
         sys.exit(0)
 
-    min_contig = qconfig.min_contig
     genes = []
     operons = []
     draw_plots = qconfig.draw_plots
@@ -410,7 +410,7 @@ def main(args):
                 qconfig.max_references = 0
 
         elif opt in ('-M', "--min-contig"):
-            min_contig = int(arg)
+            qconfig.min_contig = int(arg)
 
         elif opt in ('-T', "--threads"):
             qconfig.max_threads = int(arg)
@@ -447,11 +447,17 @@ def main(args):
             pass
         elif opt in ('-f', "--gene-finding"):
             pass
+        elif opt in ('-i', "--min-alignment"):
+            pass
+        elif opt in ('-c', "--min-cluster"):
+            pass
         elif opt in ('-a', "--ambiguity-usage"):
             pass
         elif opt in ('-u', "--use-all-alignments"):
             pass
         elif opt in ('-n', "--strict-NA"):
+            pass
+        elif opt in ("-x", "--extensive-mis-size"):
             pass
         elif opt in ("-m", "--meta"):
             pass

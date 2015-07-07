@@ -167,6 +167,7 @@ def _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels):
     ## 1) Some embedded tools can fail on some strings with "...", "+", "-", etc
     ## 2) Nucmer fails on names like "contig 1_bla_bla", "contig 2_bla_bla" (it interprets as a contig's name only the first word of caption and gets ambiguous contigs names)
     corrected_contigs_fpaths = []
+    old_contigs_fpaths = []
     n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
     from joblib import Parallel, delayed
     corrected_fpaths = Parallel(n_jobs=n_jobs)(delayed(_parallel_correct_contigs)(i, contigs_fpath,
@@ -179,13 +180,15 @@ def _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels):
         qconfig.assembly_labels_by_fpath[corr_fpath] = labels[i]
         if _handle_fasta(contigs_fpath, corr_fpath, reporting):
             corrected_contigs_fpaths.append(corr_fpath)
+            old_contigs_fpaths.append(contigs_fpath)
     for i, (broken_scaffold_fpath, broken_scaffold_fpath) in enumerate(broken_scaffolds):
         qconfig.assembly_labels_by_fpath[broken_scaffold_fpath] = labels[i] + ' broken'
         if _handle_fasta(broken_scaffold_fpath, broken_scaffold_fpath, reporting):
             corrected_contigs_fpaths.append(broken_scaffold_fpath)
+            old_contigs_fpaths.append(broken_scaffold_fpath)  # no "old" fpaths for broken scaffolds
             qconfig.list_of_broken_scaffolds.append(qutils.name_from_fpath(broken_scaffold_fpath))
 
-    return corrected_contigs_fpaths
+    return corrected_contigs_fpaths, old_contigs_fpaths
 
 
 def _parallel_correct_contigs(file_counter, contigs_fpath, corrected_dirpath, labels):
@@ -196,11 +199,11 @@ def _parallel_correct_contigs(file_counter, contigs_fpath, corrected_dirpath, la
 
     label = labels[file_counter]
     corr_fpath = qutils.unique_corrected_fpath(os.path.join(corrected_dirpath, label + fasta_ext))
-    logger.info('  %s ==> %s' % (contigs_fpath, label))
+    logger.info('  ' + qutils.index_to_str(file_counter, force=(len(labels) > 1)) + '%s ==> %s' % (contigs_fpath, label))
 
     # if option --scaffolds is specified QUAST adds split version of assemblies to the comparison
     if qconfig.scaffolds:
-        logger.info("  breaking scaffolds into contigs:")
+        logger.info('  ' + qutils.index_to_str(file_counter, force=(len(labels) > 1)) + '  breaking scaffolds into contigs:')
         corr_fpath_wo_ext = os.path.join(corrected_dirpath, qutils.name_from_fpath(corr_fpath))
         broken_scaffolds_fpath = corr_fpath_wo_ext + '_broken' + fasta_ext
         broken_scaffolds_fasta = []
@@ -208,11 +211,15 @@ def _parallel_correct_contigs(file_counter, contigs_fpath, corrected_dirpath, la
 
         scaffold_counter = 0
         for scaffold_counter, (name, seq) in enumerate(fastaparser.read_fasta(contigs_fpath)):
+            if contigs_counter % 100 == 0:
+                pass
+            if contigs_counter > 520:
+                pass
             cumul_contig_length = 0
             total_contigs_for_the_scaf = 1
             cur_contig_start = 0
             while (cumul_contig_length < len(seq)) and (seq.find('N', cumul_contig_length) != -1):
-                start = seq.find("N", file_counter)
+                start = seq.find("N", cumul_contig_length)
                 end = start + 1
                 while (end != len(seq)) and (seq[end] == 'N'):
                     end += 1
@@ -234,12 +241,12 @@ def _parallel_correct_contigs(file_counter, contigs_fpath, corrected_dirpath, la
             contigs_counter += total_contigs_for_the_scaf
 
         fastaparser.write_fasta(broken_scaffolds_fpath, broken_scaffolds_fasta)
-        qconfig.assembly_labels_by_fpath[broken_scaffolds_fpath] = label + ' broken'
-        logger.info("      %d scaffolds (%s) were broken into %d contigs (%s)" %
+        logger.info("  " + qutils.index_to_str(file_counter, force=(len(labels) > 1)) +
+                    "    %d scaffolds (%s) were broken into %d contigs (%s)" %
                     (scaffold_counter + 1,
-                     qutils.label_from_fpath(corr_fpath),
+                     label,
                      contigs_counter,
-                     qutils.label_from_fpath(broken_scaffolds_fpath)))
+                     label + ' broken'))
 
         broken_scaffolds = (broken_scaffolds_fpath, broken_scaffolds_fpath)
 
@@ -540,9 +547,6 @@ def main(args):
         elif opt == '--no-plots':
             qconfig.draw_plots = False
 
-        elif opt == '--glimmer':
-            qconfig.glimmer = True
-
         elif opt == '--no-html':
             qconfig.html_report = False
 
@@ -661,8 +665,7 @@ def main(args):
     logger.info()
     logger.info('Contigs:')
 
-    old_contigs_fpaths = contigs_fpaths
-    contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
+    contigs_fpaths, old_contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
     bed_fpath, cov_fpath = None, None
 
     if qconfig.reads:

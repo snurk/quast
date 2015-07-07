@@ -29,8 +29,8 @@ def assert_file_exists(fpath, message='', logger=logger):
     return fpath
 
 
-def index_to_str(i):
-    if qconfig.assemblies_num == 1:
+def index_to_str(i, force=False):
+    if qconfig.assemblies_num == 1 and not force:
         return ''
     else:
         return ('%d ' + ('' if (i + 1) >= 10 else ' ')) % (i + 1)
@@ -163,7 +163,7 @@ def label_from_fpath_for_fname(fpath):
 
 def call_subprocess(args, stdin=None, stdout=None, stderr=None,
                     indent='',
-                    only_if_debug=True, env=None):
+                    only_if_debug=True, env=None, logger=logger):
     printed_args = args[:]
     if stdin:
         printed_args += ['<', stdin.name]
