@@ -27,7 +27,7 @@ THE SOFTWARE.
 <head>
     <script type="text/javascript" src="d3.js"></script>
     <!-- <script type="text/javascript" src="http://mbostock.github.com/d3/d3.v2.js"></script> -->
-    <script type="text/javascript" src="contig_alignment_plot_data.js"></script>
+    <script type="text/javascript" src=""></script>
     <link href="contig_alignment_plot.css" rel="stylesheet"/>
 
 </head>
@@ -172,13 +172,7 @@ THE SOFTWARE.
     miniTicksValues = [x_mini.domain()[0]].concat(miniTicksValues);
     miniTicksValues.push(x_mini.domain()[1]);
 
-
-    var xMiniAxis = d3.svg.axis()
-            .scale(x_mini)
-            .orient('bottom')
-            .tickSize(6, 0, 0)
-            .tickValues(miniTicksValues)
-            .tickFormat(function (d) {
+    var format = function (d) {
                 if (miniTickValue == 'Gbp')
                     return d3.round(d / 1000000000, 2);
                 else if (miniTickValue == 'Mbp')
@@ -187,7 +181,20 @@ THE SOFTWARE.
                     return d3.round(d / 1000, 2);
                 else
                     return d;
-            });
+            };
+
+    var min_ticks_delta = Math.max(getTextSize(format(miniTicksValues.slice(-1)[0]).toString(), numberSize),
+                getTextSize(format(miniTicksValues.slice(-2)[0]).toString(), numberSize));
+    if (x_mini(miniTicksValues.slice(-1)[0]) - x_mini(miniTicksValues.slice(-2)[0]) < min_ticks_delta) {
+        miniTicksValues.splice(-2, 1)
+    }
+
+    var xMiniAxis = d3.svg.axis()
+            .scale(x_mini)
+            .orient('bottom')
+            .tickSize(6, 0, 0)
+            .tickValues(miniTicksValues)
+            .tickFormat(format);
 
     var mainTickValue;
 
