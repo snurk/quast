@@ -206,7 +206,7 @@ def do(f_args, output_dir):
             while not exitFlag:
                 if not workQueue.empty():
                     data = q.get()
-                    qutils.call_subprocess(shlex.split(data[0]), stdout=data[1], stderr=open(err_path, 'a'))
+                    qutils.call_subprocess(shlex.split(data[0]), stdout=open(data[1], 'w'), stderr=open(err_path, 'a'))
                     q.task_done()
                 time.sleep(1)
 
@@ -559,14 +559,14 @@ def do(f_args, output_dir):
                     '--predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\"' % {
                     'prot_profile': join(busco_dirpath, clade, 'prfl/' + i + '.prfl'), 'start_coord': dic[i][z][1], 'end_coord': dic[i][z][2],
                     'species': target_species, 'scaffold': join(mainout, dic[i][z][0] + args['abrev'] + '_.temp')})
-                    out_aug = open(join(mainout, 'augustus/%s.out.%s' % (i, str(z+1))), 'w')
+                    out_aug = join(mainout, 'augustus/%s.out.%s' % (i, str(z+1)))
                     commands.append((command, out_aug))
             else:
                 command = august_fpath('augustus') + (' --proteinprofile=%(prot_profile)s --predictionStart=%(start_coord)s '
                 '--predictionEnd=%(end_coord)s --species=%(species)s \"%(scaffold)s\" ' % {
                 'prot_profile': join(busco_dirpath, clade, 'prfl/' + i + '.prfl'), 'start_coord': dic[i][0][1], 'end_coord': dic[i][0][2],
                 'species': target_species, 'scaffold': join(mainout, dic[i][0][0] + args['abrev'] + '_.temp')})
-                out_aug = open(join(mainout, 'augustus/%s.out' % i), 'w')
+                out_aug = join(mainout, 'augustus/%s.out' % i)
                 commands.append((command, out_aug))
         startQueue(commands, cpus)
         # ---------------------------AUGUSTUS steps END -------------------------------------------#
@@ -1070,24 +1070,25 @@ def do(f_args, output_dir):
                 elif check == 1:
                     out.write(line)
         f.close()
-        train_set_fpath = '%straining_set_%s' % (mainout, assembly_name)
-        gff_files = ','.join('%sgffs/%s' % (mainout, entry) for entry in chosen)
-        cmd = join(augustus_short_dirpath, 'scripts/gff2gbSmallDNA.pl %s %s 1000 %s' % (
-            gff_files, args['genome'], train_set_fpath))
-        qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-        logger.debug('  ' + qutils.index_to_str(index) + 'Training augustus gene predictor')
-        os.chdir(augustus_short_dirpath)
-        prokaryotic = ''
-        if clade == 'bacteria':
-            prokaryotic = '--prokaryotic'
-        cmd = join(augustus_short_dirpath,
-                   'scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s %s' % (
-                       assembly_name, join(augustus_short_dirpath, 'config/'),
-                       prokaryotic))  # create new species config file from template
-        qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-        cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s --stopCodonExcludedFromCDS=false ' % (
-            assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos
-        qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+        if len(chosen) > 0:
+            train_set_fpath = '%straining_set_%s' % (mainout, assembly_name)
+            gff_files = ','.join('%sgffs/%s' % (mainout, entry) for entry in chosen)
+            cmd = join(augustus_short_dirpath, 'scripts/gff2gbSmallDNA.pl %s %s 1000 %s' % (
+                gff_files, args['genome'], train_set_fpath))
+            qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+            logger.debug('  ' + qutils.index_to_str(index) + 'Training augustus gene predictor')
+            os.chdir(augustus_short_dirpath)
+            prokaryotic = ''
+            if clade == 'bacteria':
+                prokaryotic = '--prokaryotic'
+            cmd = join(augustus_short_dirpath,
+                       'scripts/new_species.pl --species=%s --AUGUSTUS_CONFIG_PATH=%s %s' % (
+                           assembly_name, join(augustus_short_dirpath, 'config/'),
+                           prokaryotic))  # create new species config file from template
+            qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+            cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s --stopCodonExcludedFromCDS=false ' % (
+                assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos
+            return_code = qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
         if args['long']:
             logger.info(
@@ -1101,7 +1102,7 @@ def do(f_args, output_dir):
             cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s' % (
                 assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos)
             qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-        if len(re_run) > 0:
+        if len(re_run) > 0 and len(chosen) > 0 and return_code == 0:
             logger.info('  ' + qutils.index_to_str(
                 index) + 'Re-running failed predictions with different constraints, total number %s  ' % len(re_run))
             target_species = assembly_name
@@ -1121,10 +1122,10 @@ def do(f_args, output_dir):
                             {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
                              'clade': join(busco_dirpath, clade),
                              'species': target_species, 'scaffold': join(mainout, entry[0] + assembly_name + '_.temp')})
-                        out_aug = open(join(mainout, 'augustus/%s.out.%s' % (item, count)), 'w')
+                        out_aug = join(mainout, 'augustus/%s.out.%s' % (item, count))
                         commands.append((command, out_aug))
                         command = sed_cmd + ' \'1,3d\' %s' % (mainout + 'augustus/' + item + '.out.' + str(count))
-                        log_out = open(os.devnull, 'w')
+                        log_out = os.devnull
                         seds.append((command, log_out))
                         ripped.append(item + '.out.' + str(count))
                         command = hmmer_fpath('hmmsearch') + (
@@ -1143,8 +1144,8 @@ def do(f_args, output_dir):
                             {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
                              'clade': join(busco_dirpath, clade),
                              'species': target_species, 'scaffold': join(mainout, entry[0] + assembly_name + '_.temp')})
-                        out_aug = open(join(mainout, 'augustus/%s.out' % item), 'w')
-                        log_out = open(os.devnull, 'w')
+                        out_aug = join(mainout, 'augustus/%s.out' % item)
+                        log_out = os.devnull
                         commands.append((command, out_aug))
                         command = sed_cmd + ' \'1,3d\' %s' % (mainout + 'augustus/' + item + '.out')
                         seds.append((command, log_out))
@@ -1154,7 +1155,6 @@ def do(f_args, output_dir):
                             {'input_file': mainout + 'augustus_proteins/' + item, 'db_size': Z, 'cpu': cpus,
                              'group_file': join(busco_dirpath, clade, 'hmms', item),
                              'output_file': join(hmmer_out_path, item)})
-                        log_out = open(os.devnull, 'w')
                         hammers.append((command, log_out))
                     except:
                         pass
