@@ -737,7 +737,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         data_str += ', structure: ['
                         for el in alignment.misassembled_structure:
                             if type(el) == list:
-                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}}},'.format(**locals())
+                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}, chr: "{el[5]}"}},'.format(**locals())
                             elif type(el) == str:
                                 data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
                         data_str = data_str[: -1] + ']},'
