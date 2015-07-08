@@ -1633,7 +1633,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
 
 
     if reference.endswith(COMBINED_REF_FNAME):
-        ref_misassemblies = [result['istranslocations_by_refs'] for result in results if result]
+        ref_misassemblies = [result['istranslocations_by_refs'] if result else None for result in results]
         if ref_misassemblies:
             all_rows = []
             cur_ref_names = []
