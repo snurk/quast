@@ -208,9 +208,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     unaligned_fpath = nucmer_fpath + '.unaligned'
     show_snps_fpath = nucmer_fpath + '.all_snps'
     used_snps_fpath = nucmer_fpath + '.used_snps'
-    combined_ref = False
-    if ref_fpath.endswith(COMBINED_REF_FNAME):
-        combined_ref = True
     vcf_temp_fpath = nucmer_fpath + '_temp.vcf'
 
     print >> planta_out_f, 'Aligning contigs to reference...'
@@ -550,7 +547,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 print >> misassembly_file, 'Extensive misassembly (',
                 print >> planta_out_f, '\t\t\t  Extensive misassembly (',
                 if sorted_aligns[i].ref != sorted_aligns[i+1].ref:
-                    if combined_ref and \
+                    if qconfig.is_combined_ref and \
                             not check_chr_for_refs(sorted_aligns[i].ref, sorted_aligns[i+1].ref):  # if chromosomes from different references
                             region_misassemblies.append(Misassembly.INTERSPECTRANSLOCATION)
                             ref1, ref2 = ref_labels_by_chromosomes[sorted_aligns[i].ref], ref_labels_by_chromosomes[sorted_aligns[i+1].ref]
@@ -1411,10 +1408,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     print >> planta_out_f, '\tMisassemblies: %d' % (len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL))
     print >> planta_out_f, '\t\tRelocations: %d' % region_misassemblies.count(Misassembly.RELOCATION)
     print >> planta_out_f, '\t\tTranslocations: %d' % region_misassemblies.count(Misassembly.TRANSLOCATION)
-    if combined_ref:
+    if qconfig.is_combined_ref:
         print >> planta_out_f, '\t\tInterspecies translocations: %d' % region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION)
     print >> planta_out_f, '\t\tInversions: %d' % region_misassemblies.count(Misassembly.INVERSION)
-    if combined_ref:
+    if qconfig.is_combined_ref:
         print >> planta_out_f, '\tPotentially Misassembled Contigs (i/s translocations): %d' % contigs_with_istranslocations
     print >> planta_out_f, '\tMisassembled Contigs: %d' % len(misassembled_contigs)
     misassembled_bases = sum(misassembled_contigs.itervalues())
@@ -1585,7 +1582,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
     nucmer_output_dir = os.path.join(output_dir, nucmer_output_dirname)
     if not os.path.isdir(nucmer_output_dir):
         os.mkdir(nucmer_output_dir)
-    if reference.endswith(COMBINED_REF_FNAME):
+    if qconfig.is_combined_ref:
         from libs import search_references_meta
         if search_references_meta.is_quast_first_run:
             nucmer_output_dir = os.path.join(nucmer_output_dir, 'aux')
@@ -1626,18 +1623,18 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
         for row in all_rows:
             for i, cell in enumerate([row['metricName']] + map(val_to_str, row['values'])):
                 colwidths[i] = max(colwidths[i], len(cell))
-        txt_file = open(fpath, 'w')
+        txt_file = open(fpath, 'a')
         for row in all_rows:
             print >> txt_file, '  '.join('%-*s' % (colwidth, cell) for colwidth, cell
                                          in zip(colwidths, [row['metricName']] + map(val_to_str, row['values'])))
 
 
-    if reference.endswith(COMBINED_REF_FNAME):
+    if qconfig.is_combined_ref:
         ref_misassemblies = [result['istranslocations_by_refs'] if result else None for result in results]
         if ref_misassemblies:
             all_rows = []
-            cur_ref_names = []
-            row = {'metricName': 'Assembly', 'values': cur_ref_names}
+            cur_assembly_names = []
+            row = {'metricName': 'Assembly', 'values': cur_assembly_names}
             all_rows.append(row)
             for fpath in contigs_fpaths:
                 all_rows[0]['values'].append(qutils.name_from_fpath(fpath))
@@ -1649,7 +1646,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
 
             misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs.info')
             print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecies translocations by references: \n'
-            print_file(all_rows, len(ref_misassemblies[0]), misassembly_by_ref_fpath)
+            print_file(all_rows, len(cur_assembly_names), misassembly_by_ref_fpath)
             logger.info('  Information about interspecies translocations by references is saved to ' + misassembly_by_ref_fpath)
 
     def save_result(result):
@@ -1708,7 +1705,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
         report.add_field(reporting.Fields.MIS_EXTENSIVE_CONTIGS, len(misassembled_contigs))
         report.add_field(reporting.Fields.MIS_EXTENSIVE_BASES, misassembled_bases)
         report.add_field(reporting.Fields.MIS_LOCAL, region_misassemblies.count(Misassembly.LOCAL))
-        if reference.endswith(COMBINED_REF_FNAME):
+        if qconfig.is_combined_ref:
             report.add_field(reporting.Fields.MIS_ISTRANSLOCATIONS, region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION))
         if qconfig.meta:
             report.add_field(reporting.Fields.CONTIGS_WITH_ISTRANSLOCATIONS, contigs_with_istranslocations)
