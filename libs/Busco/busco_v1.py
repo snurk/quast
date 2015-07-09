@@ -1041,8 +1041,11 @@ def do(f_args, output_dir):
         files = os.listdir('%shmmer_output' % mainout)
         chosen = []
         for i in files:
-            if i.endswith('.out'):
-                name = i[:-4]
+            if i.endswith(('.out', '.1', '.2', '.3')):
+                if i.endswith('.out'):
+                    name = i[:-4]
+                else:
+                    name = i[:-6]
                 if name in lista:
                     cmd = 'cp %shmmer_output/%s %sselected/' % (mainout, i, mainout)
                     qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
@@ -1131,34 +1134,30 @@ def do(f_args, output_dir):
                         command = hmmer_fpath('hmmsearch') + (
                             ' --domtblout %(output_file)s -Z %(db_size)s --cpu %(cpu)s %(group_file)s.hmm %(input_file)s' %
                             {'input_file': join(aug_prot_path, '%s.fas.%s' % (item, count)), 'db_size': Z,
-                             'cpu': cpus,
+                             'cpu': '1',
                              'group_file': join(busco_dirpath, clade, 'hmms', item),
                              'output_file': join(hmmer_out_path, '%s.out.%s' % (item, count))})
                         hammers.append((command, log_out))
                 elif len(dic[item]) == 1:
                     entry = dic[item][0]
-                    try:
-                        command = august_fpath('augustus') + (
-                            ' --proteinprofile=%(clade)s/%(prot_profile)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s -'
-                            '-species=%(species)s \"%(scaffold)s\" ' %
-                            {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
-                             'clade': join(busco_dirpath, clade),
-                             'species': target_species, 'scaffold': join(mainout, entry[0] + assembly_name + '_.temp')})
-                        out_aug = join(mainout, 'augustus/%s.out' % item)
-                        log_out = os.devnull
-                        commands.append((command, out_aug))
-                        command = sed_cmd + ' \'1,3d\' %s' % (mainout + 'augustus/' + item + '.out')
-                        seds.append((command, log_out))
-                        ripped.append(item)
-                        command = hmmer_fpath('hmmsearch') + (
-                            ' --domtblout %(output_file)s.out -Z %(db_size)s  --cpu %(cpu)s %(group_file)s.hmm %(input_file)s.fas' %
-                            {'input_file': mainout + 'augustus_proteins/' + item, 'db_size': Z, 'cpu': cpus,
-                             'group_file': join(busco_dirpath, clade, 'hmms', item),
-                             'output_file': join(hmmer_out_path, item)})
-                        hammers.append((command, log_out))
-                    except:
-                        pass
-                        # missing(mainout,assembly_name,'missing_buscos_list_')
+                    command = august_fpath('augustus') + (
+                        ' --proteinprofile=%(clade)s/%(prot_profile)s.prfl --predictionStart=%(start_coord)s --predictionEnd=%(end_coord)s -'
+                        '-species=%(species)s \"%(scaffold)s\" ' %
+                        {'prot_profile': 'prfl/' + item, 'start_coord': entry[1], 'end_coord': entry[2],
+                         'clade': join(busco_dirpath, clade),
+                         'species': target_species, 'scaffold': join(mainout, entry[0] + assembly_name + '_.temp')})
+                    out_aug = join(mainout, 'augustus/%s.out' % item)
+                    log_out = os.devnull
+                    commands.append((command, out_aug))
+                    command = sed_cmd + ' \'1,3d\' %s' % (mainout + 'augustus/' + item + '.out')
+                    seds.append((command, log_out))
+                    ripped.append(item)
+                    command = hmmer_fpath('hmmsearch') + (
+                        ' --domtblout %(output_file)s.out -Z %(db_size)s  --cpu %(cpu)s %(group_file)s.hmm %(input_file)s.fas' %
+                        {'input_file': mainout + 'augustus_proteins/' + item, 'db_size': Z, 'cpu': '1',
+                         'group_file': join(busco_dirpath, clade, 'hmms', item),
+                         'output_file': join(hmmer_out_path, item)})
+                    hammers.append((command, log_out))
 
             ###retraining and running over
             startQueue(commands, cpus)
