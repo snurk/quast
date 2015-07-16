@@ -78,40 +78,37 @@ def _set_up_output_dir(output_dirpath, json_outputpath,
 def correct_fasta(original_fpath, corrected_fpath, min_contig,
                   is_reference=False):
     modified_fasta_entries = []
+    lengths = []
     for first_line, seq in fastaparser.read_fasta(original_fpath):
-        if (len(seq) >= min_contig) or is_reference:
+        length = len(seq)
+        lengths.append(length)
+        if (length >= min_contig) or is_reference:
             corr_name = qutils.correct_name(first_line)
-
+            # seq to uppercase, because we later looking only uppercase letters
+            corr_seq = seq.upper()
             if not qconfig.no_check:
-                # seq to uppercase, because we later looking only uppercase letters
-                corr_seq = seq.upper()
-
                 # correcting alternatives (gage can't work with alternatives)
                 # dic = {'M': 'A', 'K': 'G', 'R': 'A', 'Y': 'C', 'W': 'A', 'S': 'C', 'V': 'A', 'B': 'C', 'H': 'A', 'D': 'A'}
                 dic = {'M': 'N', 'K': 'N', 'R': 'N', 'Y': 'N', 'W': 'N', 'S': 'N', 'V': 'N', 'B': 'N', 'H': 'N', 'D': 'N'}
                 pat = "(%s)" % "|".join(map(re.escape, dic.keys()))
                 corr_seq = re.sub(pat, lambda m: dic[m.group()], corr_seq)
-
                 # make sure that only A, C, G, T or N are in the sequence
                 if re.compile(r'[^ACGTN]').search(corr_seq):
                     logger.warning('Skipping ' + original_fpath + ' because it contains non-ACGTN characters.',
                             indent='    ')
                     return False
-            else:
-                corr_seq = seq
             modified_fasta_entries.append((corr_name, corr_seq))
-
     fastaparser.write_fasta(corrected_fpath, modified_fasta_entries)
 
     if is_reference:
-        ref_len = sum(len(chr_seq) for (chr_name, chr_seq) in modified_fasta_entries)
-        if ref_len > qconfig.MAX_REFERENCE_FILE_LENGTH:
+        qconfig.ref_len = sum(lengths)
+        if qconfig.ref_len > qconfig.MAX_REFERENCE_FILE_LENGTH:
             _, fasta_ext = os.path.splitext(corrected_fpath)
             split_ref_dirpath = os.path.join(os.path.dirname(corrected_fpath), 'split_ref')
             os.makedirs(split_ref_dirpath)
             cur_len = 0
             num_file = 0
-            max_len = ref_len/qconfig.max_threads
+            max_len = min(qconfig.ref_len/qconfig.max_threads, qconfig.MAX_REFERENCE_LENGTH)
 
             for (chr_name, chr_seq) in modified_fasta_entries:
                 if len(chr_seq) > qconfig.MAX_REFERENCE_LENGTH:
@@ -121,36 +118,35 @@ def correct_fasta(original_fpath, corrected_fpath, min_contig,
                 cur_len += len(chr_seq)
 
                 split_ref_fpath = os.path.join(split_ref_dirpath, "chr_" + str(num_file + 1)) + fasta_ext
-                fastaparser.write_fasta(split_ref_fpath, [(chr_name, chr_seq)], mode='a')
                 if cur_len > max_len:
                     qconfig.splitted_ref.append(split_ref_fpath)
-                    cur_len = 0
+                    cur_len = len(chr_seq)
                     num_file += 1
+                fastaparser.write_fasta(split_ref_fpath, [(chr_name, chr_seq)], mode='a')
             if cur_len > 0:
                 qconfig.splitted_ref.append(split_ref_fpath)
             if len(qconfig.splitted_ref) == 0:
                 logger.warning("Skipping reference because all of its chromosomes exceeded Nucmer's constraint.")
                 return False
-    return True
+
+    return lengths
 
 
 # Correcting fasta and reporting stats
 def _handle_fasta(contigs_fpath, corr_fpath, reporting):
-    lengths = fastaparser.get_lengths_from_fastafile(contigs_fpath)
-
-    if not sum(l for l in lengths if l >= qconfig.min_contig):
-        logger.warning("Skipping %s because it doesn't contain contigs >= %d bp."
-                % (qutils.label_from_fpath(corr_fpath), qconfig.min_contig))
-        return False
-
     # correcting
     if not qconfig.no_check_meta:
-        if not correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig):
+        lengths = correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig)
+        if not lengths:
             return False
-    
+        if not sum(l for l in lengths if l >= qconfig.min_contig):
+            logger.warning("Skipping %s because it doesn't contain contigs >= %d bp."
+                    % (qutils.label_from_fpath(corr_fpath), qconfig.min_contig))
+            return False
+
     ## filling column "Assembly" with names of assemblies
     report = reporting.get(corr_fpath)
-    report.add_field(reporting.Fields.CHAFFCONTIG_PERCENT,('%.2f' % (sum(l for l in lengths if l < qconfig.min_contig)*100.0 / float(sum(l for l in lengths)))))
+    report.add_field(reporting.Fields.CHAFFCONTIG_PERCENT,('%.2f' % (sum(l for l in lengths if l < qconfig.min_contig)*100.0 / float(sum(lengths)))))
 
     ## filling columns "Number of contigs >=110 bp", ">=200 bp", ">=500 bp"
     report.add_field(reporting.Fields.CONTIGS__FOR_THRESHOLDS,
