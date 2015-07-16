@@ -86,6 +86,8 @@ def download_refs(organism, ref_fpath):
                             fasta = first_line + '\n' + fasta[fasta.find('\n')+1:]
                     else:
                         fasta = fasta[fasta.find('\n')+1:]
+                if fasta[0] == '>' and not is_first_piece:
+                    fasta = '\n' + fasta
                 with open(ref_fpath, "a") as fasta_file:
                     fasta_file.write(fasta.rstrip())
 
