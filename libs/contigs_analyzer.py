@@ -1075,22 +1075,23 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     prev_snp = None
     cur_indel = 0
 
+    vcf_template = open(vcf_temp_fpath, 'w')
+    print >> vcf_template, '##fileformat=VCFv4.0'
+    print >> vcf_template, '##filedate=%s' % datetime.datetime.now().strftime('%Y/%m/%d')
+    print >> vcf_template, '##reference=%s' % qutils.name_from_fpath(ref_fpath)
+    print >> vcf_template, '#CHROM        POS     REF ALT'
+    vcf_template.close()
+    vcf_temp = vcf.Reader(open(vcf_temp_fpath))
+    vcf_snps_fpath = nucmer_fpath + '.vcf'
+    if os.path.exists(vcf_snps_fpath):
+        os.remove(vcf_snps_fpath)
+    vcf_snps_file = open(vcf_snps_fpath, 'a')
+    vcf_file = vcf.Writer(vcf_snps_file, vcf_temp)
+    os.remove(vcf_temp_fpath)
     nothing_aligned = True
+
     #Go through each header in reference file
     for num, (ref, value) in enumerate(regions.iteritems()):
-        if num == 0:
-            vcf_snps_fpath = nucmer_fpath + '.vcf'
-        else:
-            vcf_snps_fpath = nucmer_fpath + '_%s.vcf' % num
-        vcf_snps_file = open(vcf_snps_fpath, 'w')
-        vcf_template = open(vcf_temp_fpath, 'w')
-        print >> vcf_template, '##fileformat=VCFv4.0'
-        print >> vcf_template, '##filedate=%s' % datetime.datetime.now().strftime('%Y/%m/%d')
-        print >> vcf_template, '##reference=%s' % ref
-        print >> vcf_template, '#CHROM        POS     REF ALT'
-        vcf_template.close()
-        vcf_temp = vcf.Reader(open(vcf_temp_fpath))
-        vcf_file = vcf.Writer(vcf_snps_file, vcf_temp)
         #Check to make sure this reference ID contains aligns.
         if ref not in ref_aligns:
             print >> planta_out_f, 'ERROR: Reference %s does not have any alignments!  Check that this is the same file used for alignment.' % ref
@@ -1390,11 +1391,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 cur_indel = 0
 
                 print >> planta_out_f
-            vcf_snps_file.close()
-        os.remove(vcf_temp_fpath)
     else:
         nothing_aligned = False
 
+    vcf_snps_file.close()
     ##### getting results from Plantagora's algorithm
     SNPs = total_indels_info.mismatches
     indels_list = total_indels_info.indels_list
