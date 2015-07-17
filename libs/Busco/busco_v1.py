@@ -587,9 +587,10 @@ def do(f_args, output_dir):
         for i in files:
             f = open(join(mainout, 'augustus/%s' % i))
             if i.endswith('.out'):
-                out = open('%saugustus_proteins/%s.fas' % (mainout, i[:-4]), 'w')
+                extract_fpath = '%saugustus_proteins/%s.fas' % (mainout, i[:-4])
             elif i.endswith(('.1', '.2', '.3')):
-                out = open('%saugustus_proteins/%s.fas.%s' % (mainout, i[:-6], i[-1]), 'w')
+                extract_fpath = '%saugustus_proteins/%s.fas.%s' % (mainout, i[:-6], i[-1])
+            out = open(extract_fpath, 'w')
             count = 0
             tr = 0
             for line in f:
@@ -616,8 +617,9 @@ def do(f_args, output_dir):
                         if line[-1] == ']':
                             line = line[:-1]
                         out.write(line)
-        out.close()
-
+            out.close()
+            if os.path.getsize(extract_fpath) == 0:
+                os.remove(extract_fpath)
 
     #Run HMMer (genome mode)
     if mode == 'genome' or mode == 'hmmer':
