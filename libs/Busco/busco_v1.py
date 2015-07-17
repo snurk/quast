@@ -1091,8 +1091,8 @@ def do(f_args, output_dir):
                            assembly_name, join(augustus_short_dirpath, 'config/'),
                            prokaryotic))  # create new species config file from template
             qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
-            cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s --stopCodonExcludedFromCDS=false ' % (
-                assembly_name, mainout, assembly_name))  # train on new training set (complete single copy buscos
+            cmd = august_fpath('etraining') + (' --species=%s %straining_set_%s --stopCodonExcludedFromCDS=false  --AUGUSTUS_CONFIG_PATH=%s ' % (
+                assembly_name, mainout, assembly_name, join(augustus_short_dirpath, 'config/')))  # train on new training set (complete single copy buscos
             return_code = qutils.call_subprocess(shlex.split(cmd), stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
 
         if args['long']:
