@@ -143,10 +143,12 @@ def _handle_fasta(contigs_fpath, corr_fpath, reporting):
             logger.warning("Skipping %s because it doesn't contain contigs >= %d bp."
                     % (qutils.label_from_fpath(corr_fpath), qconfig.min_contig))
             return False
-
+    else:
+        lengths = fastaparser.get_lengths_from_fastafile(contigs_fpath)
     ## filling column "Assembly" with names of assemblies
     report = reporting.get(corr_fpath)
-    report.add_field(reporting.Fields.CHAFFCONTIG_PERCENT,('%.2f' % (sum(l for l in lengths if l < qconfig.min_contig)*100.0 / float(sum(lengths)))))
+    if not qconfig.no_check_meta:
+        report.add_field(reporting.Fields.CHAFFCONTIG_PERCENT,('%.2f' % (sum(l for l in lengths if l < qconfig.min_contig)*100.0 / float(sum(lengths)))))
 
     ## filling columns "Number of contigs >=110 bp", ">=200 bp", ">=500 bp"
     report.add_field(reporting.Fields.CONTIGS__FOR_THRESHOLDS,
