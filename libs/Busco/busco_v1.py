@@ -266,15 +266,15 @@ def do(f_args, output_dir):
         except:
             pass
 
-    def extract(path, group):
+    def extract(path, group, type):
         count = 0
+        f = open('%saugustus/%s' % (path, group))
         if group.endswith(('.1', '.2', '.3')):
-            f = open('%saugustus/%s' % (path, group))
-            out = open('%saugustus_proteins/%s.fas.%s' % (path, group[:-6], group[-1]), 'w')
+            extract_fpath = '%saugustus_proteins/%s.fas.%s' % (path, group[:-6], group[-1])
         else:
-            f = open('%saugustus/%s.out' % (path, group))
-            out = open('%saugustus_proteins/%s.fas' % (path, group), 'w')
+            extract_fpath = '%saugustus_proteins/%s.fas' % (path, group[:-4])
         check = 0
+        out = open(extract_fpath, 'w')
         while True:
             line = f.readline()
             if not line:
@@ -286,7 +286,7 @@ def do(f_args, output_dir):
             elif line.startswith('# protein'):
                 line = line.strip().split('[')
                 count += 1
-                out.write('>p%s[%s:%s-%s]\n' % (count, places[0], places[1], places[2]))
+                out.write('>%s%s[%s:%s-%s]\n' % (type, count, places[0], places[1], places[2]))
                 if line[1][-1] == ']':
                     line[1] = line[1][:-1]
                 out.write(line[1])
@@ -301,6 +301,8 @@ def do(f_args, output_dir):
                         line = line[:-1]
                     out.write(line)
         out.close()
+        if os.path.getsize(extract_fpath) == 0:
+            os.remove(extract_fpath)
 
     def disentangle(deck):
         structure = deque([deck.popleft()])
@@ -586,45 +588,11 @@ def do(f_args, output_dir):
         aug_prot_path = join(mainout, 'augustus_proteins')
         for i in files:
             cmd = sed_cmd + " \'1,3d\' %saugustus/%s" % (mainout, i)
-            #qutils.call_subprocess(shlex.split(cmd), stderr=open(err_path, 'a'))
+            qutils.call_subprocess(shlex.split(cmd), stderr=open(err_path, 'a'))
         if not os.path.exists(aug_prot_path):
             os.makedirs(aug_prot_path)
         for i in files:
-            f = open(join(mainout, 'augustus/%s' % i))
-            if i.endswith('.out'):
-                extract_fpath = '%saugustus_proteins/%s.fas' % (mainout, i[:-4])
-            elif i.endswith(('.1', '.2', '.3')):
-                extract_fpath = '%saugustus_proteins/%s.fas.%s' % (mainout, i[:-6], i[-1])
-            out = open(extract_fpath, 'w')
-            count = 0
-            tr = 0
-            for line in f:
-                if line.startswith('# start gene'):
-                    tr = 1
-                elif tr == 1:
-                    line = line.split()
-                    places = [line[0], line[3], line[4]]
-                    tr = 0
-                elif line.startswith('# protein'):
-                    line = line.strip().split('[')
-                    count += 1
-                    out.write('>g%s[%s:%s-%s]\n' % (count, places[0], places[1], places[2]))
-                    if line[1][-1] == ']':
-                        line[1] = line[1][:-1]
-                    out.write(line[1])
-                    check = 1
-                else:
-                    if line.startswith('# end'):
-                        check = 0
-                        out.write('\n')
-                    elif check == 1:
-                        line = line.split()[1]
-                        if line[-1] == ']':
-                            line = line[:-1]
-                        out.write(line)
-            out.close()
-            if os.path.getsize(extract_fpath) == 0:
-                os.remove(extract_fpath)
+            extract(mainout, i, 'g')
 
     #Run HMMer (genome mode)
     if mode == 'genome' or mode == 'hmmer':
@@ -1079,6 +1047,7 @@ def do(f_args, output_dir):
                     check = 0
                 elif check == 1:
                     out.write(line)
+            out.close()
         f.close()
         if len(chosen) > 0:
             train_set_fpath = '%straining_set_%s' % (mainout, assembly_name)
@@ -1158,7 +1127,7 @@ def do(f_args, output_dir):
                     commands.append((command, out_aug))
                     command = sed_cmd + ' \'1,3d\' %s' % (mainout + 'augustus/' + item + '.out')
                     seds.append((command, log_out))
-                    ripped.append(item)
+                    ripped.append(item + '.out')
                     command = hmmer_fpath('hmmsearch') + (
                         ' --domtblout %(output_file)s.out -Z %(db_size)s  --cpu %(cpu)s %(group_file)s.hmm %(input_file)s.fas' %
                         {'input_file': mainout + 'augustus_proteins/' + item, 'db_size': Z, 'cpu': '1',
@@ -1170,7 +1139,7 @@ def do(f_args, output_dir):
             startQueue(commands, cpus)
             startQueue(seds, cpus)
             for entry in ripped:
-                extract(mainout,entry)
+                extract(mainout, entry, 'p')
             startQueue(hammers, cpus)
 
     shutil.rmtree(join(augustus_short_dirpath, 'config/species', assembly_name), ignore_errors=True)
