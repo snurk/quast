@@ -182,7 +182,13 @@ def do(f_args, output_dir):
             'Error: Unknown mode specified * %s *, please check the documentation for valid modes.' % args['mode'])
         raise SystemExit
     flank = 5000
-
+    if mode == 'genome' or mode == 'blast':
+        size = os.path.getsize(args['genome']) / 1000
+        flank = int(size / 50)
+        if flank < 5000:
+            flank = 5000
+        elif flank > maxflank:
+            flank = maxflank
     # ------------------------------------ Argument parser END ----------------------------------------#
     def startQueue(commands, cpus):
         exitFlag = 0
@@ -349,7 +355,6 @@ def do(f_args, output_dir):
     #---------------------------BLAST steps START -------------------------------------------#
 
     #Make a blast database and run tblastn
-
 
     if mode == 'genome' or mode == 'blast' or mode == 'trans':
         logger.debug('  ' + qutils.index_to_str(index) + 'Running tBlastN')
