@@ -1,37 +1,4 @@
 
-function showPlotWithInfo(info) {
-    var newSeries = [];
-    var newColors = [];
-
-    $('#legend-placeholder').find('input:checked').each(function() {
-        var number = $(this).attr('name');
-        if (number && info.series && info.series.length > 0) {
-            var i = 0;
-            do {
-                var series = info.series[i];
-                i++;
-            } while (i <= info.series.length && (series == null || series.number != number));
-            //
-            if (i <= info.series.length) {
-                newSeries.push(series);
-                newColors.push(series.color);
-            } else {
-                console.log('no series with number ' + number);
-            }
-        }
-    });
-
-    if (newSeries.length === 0) {
-        newSeries.push({
-            data: [],
-        });
-        newColors.push('#FFF');
-    }
-
-    info.showWithData(newSeries, newColors);
-}
-
-
 function buildReport() {
     var assembliesNames;
     var order;
@@ -52,64 +19,8 @@ function buildReport() {
     var glossary = JSON.parse($('#glossary-json').html());
 
     var plotsSwitchesDiv = document.getElementById('plots-switches');
-    var plotPlaceholder = document.getElementById('plot-placeholder');
-    var legendPlaceholder = document.getElementById('legend-placeholder');
-    var scalePlaceholder = document.getElementById('scale-placeholder');
-
-    function getToggleFunction(name, title, drawPlot, data, refPlotValue, tickX) {
-        return function() {
-            this.parentNode.getElementsByClassName('selected-switch')[0].className = 'plot-switch dotted-link';
-            this.className = 'plot-switch selected-switch';
-            togglePlots(name, title, drawPlot, data, refPlotValue, tickX)
-        };
-    }
-
     var toRemoveRefLabel = true;
-    function togglePlots(name, title, drawPlot, data, refPlotValue, tickX) {
-        if (name === 'cumulative') {
-            $(plotPlaceholder).addClass('cumulative-plot-placeholder');
-        } else {
-            $(plotPlaceholder).removeClass('cumulative-plot-placeholder');
-        }
-
-        var el = $('#reference-label');
-        el.remove();
-
-        if (refPlotValue) {
-            $('#legend-placeholder').append(
-                '<div id="reference-label">' +
-                    '<label for="label_' + assembliesNames.length + '_id" style="color: #000000;">' +
-                    '<input type="checkbox" name="' + assembliesNames.length +
-                    '" checked="checked" id="label_' + assembliesNames.length +
-                    '_id">&nbsp;' + 'reference,&nbsp;' +
-                    toPrettyString(refPlotValue) +
-                    '</label>' +
-                    '</div>'
-            );
-        }
-
-        drawPlot(name, title, colors, assembliesNames, data, refPlotValue, tickX,
-            plotPlaceholder, legendPlaceholder, glossary, order, scalePlaceholder);
-    }
-
     var firstPlot = true;
-    function makePlot(name, title, drawPlot, data, refPlotValue, tickX) {
-        var switchSpan = document.createElement('span');
-        switchSpan.id = name + '-switch';
-        switchSpan.innerHTML = title;
-        plotsSwitchesDiv.appendChild(switchSpan);
-
-        if (firstPlot) {
-            switchSpan.className = 'plot-switch selected-switch';
-            togglePlots(name, title, drawPlot, data, refPlotValue, tickX);
-            firstPlot = false;
-
-        } else {
-            switchSpan.className = 'plot-switch dotted-link';
-        }
-
-        $(switchSpan).click(getToggleFunction(name, title, drawPlot, data, refPlotValue, tickX));
-    }
 
     /****************/
     /* Total report */
@@ -151,47 +62,52 @@ function buildReport() {
         tickX = tickX.tickX;
 
     if (contigsLens = readJson('contigs-lengths')) {
-        makePlot('cumulative', 'Cumulative length', cumulative.draw, contigsLens.lists_of_lengths, refLen, tickX);
+        makePlot(firstPlot, assembliesNames, order, 'cumulative', 'Cumulative length', cumulative.draw, contigsLens.lists_of_lengths, refLen, tickX);
+        firstPlot = false;
     }
 
     if (coordNx = readJson('coord-nx')) {
-        makePlot('nx', 'Nx', nx.draw, {
+        makePlot(firstPlot, assembliesNames, order, 'nx', 'Nx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
                 filenames: coordNx.filenames
             },
             null, null
         );
+        firstPlot = false;
     }
 
     if (coordNx = readJson('coord-nax')) {
-        makePlot('nax', 'NAx', nx.draw, {
+        makePlot(firstPlot, assembliesNames, order, 'nax', 'NAx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
                 filenames: coordNx.filenames
             },
             null, null
         );
+        firstPlot = false;
     }
 
     if (coordNx = readJson('coord-ngx')) {
-        makePlot('ngx', 'NGx', nx.draw, {
+        makePlot(firstPlot, assembliesNames, order, 'ngx', 'NGx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
                 filenames: coordNx.filenames
             },
             null, null
         );
+        firstPlot = false;
     }
 
     if (coordNx = readJson('coord-ngax')) {
-        makePlot('ngax', 'NGAx', nx.draw, {
+        makePlot(firstPlot, assembliesNames, order, 'ngax', 'NGAx', nx.draw, {
                 coord_x: coordNx.coord_x,
                 coord_y: coordNx.coord_y,
                 filenames: coordNx.filenames
             },
             null, null
         );
+        firstPlot = false;
     }
 
 
@@ -201,26 +117,28 @@ function buildReport() {
 //        contigs = readJson('contigs');
 
     if (genesInContigs) {
-        makePlot('genes', 'Genes', gns.draw,  {
+        makePlot(firstPlot, assembliesNames, order, 'genes', 'Genes', gns.draw,  {
                 filesFeatureInContigs: genesInContigs.genes_in_contigs,
                 kind: 'gene',
                 filenames: genesInContigs.filenames
             },
             genesInContigs.ref_genes_number, tickX
         );
+        firstPlot = false;
     }
     if (operonsInContigs) {
-        makePlot('operons', 'Operons', gns.draw, {
+        makePlot(firstPlot, assembliesNames, order, 'operons', 'Operons', gns.draw, {
                 filesFeatureInContigs: operonsInContigs.operons_in_contigs,
                 kind: 'operon',
                 filenames: operonsInContigs.filenames
             },
             operonsInContigs.ref_operons_number, tickX
         );
+        firstPlot = false;
     }
 
     if (gcInfos = readJson('gc')) {
-        makePlot('gc', 'GC content', gc.draw, gcInfos, null);
+        makePlot(firstPlot, assembliesNames, order, 'gc', 'GC content', gc.draw, gcInfos, null);
     }
 
     return 0;
