@@ -183,7 +183,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
                     ', L50 = ' + str(l50) + \
                     ', Total length = ' + str(total_length) + \
                     ', GC % = ' + ('%.2f' % total_GC if total_GC is not None else 'undefined') + \
-                    ', # N\'s per 100 kbp = ' + ' %.2f' % (float(number_of_Ns) * 100000.0 / float(total_length)) )
+                    ', # N\'s per 100 kbp = ' + ' %.2f' % (float(number_of_Ns) * 100000.0 / float(total_length)) if total_length != 0 else 'undefined')
         
         report.add_field(reporting.Fields.N50, n50)
         report.add_field(reporting.Fields.L50, l50)
@@ -196,12 +196,13 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
             report.add_field(reporting.Fields.NG75, ng75)
             report.add_field(reporting.Fields.LG75, lg75)
         report.add_field(reporting.Fields.CONTIGS, len(lengths_list))
-        report.add_field(reporting.Fields.LARGCONTIG, max(lengths_list))
-        largest_contig = max(largest_contig, max(lengths_list))
-        report.add_field(reporting.Fields.TOTALLEN, total_length)
-        report.add_field(reporting.Fields.GC, ('%.2f' % total_GC if total_GC is not None else None))
-        report.add_field(reporting.Fields.UNCALLED, number_of_Ns)
-        report.add_field(reporting.Fields.UNCALLED_PERCENT, ('%.2f' % (float(number_of_Ns) * 100000.0 / float(total_length))))
+        if lengths_list:
+            report.add_field(reporting.Fields.LARGCONTIG, max(lengths_list))
+            largest_contig = max(largest_contig, max(lengths_list))
+            report.add_field(reporting.Fields.TOTALLEN, total_length)
+            report.add_field(reporting.Fields.GC, ('%.2f' % total_GC if total_GC is not None else None))
+            report.add_field(reporting.Fields.UNCALLED, number_of_Ns)
+            report.add_field(reporting.Fields.UNCALLED_PERCENT, ('%.2f' % (float(number_of_Ns) * 100000.0 / float(total_length))))
         if ref_fpath:
             report.add_field(reporting.Fields.REFLEN, int(reference_length))
             report.add_field(reporting.Fields.REFGC, '%.2f' % reference_GC)
