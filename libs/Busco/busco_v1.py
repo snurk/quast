@@ -1140,10 +1140,10 @@ def do(f_args, output_dir):
             ###retraining and running over
             startQueue(commands, cpus)
             startQueue(seds, cpus)
+            extracted_files = [True for entry in ripped]
             for index, entry in enumerate(ripped):
-                was_extracted = extract(mainout, entry, 'p')
-                if not was_extracted:
-                    hammers.remove(hammers[index])
+                extracted_files[index] = extract(mainout, entry, 'p')
+            hammers = [hammers[i] for i in range(len(hammers)) if extracted_files[i]]
             startQueue(hammers, cpus)
 
     shutil.rmtree(join(augustus_short_dirpath, 'config/species', assembly_name), ignore_errors=True)
