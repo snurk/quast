@@ -217,6 +217,10 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     json_vals_y = []
 
     for id, (contigs_fpath, lengths) in enumerate(itertools.izip(contigs_fpaths, lists_of_lengths)):
+        if not lengths:
+            json_vals_x.append([])
+            json_vals_y.append([])
+            continue
         vals_x = [0.0]
         vals_y = [lengths[0]]
         lengths.sort(reverse=True)
@@ -649,6 +653,8 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
     ymax = 0
     arr_x = range(1, refs_num + 1)
     bar_width = 0.3
+    json_points_x = []
+    json_points_y = []
 
     for j in range(refs_num):
         ymax_j = 0
@@ -661,19 +667,25 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
                 ax.bar(arr_x[j], to_plot[0], width=bar_width, color=colors[type_misassembly])
                 legend_n.append(type_misassembly)
                 ymax_j = float(to_plot[0])
+                json_points_x.append(arr_x[j])
+                json_points_y.append(to_plot[0])
             type_misassembly += 1
         for i in range(type_misassembly, len(misassemblies)):
             result = results[i][j][contig_num]
             if result and result != '-':
                 to_plot.append(float(result))
-                ax.bar(arr_x[j], to_plot[-1], width=bar_width, color=colors[i], bottom = sum(to_plot[:-1]))
+                ax.bar(arr_x[j], to_plot[-1], width=bar_width, color=colors[i], bottom=sum(to_plot[:-1]))
                 legend_n.append(i)
                 ymax_j += float(to_plot[-1])
+                json_points_x.append(arr_x[j])
+                json_points_y.append(to_plot[-1])
         if to_plot:
             ymax = max(ymax, ymax_j)
             refs.append(ref_names[j])
         else:
             arr_x.insert(j, None)
+            json_points_x.append(j)
+            json_points_y.append(None)
 
     matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
     legend_n = set(legend_n)
@@ -695,6 +707,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
     matplotlib.pyplot.tight_layout()
     matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
     logger.info('    saved to ' + plot_fpath)
+    return json_points_x, json_points_y
 
 
 # Quast misassemblies by types plot (for all assemblies)
