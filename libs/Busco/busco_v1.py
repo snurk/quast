@@ -143,7 +143,7 @@ def do(f_args, output_dir):
                 maxflank = 5000
             elif clade.startswith(('eu', 'Eu', 'E')):
                 clade = 'eukaryota'
-                maxflank = 20000
+                maxflank = 40000
             clade_name = clade.strip('/').split('/')[-1].lower()
             if clade_name in valid_clade_info:
                 Z = valid_clade_info[clade_name]
@@ -303,6 +303,8 @@ def do(f_args, output_dir):
         out.close()
         if os.path.getsize(extract_fpath) == 0:
             os.remove(extract_fpath)
+            return False
+        return True
 
     def disentangle(deck):
         structure = deque([deck.popleft()])
@@ -1138,8 +1140,10 @@ def do(f_args, output_dir):
             ###retraining and running over
             startQueue(commands, cpus)
             startQueue(seds, cpus)
-            for entry in ripped:
-                extract(mainout, entry, 'p')
+            for index, entry in enumerate(ripped):
+                was_extracted = extract(mainout, entry, 'p')
+                if not was_extracted:
+                    hammers.remove(hammers[index])
             startQueue(hammers, cpus)
 
     shutil.rmtree(join(augustus_short_dirpath, 'config/species', assembly_name), ignore_errors=True)
