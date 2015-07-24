@@ -438,6 +438,8 @@ THE SOFTWARE.
     display();
 
     function display() {
+        x_main = d3.scale.linear()
+            .range([0, chartWidth]);
         var rects
                 , minExtent = Math.max(brush.extent()[0], x_mini.domain()[0])
                 , maxExtent = Math.min(brush.extent()[1], x_mini.domain()[1])
@@ -516,23 +518,28 @@ THE SOFTWARE.
                     return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
                 });
 
-        rects.select('.S')
-                .attr('width', function (d) {
-                    return Math.max(x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
-                });
-
         rects.select('.R')
+                .attr('transform',  function (d) {
+                    if (d.id == selected_id){return 'translate(1,1)';}
+                })
                 .attr('width', function (d) {
-                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
-                });
-
-        rects.select('.S')
-                .attr('opacity', function (d) {
-                    return (d.id == selected_id ? .5 : 0);
+                    var w = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                    return (d.id == selected_id ? Math.max(w - 2, .5) : w);
+                })
+                .attr('height', function (d) {
+                    return (d.id == selected_id ? mainLanesHegiht - 4 : mainLanesHegiht);
+                })
+                .attr('stroke', 'black')
+                .attr('stroke-width', function (d) {
+                    return (d.id == selected_id ? 2 : 0);
+                })
+                .attr('stroke-opacity', function (d) {
+                    return (d.id == selected_id ? 1 : 0);
                 });
 
         rects.select('text')
                 .text(visibleText);
+        rects.exit().remove();
 
         var other = rects.enter().append('g')
                 .attr('class', function (d) {
@@ -552,30 +559,26 @@ THE SOFTWARE.
 
         other.append('rect')
                 .attr('class', 'R')
+                .attr('transform',  function (d) {
+                    if (d.id == selected_id){return 'translate(2,2)';}
+                })
                 .attr('width', function (d) {
-                    return x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                    var w = x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start));
+                    return (d.id == selected_id ? Math.max(w - 2, .5) : w);
                 })
                 .attr('height', function (d) {
-                    return mainLanesHegiht;
-                });
-
-        other.append('rect')
-                .attr('transform', 'translate(2, 2)')
-                .attr('class', 'S')
-                .attr('width', function (d) {
-                    return Math.max(x_main(Math.min(maxExtent, d.end)) - x_main(Math.max(minExtent, d.start)) - 4, 0);
+                    return (d.id == selected_id ? mainLanesHegiht - 4 : mainLanesHegiht);
                 })
-                .attr('height', function (d) {
-                    return mainLanesHegiht - 4;
+                .attr('stroke', 'black')
+                .attr('stroke-width', function (d) {
+                    return (d.id == selected_id ? 2 : 0);
                 })
-                .attr('opacity', function (d) {
-                    return (d.id == selected_id ? .5 : 0);
+                .attr('stroke-opacity', function (d) {
+                    return (d.id == selected_id ? 1 : 0);
                 });
 
         other.on('click', function A(d, i) {
-            if (prev) prev.transition().attr('opacity', 0);
             selected_id = d.id;
-            prev = d3.select(this).select('.S').transition().attr('opacity', .5);
             changeInfo(d);
         })
                 .on('mouseenter', glow)
@@ -586,8 +589,6 @@ THE SOFTWARE.
                 .attr('text-anchor', 'start')
                 .attr('class', 'itemLabel')
                 .attr('transform', 'translate(10, ' + 20 + ')');
-
-        rects.exit().remove();
 
         // upd coverage
         if (typeof coverage_data != 'undefined') {
