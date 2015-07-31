@@ -224,6 +224,7 @@ def do(f_args, output_dir):
         for tName in threadList:
             mark += 1
             thread = myThread(threadID, tName, workQueue)
+            thread.daemon = True
             thread.start()
             threads.append(thread)
             threadID += 1
