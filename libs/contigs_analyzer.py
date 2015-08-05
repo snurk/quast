@@ -444,7 +444,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             if len(l) > 10 and not line.startswith('#'):
                 align1 = Mapping(s1=int(l[1]), e1=int(l[2]), ref=l[0], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
                 align2 = Mapping(s1=int(l[4]), e1=int(l[5]),  ref=l[3], s2=None, e2=None, len1=None, len2=None, idy=None, contig=None)
-                if 'INV' in l[10]:
+                if 'INV' in l[8]:
                     region_struct_variations.inversions.append((align1, align2))
                 elif l[0] != l[3]:  # different chromosomes
                     region_struct_variations.translocations.append((align1, align2))

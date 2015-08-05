@@ -1,0 +1,656 @@
+<p><link rel='stylesheet' href='userGuide.css' /></p>
+
+<h1 id="toc_0">Manta User Guide</h1>
+
+<p>Version: 0.27.0</p>
+
+<script src="tableOfContents.js"></script>
+
+<h2 id="toc_1">Introduction</h2>
+
+<p>Manta calls structural variants (SVs) and indels from mapped
+paired-end sequencing reads. It is optimized for analysis of
+individuals and tumor/normal sample pairs, calling SVs, medium-sized
+indels and large insertions within a single workflow. The method is
+designed for rapid analysis on standard compute hardware: NA12878 at
+50x genomic coverage is analyzed in less than 20 minutes on a 20 core
+server, most WGS tumor-normal analyses can be completed within 2
+hours. Manta combines paired and split-read evidence during SV
+discovery and scoring to improve accuracy, but does not require
+split-reads or successful breakpoint assemblies to report a variant in
+cases where there is strong evidence otherwise. It provides scoring
+models for germline variants in individual diploid samples and somatic
+variants in matched tumor-normal sample pairs.</p>
+
+<h2 id="toc_2">Method Overview</h2>
+
+<p>Manta divides the SV and indel discovery process into two primary
+steps: (1) scanning the genome to find SV associated regions and (2)
+analysis, scoring and output of SVs found in such regions.</p>
+
+<ol>
+<li><p><strong>Build SV association graph</strong> In this step the entire genome is
+scanned to discover evidence of possible SVs and large indels. This
+evidence is enumerated into a graph with edges connecting all regions
+of the genome which have a possible SV association. Edges may connect
+two different regions of the genome to represent evidence of a
+long-range association, or an edge may connect a region to itself to
+capture a local indel/small SV association. Note that these
+associations are more general than a specific SV hypothesis, in that
+many SV candidates may be found on one edge, although typically only
+one or two candidates are found per edge.</p></li>
+<li><p><strong>Analyze graph edges to find SVs</strong> The second step is to analyze
+individual graph edges or groups of highly connected edges to discover
+and score SVs associated with the edge(s). The substeps of this
+process include inference of SV candidates associated with the edge,
+attempted assembly of the SVs breakends, scoring and filtration of the
+SV under various biological models (currently diploid germline and
+somatic), and finally, output to VCF.</p></li>
+</ol>
+
+<h2 id="toc_3">Capabilities</h2>
+
+<p>Manta is capable of detecting all structural variant types which are
+identifiable in the absence of copy number analysis and large-scale
+de-novo assembly. Detectable types are enumerated further below.</p>
+
+<p>For each structural variant and indel, Manta attempts to assemble the
+breakends to basepair resolution and report the left-shifted breakend
+coordinate (per the <a href="http://www.1000genomes.org/wiki/Analysis/Variant%20Call%20Format/vcf-variant-call-format-version-41">VCF 4.1</a> SV reporting guidelines), together
+with the any breakend homology sequence and/or inserted sequence
+between the breakends. It is often the case that the assembly will
+fail to provide a confident explanation of the data -- in such cases
+the variant will be reported as <code>IMPRECISE</code>, and scored according the
+paired-end read evidence alone.</p>
+
+<p>The sequencing reads provided as input to Manta are expected to be
+from a paired-end sequencing assay which results in an <q>innie</q>
+orientation between the two reads of each sequence fragment, each
+presenting a read from the outer edge of the fragment insert inward.</p>
+
+<p>Manta is primarily tested for whole genome DNA-Seq experiments of
+single diploid samples or subtractive analysis of a matched
+tumor/normal sample pair.  There is some support for other use cases
+(details for each case are included below):</p>
+
+<ul>
+<li>For exome or other targeted sequencing experiments, the workflow can
+be configured with the <code>--exome</code> flag to set filtration levels more
+appropriate for this case.</li>
+<li>Tumor samples can be analyzed without a matched normal sample. In
+this case no scoring function is available, but the supporting
+evidence counts and many filters can still be usefully applied.</li>
+<li>RNA-Seq analysis can be configured with the <code>--rna</code> flag to also
+adjust filtration levels and take other RNA-specific filtration and
+intron handling steps.</li>
+</ul>
+
+<h3 id="toc_4">Detected variant classes</h3>
+
+<p>Manta is able to detect all variation classes which can be explained
+as novel DNA adjacencies in the genome. Simple insertion/deletion
+events can be detected down to a configurable minimum size cutoff
+(defaulting to 8). All DNA adjacencies are classified into the
+following categories based on the breakend pattern:</p>
+
+<ul>
+<li>Deletions</li>
+<li>Insertions
+
+<ul>
+<li>Fully-assembled insertions</li>
+<li>Partially-assembled (ie. inferred) insertions</li>
+</ul></li>
+<li>Inversions</li>
+<li>Tandem Duplications</li>
+<li>Interchromosomal Translocations</li>
+</ul>
+
+<h3 id="toc_5">Known Limitations</h3>
+
+<p>Manta should not be able to detect the following variant types:</p>
+
+<ul>
+<li>Dispersed duplications</li>
+<li>Most expansion/contraction variants of a reference tandem repeat</li>
+<li>Small inversions
+
+<ul>
+<li>The limiting size is not tested, but in theory detection falls off
+below ~200bases. So-called micro-inversions might be detected indirectly as
+combined insertion/deletion variants.</li>
+</ul></li>
+<li>Fully-assembled large insertions
+
+<ul>
+<li>The maximum fully-assembled insertion size should correspond to
+approximately twice the read-pair fragment size, but note that power to fully
+assemble the insertion should fall off to impractical levels before this
+size</li>
+<li>Note that manta does detect and report very large insertions
+when the breakend signature of such an event is found, even though
+the inserted sequence cannot be fully assembled.</li>
+</ul></li>
+</ul>
+
+<p>More general repeat-based limitations exist for all variant types:</p>
+
+<ul>
+<li>Power to assemble variants to breakend resolution falls to zero as
+breakend repeat length approaches the read size.</li>
+<li>Power to detect any breakend falls to (nearly) zero as the breakend
+repeat length approaches the fragment size.</li>
+</ul>
+
+<p>Note that while Manta classifies novel DNA-adjacencies, it does not
+infer the higher level constructs implied by the classification. For
+instance, a variant marked as a deletion by manta indicates an
+intrachromosomal translocation with a deletion-like breakend pattern,
+however there is no test of depth, b-allele frequency or intersecting
+adjacencies to directly infer the SV type.</p>
+
+<h2 id="toc_6">Input requirements</h2>
+
+<p>The sequencing reads provided as input to Manta are expected to be
+from a paired-end sequencing assay with an <q>innie</q> orientation between
+the two reads of each DNA fragment, each presenting a read from the
+outer edge of the fragment insert inward.</p>
+
+<p>Manta can tolerate non-paired reads in the input, so long as
+sufficient paired-end reads exist to estimate the paired fragment size
+distribution. Non-paired reads will still be used in discovery,
+assembly and split-read scoring if their alignments (or SA tag split
+alignments) support a large indel or SV, or mismatch/clipping suggests
+a possible breakend location.</p>
+
+<p>Manta requires input sequencing reads to be mapped by an external tool
+and provided as input in BAM format.</p>
+
+<p>At configuration time, at least one BAM file must be provided for the
+normal sample. A matched tumor sample can optionally be provided as
+well. If multiple input files are provided for the normal or tumor
+sample, these are merged and treated as a single normal or tumor
+sample.</p>
+
+<p>The following limitations exist on the input BAM files provided to
+Manta:</p>
+
+<ul>
+<li>Alignments cannot contain the <q>=</q> character in the SEQ field.</li>
+<li>Alignments cannot use the sequence match/mismatch (<q>=</q>/<q>X</q>) CIGAR notation</li>
+<li>RG (read group) tags in the alignment records are ignored -- each file will be
+treated as representing one sample.</li>
+<li>Alignments with basecall quality values greater than 70 are rejected (these
+are not supported on the assumption that this indicates an offset error)</li>
+</ul>
+
+<h2 id="toc_7">Outputs</h2>
+
+<h3 id="toc_8">Structural Variant predictions</h3>
+
+<p>The primary Manta outputs are a set of <a href="http://www.1000genomes.org/wiki/Analysis/Variant%20Call%20Format/vcf-variant-call-format-version-41">VCF 4.1</a> files, found in
+<code>${MANTA_ANALYSIS_PATH}/results/variants</code>. Currently there are
+3 VCF files created for a germline analysis, and an additional somatic
+VCF is produced for a tumor/normal subtraction. These files are:</p>
+
+<ul>
+<li><strong>diploidSV.vcf.gz</strong>
+
+<ul>
+<li>SVs and indels scored and genotyped under a diploid model for the normal
+sample. The scores in this file do not reflect any information in the tumor
+BAMs</li>
+</ul></li>
+<li><strong>somaticSV.vcf.gz</strong>
+
+<ul>
+<li>SVs and indels scored under a somatic variant model. This file
+will only be produced if at least one tumor BAM argument is supplied during
+configuration</li>
+</ul></li>
+<li><strong>candidateSV.vcf.gz</strong>
+
+<ul>
+<li>Unscored SV and indel candidates. Only a minimal amount of supporting
+evidence is required for an SV to be entered as a candidate. An SV or indel
+must be a candidate to be considered for scoring, therefore an SV cannot
+appear in the other VCF outputs if it is not present in this file. Note that
+by default this file includes indels down to a very small size (&gt;= 8 bases).
+These are intended to be passed on to a small variant caller without scoring
+by manta itself (by default manta scoring starts at size 51).</li>
+</ul></li>
+<li><strong>candidateSmallIndels.vcf.gz</strong>
+
+<ul>
+<li>Subset of the candidateSV.vcf.gz file containing only simple insertion and
+deletion variants of size 50 or less. Passing this file to a small variant caller
+like strelka or starling (Isaac Variant Caller) will provide continuous
+coverage over all indel sizes when the small variant caller and manta outputs are
+evaluated together. Alternate small indel candidate sets can be parted out of the
+candidateSV.vcf.gz file if this candidate set is not appropriate.</li>
+</ul></li>
+</ul>
+
+<p>For tumor-only analysis, Manta will produce an additional VCF:</p>
+
+<ul>
+<li><strong>tumorSV.vcf.gz</strong>
+
+<ul>
+<li>Unscored SV and indel candidates (same content as the <strong>candidateSV.vcf.gz</strong> above),
+but including additional details: (1) paired and split read supporting evidence counts
+for each allele (2) a subset of the filters from the scored tumor-normal model
+are applied to the single tumor case to improve precision.</li>
+</ul></li>
+</ul>
+
+<h3 id="toc_9">Manta VCF reporting format</h3>
+
+<p>Manta VCF output follows the VCF 4.1 spec for describing structural
+variants, and uses standard field names whereever possible. All custom
+fields are described in the VCF header.  The section below highlights
+some of the variant representation details and lists the primary VCF
+field values.</p>
+
+<h4>Small indels</h4>
+
+<p>All variants are reported in the VCF using symbolic alleles unless
+they are classified as a small indel, in which case full sequences are
+provided for the VCF <code>REF</code> and <code>ALT</code> allele fields. A variant is
+classified as a small indel if all of these criteria are met:</p>
+
+<ul>
+<li>The variant can be entirely expressed as a combination of inserted and deleted sequence.</li>
+<li>The deletion or insertion length is not 1000 or greater.</li>
+<li>The variant breakends and/or the inserted sequence are not imprecise.</li>
+</ul>
+
+<p>When VCF records are printed in the small indel format, they will also include
+the <code>CIGAR</code> INFO tag describing the combined insertion and deletion event.</p>
+
+<h4>Insertions with incomplete insert sequence assembly</h4>
+
+<p>Large insertions are reported in some cases even when the insert
+sequence cannot be fully assembled.  In this case Manta reports the
+insertion using the <code>&lt;INS&gt;</code> symbolic allele and includes the special
+INFO fields <code>LEFT_SVINSSEQ</code> and <code>RIGHT_SVINSSEQ</code> to describe the
+assembled left and right ends of the insert sequence. The following is
+an example of such a record:</p>
+
+<pre><code>chr1    11830208        MantaINS:714:0:0:0:3:0  T       &lt;INS&gt;   1497    PASS    END=11830208;SVTYPE=INS;CIPOS=0,12;CIEND=0,12;HOMLEN=12;HOMSEQ=TAAATTTTTCTT;LEFT_SVINSSEQ=TAAATTTTTCTTTTTTCTTTTTTTTTTAAATTTATTTTTTTATTGATAATTCTTGGGTGTTTCTCACAGAGGGGGATTTGGCAGGGTCACGGGACAACAGTGGAGGGAAGGTCAGCAGACAAACAAGTGAACAAAGGTCTCTGGT;RIGHT_SVINSSEQ=CCAGGCAGAGACGCTCCTCACTTCCTAGATGTGATGGCGGCTGGGAAGAGGCGCTCCTCACTTCCTAGATGGGACGGCGGCCGGGCGGAGACGCTCCTCACTTTCCAGACTGGGCAGCCAGGCAGAGGGGCTCCTCACATCCCAGACGATGGGCGGCCAGGCAGAGACACTCCCCACTTCCCAGACGGGGTGGCGGCCGGGCAGAGGCTGCAATCTCGGCACTTTGGGAGGCCAAGGCAGGCGGCTGCTCCTTGCCCTCGGGCCCCGCGGGGCCCGTCCGCTCCTCCAGCCGCTGCCTCC    GT:GQ:PR:SR      0/1:1497:22,13:22,32
+</code></pre>
+
+<h4>VCF INFO Fields</h4>
+
+<table><thead>
+<tr>
+<th>ID</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>IMPRECISE</td>
+<td>Flag indicating that the structural variation is imprecise, i.e. the exact breakpoint location is not found</td>
+</tr>
+<tr>
+<td>SVTYPE</td>
+<td>Type of structural variant</td>
+</tr>
+<tr>
+<td>SVLEN</td>
+<td>Difference in length between REF and ALT alleles</td>
+</tr>
+<tr>
+<td>END</td>
+<td>End position of the variant described in this record</td>
+</tr>
+<tr>
+<td>CIPOS</td>
+<td>Confidence interval around POS</td>
+</tr>
+<tr>
+<td>CIEND</td>
+<td>Confidence interval around END</td>
+</tr>
+<tr>
+<td>CIGAR</td>
+<td>CIGAR alignment for each alternate indel allele</td>
+</tr>
+<tr>
+<td>MATEID</td>
+<td>ID of mate breakend</td>
+</tr>
+<tr>
+<td>EVENT</td>
+<td>ID of event associated to breakend</td>
+</tr>
+<tr>
+<td>HOMLEN</td>
+<td>Length of base pair identical homology at event breakpoints</td>
+</tr>
+<tr>
+<td>HOMSEQ</td>
+<td>Sequence of base pair identical homology at event breakpoints</td>
+</tr>
+<tr>
+<td>SVINSLEN</td>
+<td>Length of insertion</td>
+</tr>
+<tr>
+<td>SVINSSEQ</td>
+<td>Sequence of insertion</td>
+</tr>
+<tr>
+<td>LEFT_SVINSSEQ</td>
+<td>Known left side of insertion for an insertion of unknown length</td>
+</tr>
+<tr>
+<td>RIGHT_SVINSSEQ</td>
+<td>Known right side of insertion for an insertion of unknown length</td>
+</tr>
+<tr>
+<td>INV3</td>
+<td>Flag indicating that inversion breakends open 3&#39; of reported location</td>
+</tr>
+<tr>
+<td>INV5</td>
+<td>Flag indicating that inversion breakends open 5&#39; of reported location</td>
+</tr>
+<tr>
+<td>BND_DEPTH</td>
+<td>Read depth at local translocation breakend</td>
+</tr>
+<tr>
+<td>MATE_BND_DEPTH</td>
+<td>Read depth at remote translocation mate breakend</td>
+</tr>
+<tr>
+<td>JUNCTION_QUAL</td>
+<td>If the SV junction is part of an EVENT (ie. a multi-adjacency variant), this field provides the QUAL value for the adjacency in question only</td>
+</tr>
+<tr>
+<td>SOMATIC</td>
+<td>Flag indicating a somatic variant</td>
+</tr>
+<tr>
+<td>SOMATICSCORE</td>
+<td>Somatic variant quality score</td>
+</tr>
+<tr>
+<td>JUNCTION_SOMATICSCORE</td>
+<td>If the SV junction is part of an EVENT (ie. a multi-adjacency variant), this field provides the SOMATICSCORE value for the adjacency in question only</td>
+</tr>
+</tbody></table>
+
+<h4>VCF FORMAT Fields</h4>
+
+<table><thead>
+<tr>
+<th>ID</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>GT</td>
+<td>Genotype</td>
+</tr>
+<tr>
+<td>GQ</td>
+<td>Genotype Quality</td>
+</tr>
+<tr>
+<td>PR</td>
+<td>Number of spanning read pairs which strongly (Q30) support the REF or ALT alleles</td>
+</tr>
+<tr>
+<td>SR</td>
+<td>Number of split-reads which strongly (Q30) support the REF or ALT alleles</td>
+</tr>
+</tbody></table>
+
+<h4>VCF FILTER Fields</h4>
+
+<table><thead>
+<tr>
+<th>ID</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>Ploidy</td>
+<td>For DEL &amp; DUP variants, the genotypes of overlapping variants (with similar size) are inconsistent with diploid expectation</td>
+</tr>
+<tr>
+<td>MaxDepth</td>
+<td>Sample site depth is greater than 3x the mean chromosome depth near one or both variant breakends</td>
+</tr>
+<tr>
+<td>MinGQ</td>
+<td>GQ score is less than 20</td>
+</tr>
+<tr>
+<td>MaxMQ0Frac</td>
+<td>For a small variant (&lt;1000 bases), the fraction of reads with MAPQ0 around either breakend exceeds 0.4</td>
+</tr>
+<tr>
+<td>NoPairSupport</td>
+<td>For variants significantly larger than the paired read fragment size, no paired reads support the alternate allele</td>
+</tr>
+<tr>
+<td>MinSomaticScore</td>
+<td>SOMATICSCORE is less than 30</td>
+</tr>
+</tbody></table>
+
+<h3 id="toc_10">Statistics</h3>
+
+<p>Additional secondary output is provided in <code>${MANTA_ANALYSIS_PATH}/results/stats</code></p>
+
+<ul>
+<li><strong>alignmentStatsSummary.txt</strong>
+
+<ul>
+<li>fragment length quantiles for each input BAM file</li>
+</ul></li>
+<li><strong>svLocusGraphStats.tsv</strong>
+
+<ul>
+<li>statistics and runtime information pertaining to the SV locus graph</li>
+</ul></li>
+<li><strong>svCandidateGenerationStats.tsv</strong>
+
+<ul>
+<li>statistics and runtime information pertaining to the SV candidate generation</li>
+</ul></li>
+<li><strong>svCandidateGenerationStats.xml</strong>
+
+<ul>
+<li>xml data backing the svCandidateGenerationStats.tsv report </li>
+</ul></li>
+</ul>
+
+<h2 id="toc_11">Run configuration and Execution</h2>
+
+<p>Manta is run in a two step procedure: (1) configuration and (2)
+workflow execution. The configuration step is used to specify the
+input data and any options pertaining to the variant calling methods
+themselves. The execution step is used to specify any parameters
+pertaining to <u>how</u> manta is executed (such as the total number of
+cores or SGE nodes over which the jobs should be parallelized). The
+second execution step can also be interrupted and restarted without
+changing the final result of the workflow.</p>
+
+<h3 id="toc_12">Configuration</h3>
+
+<p>The workflow is configured with the script:
+<code>${MANTA_INSTALL_PATH}/bin/configManta.py</code> . Running this script with
+no arguments will display all standard configuration options to
+specify input BAM files, the reference sequence and the output run
+folder.  Note that all input BAM files and reference sequence must
+contain the same chromosome names in the same order. Manta&#39;s default
+settings assume a whole genome DNA-Seq analysis, but there are
+configuration options for exome/targeted sequencing analysis in
+addition to RNA-Seq.</p>
+
+<p>Single Diploid Sample Analysis -- Example Configuration:</p>
+
+<pre><code>${MANTA_INSTALL_PATH}/bin/configManta.py \
+--normalBam NA12878_S1.bam \
+--referenceFasta hg19.fa \
+--runDir ${MANTA_ANALYSIS_PATH}
+</code></pre>
+
+<p>Tumor Normal Analysis -- Example Configuration:</p>
+
+<pre><code>${MANTA_INSTALL_PATH}/bin/configManta.py \
+--normalBam HCC1187BL.bam \
+--tumorBam HCC1187C.bam \
+--referenceFasta hg19.fa \
+--runDir ${MANTA_ANALYSIS_PATH}
+</code></pre>
+
+<p>Tumor-Only Analysis -- Example Configuration:</p>
+
+<pre><code>${MANTA_INSTALL_PATH}/bin/configManta.py \
+--tumorBam HCC1187C.bam \
+--referenceFasta hg19.fa \
+--runDir ${MANTA_ANALYSIS_PATH}
+</code></pre>
+
+<p>On completion, the configuration script will create the workflow run
+script <code>${MANTA_ANALYSIS_PATH}/runWorkflow.py</code>. This can be used to
+run the workflow in various parallel compute modes per the
+instructions in the [Execution] section below.</p>
+
+<h4>Advanced configuration options</h4>
+
+<p>There are two sources of advanced configuration options:</p>
+
+<ul>
+<li>Options listed in the file: <code>${MANTA_INSTALL_PATH}/bin/configManta.py.ini</code>
+
+<ul>
+<li>These parameters are not expected to change frequently. Changing the file
+listed above will re-configure all manta runs for the installation. To change
+parameters for a single run, copy the configManta.py.ini file to another location,
+change the desired parameter values and supply the new file using the configuration
+script&#39;s <code>--config FILE</code> option.</li>
+</ul></li>
+<li>Advanced options listed in: <code>${MANTA_INSTALL_PATH}/bin/configManta.py --allHelp</code>
+
+<ul>
+<li>These options are indented primarily for workflow development and
+debugging, but could be useful for runtime optimization in some specialized
+cases.</li>
+</ul></li>
+</ul>
+
+<h3 id="toc_13">Execution</h3>
+
+<p>The configuration step creates a new workflow run script in the
+requested run directory:</p>
+
+<p><code>{MANTA_ANALYSIS_PATH}/runWorkflow.py</code></p>
+
+<p>This script is used to control parallel execution of Manta via the
+<a href="http://sequencing.github.io/pyflow/">pyFlow</a> task engine. It can be used to parallelize structural
+variant analysis via one of two modes:</p>
+
+<ol>
+<li>Parallelized across multiple cores on a single node.</li>
+<li>Parallelized across multiple nodes on an SGE cluster.</li>
+</ol>
+
+<p>A running workflow can be interrupted at any time and resumed where it
+left off. If desired, the resumed analysis can use a different running
+mode or total core count.</p>
+
+<p>For a full list of execution options, see:</p>
+
+<p><code>{MANTA_ANALYSIS_PATH}/runWorkflow.py -h</code></p>
+
+<p>Example execution on a single node:</p>
+
+<pre><code>${MANTA_ANALYSIS_PATH}/runWorkflow.py -m local -j 8
+</code></pre>
+
+<p>Example execution on an SGE cluster:</p>
+
+<pre><code>${MANTA_ANALYSIS_PATH}/runWorkflow.py -m sge -j 36
+</code></pre>
+
+<h4>Advanced execution options</h4>
+
+<p>These options are useful for Manta development and debugging:</p>
+
+<ul>
+<li>Stderr logging can be disabled with <code>--quiet</code> argument. Note this
+log is replicated to
+<code>${MANTA_ANALYSIS_PATH}/workspace/pyflow.data/logs/pyflow_log.txt</code>
+so there is no loss of log information.</li>
+<li>The <code>--rescore</code> option can be provided to force the workflow to
+re-execute candidates discovery and scoring, but not the initial
+graph generation steps.</li>
+</ul>
+
+<h3 id="toc_14">Use cases</h3>
+
+<h4>Exome/Targeted</h4>
+
+<p>Supplying the &#39;--exome&#39; flag at configuration time will provide
+appropriate settings for WES and other regional enrichment
+analyses. At present this flag disables all high depth filters, which
+are designed to exclude pericentromeric reference compressions in the
+WGS case but cannot be applied correctly to a targeted analysis.</p>
+
+<p>For small targeted regions, it may also be helpful to consider the
+high sensitivity calling documentation below.</p>
+
+<h4>Unpaired tumor sample</h4>
+
+<p>Manta supports SV calling for tumor sample only. The tumor-only mode 
+can be triggered by supplying a tumor bam file but no normal bam. 
+The results are reported in <strong>tumorSV.vcf.gz</strong>. This file contains all
+SV candidates (similar to the <strong>candidateSV.vcf.gz</strong> file), but also
+includes paired and split read evidence for each allele and a
+subset of the filters used for the tumor-normal comparative analysis. 
+Note that Manta does not yet provide a scoring model for unpaired tumor
+samples.</p>
+
+<p>For low allele frequency variants, it may also be helpful to consider the
+high sensitivity calling documentation below.</p>
+
+<h3 id="toc_15">RNA-Seq</h3>
+
+<p>Supplying the &#39;--rna&#39; flag at configuration time will provide
+experimental settings for RNA-Seq Fusion calling. At present this flag
+disables all high depth filters which are designed to exclude
+pericentromeric reference compressions in the WGS case but cannot be
+applied correctly to RNA-Seq analysis.  In addition many custom RNA
+read processing and alignment steps are invoked. This mode is designed
+to function as part of larger workflow with additional steps to reduce
+overall false positive rate which take place downstream from Manta&#39;s
+fusion calling step.</p>
+
+<p>It may also be helpful to consider the high sensitivity calling
+documentation below for this mode.</p>
+
+<h4>Extended use case 1: High sensitivity calling</h4>
+
+<p>Manta is configured with a discovery sensitivity appropriate for
+general WGS applications.  In targeted or other specialized contexts
+the candidate sensitivity can be increased. A recommended general high
+sensitivity mode can be obtained by changing the two values
+&#39;minEdgeObservations&#39; and &#39;minCandidateSpanningCount&#39; in the manta
+configuration file (see &#39;Advanced configuration options&#39; above) to 2
+observations per candidate (the default is 3):</p>
+
+<pre><code># Remove all edges from the graph unless they&#39;re supported by this many &#39;observations&#39;.
+# Note that one supporting read pair or split read usually equals one observation, but
+# evidence is sometimes downweighted.
+minEdgeObservations = 2
+
+# Run discovery and candidate reporting for all SVs/indels with at least this
+# many spanning support observations
+minCandidateSpanningCount = 2
+</code></pre>

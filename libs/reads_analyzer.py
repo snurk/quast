@@ -1,5 +1,6 @@
 import pipes
 import shutil
+import stat
 import subprocess
 from libs import reporting, qconfig, qutils
 
@@ -12,8 +13,7 @@ import os
 bwa_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'bwa-master')
 samtools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'samtools-1.2')
 bedtools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'bedtools-2.17.0')
-lumpytools_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'lumpy')
-
+manta_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'manta')
 
 def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpath, res_path, log_path, err_path):
     assembly_name = qutils.name_from_fpath(ref_fpath)
@@ -43,7 +43,8 @@ def process_single_file(index, ref_fpath, bwa_threads, reads_fpath, output_dirpa
 def get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath):
     if not os.path.isfile(cov_fpath):
         bamsorted_fpath = os.path.join(output_dirpath, ref_name + '.sorted')
-        qutils.call_subprocess([samtools_fpath('samtools'), 'sort',  '-@', str(qconfig.max_threads), bam_fpath, bamsorted_fpath], stdout=open(err_path, 'w'),
+        if not os.path.isfile(bamsorted_fpath):
+            qutils.call_subprocess([samtools_fpath('samtools'), 'sort',  '-@', str(qconfig.max_threads), bam_fpath, bamsorted_fpath], stdout=open(err_path, 'w'),
                                stderr=open(err_path, 'a'))
         qutils.call_subprocess([samtools_fpath('samtools'), 'depth', bamsorted_fpath + '.bam'], stdout=open(cov_fpath, 'w'),
                                stderr=open(err_path, 'a'))
@@ -56,7 +57,7 @@ def get_insert_size(ref_fpath, output_dirpath, err_path, res_fpath):
     if os.path.isfile(res_fpath) and os.path.getsize(res_fpath) > 0:
         first_line = open(res_fpath).readline().rstrip()
         if 'insert' in first_line:
-            insert_size = first_line.split(':')[1]
+            insert_size = int(first_line.split(':')[1])
         return insert_size
     ref_name = qutils.name_from_fpath(ref_fpath)
     bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
@@ -80,80 +81,41 @@ def get_insert_size(ref_fpath, output_dirpath, err_path, res_fpath):
     return insert_size
 
 
-def run_lumpy(ref_fpath, output_dirpath, res_path, err_path):
+def run_manta(ref_fpath, output_dirpath, res_path, err_path):
     ref_name = qutils.name_from_fpath(ref_fpath)
-    logger.info('  Running LUMPY for %s...' % ref_name)
+
     bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
+    bamsorted_fpath = os.path.join(output_dirpath, ref_name + '.sorted')
     bed_fpath = os.path.join(res_path, ref_name + '.bed')
     cov_fpath = os.path.join(res_path, ref_name + '.cov')
-
-    logger.info('  ' + 'Logging to %s...' % (err_path))
+    vcfoutput_dirpath = os.path.join(output_dirpath, 'manta_output')
+    logger.info('  ' + 'Pre-processing for searching structural variations...' % err_path)
+    logger.info('  ' + 'Logging to %s...' % err_path)
     if os.path.isfile(bed_fpath):
-        logger.info('  Using existing bed-file for %s...' % ref_name)
+        logger.info('  Using existing BED-file for %s...' % ref_name)
         if not os.path.isfile(cov_fpath):
             cov_fpath = get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath)
         return bed_fpath, cov_fpath
 
-    cov_fpath = get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath)
-    # preprocessing for lumpy
-    vcfoutput_dirpath = os.path.join(output_dirpath, 'lumpy_output')
-
-    bamdiscordants_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.bam')
-    splitreads_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.split')
-    bamsplitter_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.bam')
     qutils.call_subprocess([samtools_fpath('samtools'), 'faidx', ref_fpath], stderr=open(err_path, 'a'))
-    discordsorted_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.discordants.sorted')
-    splitsorted_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.splitters.sorted')
-    readgroup_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.readgroup')
-    histo_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.histo')
+    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', '-@', str(qconfig.max_threads), bam_fpath, bamsorted_fpath],
+                           stderr=open(err_path, 'a'))
+    qutils.call_subprocess([samtools_fpath('samtools'), 'index', bamsorted_fpath + '.bam'], stderr=open(err_path, 'a'))
+    cov_fpath = get_coverage(output_dirpath, ref_name, bam_fpath, err_path, cov_fpath)
 
-    temp_fpath = os.path.join(vcfoutput_dirpath, ref_name + '.temp')
-
-    cmd = samtools_fpath('samtools') + ' view -@ %s -b -F 1294 ' % qconfig.max_threads + bam_fpath
-    qutils.call_subprocess(shlex.split(cmd), stdout=open(bamdiscordants_fpath, 'w'),
+    logger.info('  Running Manta for %s...' % ref_name)
+    qutils.call_subprocess([os.path.join(manta_dirpath, 'bin/configManta.py'), '--normalBam', bamsorted_fpath + '.bam',
+                            '--referenceFasta', ref_fpath, '--runDir', vcfoutput_dirpath],
                            stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-h', bam_fpath], stdout=open(splitreads_fpath, 'w'),
+    qutils.call_subprocess([os.path.join(vcfoutput_dirpath, 'runWorkflow.py'), '-m', 'local',
+                            '-j', '1', '-g', str(qconfig.max_threads)],
                            stderr=open(err_path, 'a'))
-
-    qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/extractSplitReads_BwaMem'), '-i', splitreads_fpath],
-                           stdout=open(temp_fpath, 'w'),
-                           stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-Sb', temp_fpath], stdout=open(bamsplitter_fpath, 'w'),
-                           stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', '-@', str(qconfig.max_threads), bamsplitter_fpath, splitsorted_fpath,],
-                           stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'sort', '-@', str(qconfig.max_threads), bamdiscordants_fpath, discordsorted_fpath],
-                           stderr=open(err_path, 'a'))
-    qutils.call_subprocess([samtools_fpath('samtools'), 'view', '-@', str(qconfig.max_threads), '-r', 'readgroup1', bam_fpath],
-                           stdout=open(temp_fpath, 'w'),
-                           stderr=open(err_path, 'a'))
-    qutils.call_subprocess(['tail', temp_fpath, '-n', '100000'], stdout=open(readgroup_fpath, 'w'),
-                           stderr=open(err_path, 'a'))
-
-    bam_info = open(temp_fpath).readline().split()
-    if len(bam_info) < 10:
-        logger.info('  Failed searching structural variations.')
-        return None, cov_fpath
-    read_length = str(len(bam_info[9]))
-    qutils.call_subprocess(
-        [os.path.join(lumpytools_dirpath, 'scripts/pairend_distro.py'), '-r', read_length, '-X', '4', '-N', '10000',
-         '-o', histo_fpath],
-        stdin=open(readgroup_fpath), stdout=open(temp_fpath, 'w'), stderr=open(err_path, 'a'))
-
-    bam_statistics = open(temp_fpath).readline()
-    if len(bam_statistics) < 4:
-        logger.info('  Failed searching structural variations.')
-        return None, cov_fpath
-    mean = bam_statistics.split()[1]
-    stdev = bam_statistics.split()[3]
-    pe_files = 'id:%s,bam_file:%s.bam,histo_file:%s,mean:%s,stdev:%s,read_length:%s,min_non_overlap:%s,discordant_z:5,back_distance:10,weight:1,min_mapping_threshold:2' %\
-               (ref_name, discordsorted_fpath, histo_fpath, mean, stdev, read_length, read_length)
-    sr_files = 'id:%s,bam_file:%s.bam,back_distance:10,weight:1,min_mapping_threshold:20' % (ref_name, splitsorted_fpath)
-    qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'bin/lumpy'), '-mw', '4', '-tt', '0', '-pe', pe_files, '-sr', sr_files],
-                           stdout=open(temp_fpath, 'w'),
-                           stderr=open(err_path, 'a'))
-    qutils.call_subprocess([os.path.join(lumpytools_dirpath, 'scripts/vcfToBedpe'), '-i', temp_fpath, '-o', bed_fpath],
-        stderr=open(err_path, 'a'))
+    temp_fpath = os.path.join(vcfoutput_dirpath, 'results/variants/diploidSV.vcf.gz')
+    unpacked_fpath = temp_fpath + '.unpacked'
+    cmd = 'gunzip -c %s' % temp_fpath
+    qutils.call_subprocess(shlex.split(cmd), stdout=open(unpacked_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
+    from manta import vcfToBedpe
+    vcfToBedpe.vcfToBedpe(open(unpacked_fpath), open(bed_fpath, 'w'))
     if os.path.exists(bed_fpath):
         logger.info('  Structural variations saved to ' + bed_fpath)
         return bed_fpath, cov_fpath
@@ -173,10 +135,6 @@ def bed_fpath(fname):
     return os.path.join(bedtools_dirpath, 'bin', fname)
 
 
-def lumpy_fpath(fname):
-    return os.path.join(lumpytools_dirpath, 'bin', fname)
-
-
 def all_required_binaries_exist(bin_dirpath, binary):
     if not os.path.isfile(os.path.join(bin_dirpath, binary)):
         return False
@@ -194,7 +152,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
             os.mkdir(output_dir)
 
     logger.print_timestamp()
-    logger.info('Running reads aligner...')
+    logger.info('Running Reads analyzer...')
 
     if not all_required_binaries_exist(bwa_dirpath, 'bwa'):
         # making
@@ -229,26 +187,9 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
             logger.info('Failed aligning the reads.')
             return None, None
 
-    if not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
-        # making
-        logger.info(
-            'Compiling LUMPY (details are in ' + os.path.join(lumpytools_dirpath, 'make.log') + ' and make.err)')
-        return_code = qutils.call_subprocess(
-            ['make', '-C', lumpytools_dirpath],
-            stdout=open(os.path.join(lumpytools_dirpath, 'make.log'), 'w'),
-            stderr=open(os.path.join(lumpytools_dirpath, 'make.err'), 'w'), )
-
-        if return_code != 0 or not all_required_binaries_exist(lumpytools_dirpath, 'bin/lumpy'):
-            logger.error('Failed to compile LUMPY (' + lumpytools_dirpath + ')! '
-                                                                               'Try to compile it manually. ' + (
-                             'You can restart QUAST with the --debug flag '
-                             'to see the command line.' if not qconfig.debug else ''))
-            logger.info('Failed searching structural variations.')
-            return None, None
-
     temp_output_dir = os.path.join(output_dir, 'temp_output')
     final_output_dir = os.path.join(output_dir, 'output')
-    vcfoutput_dirpath = os.path.join(temp_output_dir, 'lumpy_output')
+    vcfoutput_dirpath = os.path.join(temp_output_dir, 'manta_output')
 
     if not os.path.isdir(temp_output_dir):
         os.mkdir(temp_output_dir)
@@ -280,7 +221,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     if insert_size > 1000:
         qconfig.extensive_misassembly_threshold = insert_size
     if ref_fpath:
-        bed_fpath, cov_fpath = run_lumpy(ref_fpath, temp_output_dir, final_output_dir, err_path)
+        bed_fpath, cov_fpath = run_manta(ref_fpath, temp_output_dir, final_output_dir, err_path)
     else:
         bed_fpath, cov_fpath = None, None
     if ref_fpath:
