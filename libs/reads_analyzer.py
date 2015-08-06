@@ -89,7 +89,7 @@ def run_manta(ref_fpath, output_dirpath, res_path, err_path):
     bed_fpath = os.path.join(res_path, ref_name + '.bed')
     cov_fpath = os.path.join(res_path, ref_name + '.cov')
     vcfoutput_dirpath = os.path.join(output_dirpath, 'manta_output')
-    logger.info('  ' + 'Pre-processing for searching structural variations...' % err_path)
+    logger.info('  ' + 'Pre-processing for searching structural variations...')
     logger.info('  ' + 'Logging to %s...' % err_path)
     if os.path.isfile(bed_fpath):
         logger.info('  Using existing BED-file for %s...' % ref_name)
@@ -241,34 +241,35 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, output_dir):
     # process all contigs files
     for index, contigs_fpath in enumerate(contigs_fpaths):
         report = reporting.get(contigs_fpath)
-        results = open(res_fpaths[index])
-        assembly_label = qutils.label_from_fpath(contigs_fpath)
-        for line in results:
-            if 'total' in line:
-                report.add_field(reporting.Fields.TOTALREADS, line.split()[0])
-                report.add_field(reporting.Fields.REF_READS, line.split()[0])
-            elif 'read1' in line:
-                report.add_field(reporting.Fields.LEFT_READS, line.split()[0])
-            elif 'read2' in line:
-                report.add_field(reporting.Fields.RIGHT_READS, line.split()[0])
-            elif 'properly paired' in line:
-                report.add_field(reporting.Fields.PROPERLYPAIR_READS, line.split()[0])
-            elif 'mapped' in line and '%' in line:
-                report.add_field(reporting.Fields.MAPPED_READS, line.split()[0])
-                if line.split()[0] == '0':
-                    logger.info('  ' + qutils.index_to_str(index) + 'BWA: nothing aligned for ' + '\'' + assembly_label + '\'.')
-            elif 'singletons' in line:
-                report.add_field(reporting.Fields.SINGLETONS, line.split()[0])
-            elif 'different' in line and 'mapQ' not in line and len(contigs_fpaths) > 1:
-                report.add_field(reporting.Fields.READS_DIFFCHROM, line.split()[0])
+        if os.path.exists(res_fpaths[index]):
+            results = open(res_fpaths[index])
+            assembly_label = qutils.label_from_fpath(contigs_fpath)
+            for line in results:
+                if 'total' in line:
+                    report.add_field(reporting.Fields.TOTALREADS, line.split()[0])
+                    report.add_field(reporting.Fields.REF_READS, line.split()[0])
+                elif 'read1' in line:
+                    report.add_field(reporting.Fields.LEFT_READS, line.split()[0])
+                elif 'read2' in line:
+                    report.add_field(reporting.Fields.RIGHT_READS, line.split()[0])
+                elif 'properly paired' in line:
+                    report.add_field(reporting.Fields.PROPERLYPAIR_READS, line.split()[0])
+                elif 'mapped' in line and '%' in line:
+                    report.add_field(reporting.Fields.MAPPED_READS, line.split()[0])
+                    if line.split()[0] == '0':
+                        logger.info('  ' + qutils.index_to_str(index) + 'BWA: nothing aligned for ' + '\'' + assembly_label + '\'.')
+                elif 'singletons' in line:
+                    report.add_field(reporting.Fields.SINGLETONS, line.split()[0])
+                elif 'different' in line and 'mapQ' not in line and len(contigs_fpaths) > 1:
+                    report.add_field(reporting.Fields.READS_DIFFCHROM, line.split()[0])
 
-        if ref_fpath:
-            report.add_field(reporting.Fields.REFPROPERLYPAIR_READS, ref_paired_reads)
-            if chromosomes > 1:
-                report.add_field(reporting.Fields.REFREADS_DIFFCHROM, ref_diffchrom)
-            report.add_field(reporting.Fields.REFSINGLETONS, ref_singletons)
-            report.add_field(reporting.Fields.REFMAPPED_READS, ref_mapped_reads)
-            report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
+            if ref_fpath:
+                report.add_field(reporting.Fields.REFPROPERLYPAIR_READS, ref_paired_reads)
+                if chromosomes > 1:
+                    report.add_field(reporting.Fields.REFREADS_DIFFCHROM, ref_diffchrom)
+                report.add_field(reporting.Fields.REFSINGLETONS, ref_singletons)
+                report.add_field(reporting.Fields.REFMAPPED_READS, ref_mapped_reads)
+                report.add_field(reporting.Fields.REFCHROMOSOMES, chromosomes)
 
     if not qconfig.debug:
         shutil.rmtree(temp_output_dir, ignore_errors=True)
