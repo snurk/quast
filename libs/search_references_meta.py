@@ -27,7 +27,6 @@ silva_db_path = 'http://www.arb-silva.de/fileadmin/silva_databases/release_119/E
 silva_fname = 'SILVA_119_SSURef_Nr99_tax_silva.fasta'
 
 blast_filenames = ['makeblastdb', 'blastn']
-blast_common_path = 'http://quast.bioinf.spbau.ru/static/blast/' + qconfig.platform_name
 blast_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast')
 
 blastdb_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast', '16S_RNA_blastdb')
@@ -105,36 +104,6 @@ def download_refs(organism, ref_fpath):
     return ref_fpath
 
 
-def show_progress(a, b, c):
-    if a > 0 and a % int(c/(b*100)) == 0:
-        print("% 3.1f%% of %d bytes\r" % (min(100, int(float(a * b) / c * 100)), c)),
-        sys.stdout.flush()
-
-
-def download_blast_files(blast_filename):
-    logger.info()
-    if not os.path.isdir(blast_dirpath):
-        os.mkdir(blast_dirpath)
-    if not os.path.isdir(blastdb_dirpath):
-        os.mkdir(blastdb_dirpath)
-    blast_download = urllib.URLopener()
-    blast_webpath = os.path.join(blast_common_path, blast_filename)
-    blast_fpath = os.path.join(blast_dirpath, blast_filename)
-    if not os.path.exists(blast_fpath):
-        logger.info('Downloading %s...' % blast_filename)
-        try:
-            blast_download.retrieve(blast_webpath, blast_fpath + '.download', show_progress)
-        except Exception:
-            logger.error(
-                'Failed downloading BLAST! The search for reference genomes cannot be performed. '
-                'Try to download it manually in %s and restart MetaQUAST.' % blast_dirpath)
-            return 1
-        shutil.move(blast_fpath + '.download', blast_fpath)
-        logger.info('%s successfully downloaded!' % blast_filename)
-
-    return 0
-
-
 def download_blastdb():
     if os.path.isfile(db_fpath + '.nsq'):
         logger.info()
@@ -155,7 +124,7 @@ def download_blastdb():
         silva_download = urllib.URLopener()
         silva_remote_fpath = silva_db_path + silva_fname + '.gz'
         try:
-            silva_download.retrieve(silva_remote_fpath, db_gz_fpath + '.download', show_progress)
+            silva_download.retrieve(silva_remote_fpath, db_gz_fpath + '.download', qutils.show_progress)
         except Exception:
             logger.error(
                 'Failed downloading SILVA rRNA gene database (%s)! The search for reference genomes cannot be performed. '
@@ -240,7 +209,7 @@ def do(assemblies, downloaded_dirpath):
     for i, cmd in enumerate(blast_filenames):
         blast_file = blast_fpath(cmd)
         if not os.path.exists(blast_file):
-            return_code = download_blast_files(cmd)
+            return_code = qutils.download_blast_files(cmd, blast_dirpath, 'MetaQUAST')
             logger.info()
             if return_code != 0:
                 return None

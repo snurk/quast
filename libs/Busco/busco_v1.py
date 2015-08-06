@@ -25,6 +25,7 @@ import os
 from os.path import join as join
 import argparse
 from collections import deque
+import stat
 import threading
 import time
 import platform
@@ -42,6 +43,9 @@ busco_dirpath = join(qconfig.LIBS_LOCATION, 'Busco')
 augustus_short_dirpath = join(busco_dirpath, 'augustus-3.1')
 augustus_dirpath = join(busco_dirpath, 'augustus-3.1/bin')
 
+blast_filenames = ['makeblastdb', 'tblastn']
+blast_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast')
+
 if platform.system() == 'Darwin':
     sed_cmd = "sed -i '' "
     hmmer_dirpath = join(busco_dirpath, 'hmmer-3.1b2-mac/src')
@@ -55,7 +59,6 @@ def hmmer_fpath(fname):
 
 
 def blast_fpath(fname):
-    blast_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast', qconfig.platform_name)
     return os.path.join(blast_dirpath, fname)
 
 
@@ -359,6 +362,18 @@ def do(f_args, output_dir):
     #---------------------------BLAST steps START -------------------------------------------#
 
     #Make a blast database and run tblastn
+
+    if not os.path.isdir(blast_dirpath):
+        os.mkdir(blast_dirpath)
+
+    for i, file in enumerate(blast_filenames):
+        blast_file = blast_fpath(file)
+        if not os.path.exists(blast_file):
+            return_code = qutils.download_blast_files(file, blast_dirpath, 'QUAST')
+            logger.info()
+            if return_code != 0:
+                return None
+        os.chmod(blast_file, os.stat(blast_file).st_mode | stat.S_IEXEC)
 
     if mode == 'genome' or mode == 'blast' or mode == 'trans':
         logger.debug('  ' + qutils.index_to_str(index) + 'Running tBlastN')

@@ -10,6 +10,7 @@ import glob
 import gzip
 import shutil
 import subprocess
+import urllib
 import zipfile
 import bz2
 import os
@@ -21,6 +22,8 @@ from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
 MAX_CONTIG_NAME = 1021  # Nucmer's constraint
+
+blast_common_path = 'http://quast.bioinf.spbau.ru/static/blast/' + qconfig.platform_name
 
 def assert_file_exists(fpath, message='', logger=logger):
     if not os.path.isfile(fpath):
@@ -210,3 +213,30 @@ def relpath(path, start=curdir):
     if not rel_list:
         return curdir
     return join(*rel_list)
+
+def show_progress(a, b, c):
+    if a > 0 and a % int(c/(b*100)) == 0:
+        print("% 3.1f%% of %d bytes\r" % (min(100, int(float(a * b) / c * 100)), c)),
+        sys.stdout.flush()
+
+
+def download_blast_files(blast_filename, blast_dirpath, tool):
+    logger.info()
+    if not os.path.isdir(blast_dirpath):
+        os.mkdir(blast_dirpath)
+    blast_download = urllib.URLopener()
+    blast_webpath = os.path.join(blast_common_path, blast_filename)
+    blast_fpath = os.path.join(blast_dirpath, blast_filename)
+    if not os.path.exists(blast_fpath):
+        logger.info('Downloading %s...' % blast_filename)
+        try:
+            blast_download.retrieve(blast_webpath, blast_fpath + '.download', show_progress)
+        except Exception:
+            logger.error(
+                'Failed downloading BLAST! The search for reference genomes cannot be performed. '
+                'Try to download it manually in %s and restart %s.' % blast_dirpath, tool)
+            return 1
+        shutil.move(blast_fpath + '.download', blast_fpath)
+        logger.info('%s successfully downloaded!' % blast_filename)
+
+    return 0
