@@ -12,6 +12,7 @@ libs/*.pyc
 libs/html_saver/*.pyc
 libs/.DS_Store
 .idea/*
+.idea
 .DS_Store
 *pyc
 

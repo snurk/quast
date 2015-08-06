@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -29,7 +30,7 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
     logger.print_timestamp()
     logger.info('Running NA-NGA calculation...')
 
-    reference_length = qconfig.ref_len
+    reference_length = sum(fastaparser.get_lengths_from_fastafile(ref_fpath))
     assembly_lengths = []
     for contigs_fpath in aligned_contigs_fpaths:
         assembly_lengths.append(sum(fastaparser.get_lengths_from_fastafile(contigs_fpath)))
@@ -65,7 +66,6 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
         report.add_field(reporting.Fields.LGA75, lga75)
 
     ########################################################################
-    # saving to JSON
     num_contigs = max([len(aligned_lengths_lists[i]) for i in range(len(aligned_lengths_lists))])
 
     if json_output_dirpath:

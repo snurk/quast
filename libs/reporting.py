@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -419,9 +420,7 @@ def val_to_str(val):
         return str(val)
 
 
-def save_txt(fpath, table):
-    all_rows = get_all_rows_out_of_table(table)
-
+def save_txt(fpath, all_rows):
     # determine width of columns for nice spaces
     colwidths = [0] * (len(all_rows[0]['values']) + 1)
     for row in all_rows:
@@ -442,9 +441,7 @@ def save_txt(fpath, table):
     txt_file.close()
 
 
-def save_tsv(fpath, table):
-    all_rows = get_all_rows_out_of_table(table)
-
+def save_tsv(fpath, all_rows):
     tsv_file = open(fpath, 'w')
 
     for row in all_rows:
@@ -488,9 +485,7 @@ def get_num_from_table_value(val):
     return num
 
 
-def save_tex(fpath, table, is_transposed=False):
-    all_rows = get_all_rows_out_of_table(table)
-
+def save_tex(fpath, all_rows, is_transposed=False):
     tex_file = open(fpath, 'w')
     # Header
     print >>tex_file, '\\documentclass[12pt,a4paper]{article}'
@@ -593,9 +588,10 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
     report_txt_fpath = os.path.join(output_dirpath, report_name) + '.txt'
     report_tsv_fpath = os.path.join(output_dirpath, report_name) + '.tsv'
     report_tex_fpath = os.path.join(output_dirpath, report_name) + '.tex'
-    save_txt(report_txt_fpath, tab)
-    save_tsv(report_tsv_fpath, tab)
-    save_tex(report_tex_fpath, tab)
+    all_rows = get_all_rows_out_of_table(tab)
+    save_txt(report_txt_fpath, all_rows)
+    save_tsv(report_tsv_fpath, all_rows)
+    save_tex(report_tex_fpath, all_rows)
     save_pdf(report_name, tab)
     reports_fpaths = report_txt_fpath + ', ' + os.path.basename(report_tsv_fpath) + ', and ' + \
                      os.path.basename(report_tex_fpath)
@@ -624,9 +620,10 @@ def save(output_dirpath, report_name, transposed_report_name, order, silent=Fals
             report_txt_fpath = os.path.join(output_dirpath, transposed_report_name) + '.txt'
             report_tsv_fpath = os.path.join(output_dirpath, transposed_report_name) + '.tsv'
             report_tex_fpath = os.path.join(output_dirpath, transposed_report_name) + '.tex'
-            save_txt(report_txt_fpath, transposed_table)
-            save_tsv(report_tsv_fpath, transposed_table)
-            save_tex(report_tex_fpath, transposed_table, is_transposed=True)
+            all_rows = get_all_rows_out_of_table(transposed_table)
+            save_txt(report_txt_fpath, all_rows)
+            save_tsv(report_tsv_fpath, all_rows)
+            save_tex(report_tex_fpath, all_rows, is_transposed=True)
             transposed_reports_fpaths = report_txt_fpath + ', ' + os.path.basename(report_tsv_fpath) + \
                                         ', and ' + os.path.basename(report_tex_fpath)
             if not silent:

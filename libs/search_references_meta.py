@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -8,10 +9,12 @@ from __future__ import with_statement
 import os
 import shlex
 import shutil
+import stat
 import sys
 import platform
 import re
 import gzip
+import time
 from libs import qconfig, qutils
 from libs.log import get_logger
 
@@ -22,6 +25,11 @@ import urllib
 
 silva_db_path = 'http://www.arb-silva.de/fileadmin/silva_databases/release_119/Exports/'
 silva_fname = 'SILVA_119_SSURef_Nr99_tax_silva.fasta'
+
+blast_filenames = ['makeblastdb', 'blastn']
+blast_common_path = 'http://quast.bioinf.spbau.ru/static/blast/' + qconfig.platform_name
+blast_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast')
+
 blastdb_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast', '16S_RNA_blastdb')
 db_fpath = os.path.join(blastdb_dirpath, 'silva_119.db')
 db_nsq_fsize = 194318557
@@ -31,10 +39,9 @@ if platform.system() == 'Darwin':
 else:
     sed_cmd = 'sed -i '
 is_quast_first_run = False
-taxons_for_crona = {}
+taxons_for_krona = {}
 
 def blast_fpath(fname):
-    blast_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'blast', qconfig.platform_name)
     return os.path.join(blast_dirpath, fname)
 
 
@@ -86,8 +93,6 @@ def download_refs(organism, ref_fpath):
                             fasta = first_line + '\n' + fasta[fasta.find('\n')+1:]
                     else:
                         fasta = fasta[fasta.find('\n')+1:]
-                if fasta[0] == '>' and not is_first_piece:
-                    fasta = '\n' + fasta
                 with open(ref_fpath, "a") as fasta_file:
                     fasta_file.write(fasta.rstrip())
 
@@ -101,8 +106,33 @@ def download_refs(organism, ref_fpath):
 
 
 def show_progress(a, b, c):
-    print "% 3.1f%% of %d bytes\r" % (min(100, float(a * b) / c * 100), c),
-    sys.stdout.flush()
+    if a > 0 and a % int(c/(b*100)) == 0:
+        print("% 3.1f%% of %d bytes\r" % (min(100, int(float(a * b) / c * 100)), c)),
+        sys.stdout.flush()
+
+
+def download_blast_files(blast_filename):
+    logger.info()
+    if not os.path.isdir(blast_dirpath):
+        os.mkdir(blast_dirpath)
+    if not os.path.isdir(blastdb_dirpath):
+        os.mkdir(blastdb_dirpath)
+    blast_download = urllib.URLopener()
+    blast_webpath = os.path.join(blast_common_path, blast_filename)
+    blast_fpath = os.path.join(blast_dirpath, blast_filename)
+    if not os.path.exists(blast_fpath):
+        logger.info('Downloading %s...' % blast_filename)
+        try:
+            blast_download.retrieve(blast_webpath, blast_fpath + '.download', show_progress)
+        except Exception:
+            logger.error(
+                'Failed downloading BLAST! The search for reference genomes cannot be performed. '
+                'Try to download it manually in %s and restart MetaQUAST.' % blast_dirpath)
+            return 1
+        shutil.move(blast_fpath + '.download', blast_fpath)
+        logger.info('%s successfully downloaded!' % blast_filename)
+
+    return 0
 
 
 def download_blastdb():
@@ -163,7 +193,7 @@ def parallel_blast(contigs_fpath, blast_res_fpath, err_fpath, blast_check_fpath,
             contigs_fpath, db_fpath, blast_threads))
     assembly_name = qutils.name_from_fpath(contigs_fpath)
     res_fpath = blast_res_fpath + '_' + assembly_name
-    check_fpath =  blast_check_fpath + '_' + assembly_name
+    check_fpath = blast_check_fpath + '_' + assembly_name
     logger.info('  ' + 'processing ' + assembly_name)
     qutils.call_subprocess(shlex.split(cmd), stdout=open(res_fpath, 'w'), stderr=open(err_fpath, 'a'), logger=logger)
     logger.info('  ' + 'BLAST results for %s are saved to %s...' % (assembly_name, res_fpath))
@@ -205,8 +235,20 @@ def do(assemblies, downloaded_dirpath):
     logger.print_timestamp()
     err_fpath = os.path.join(downloaded_dirpath, 'blast.err')
     if not os.path.isdir(blastdb_dirpath):
-        os.mkdir(blastdb_dirpath)
+        os.makedirs(blastdb_dirpath)
+
+    for i, cmd in enumerate(blast_filenames):
+        blast_file = blast_fpath(cmd)
+        if not os.path.exists(blast_file):
+            return_code = download_blast_files(cmd)
+            logger.info()
+            if return_code != 0:
+                return None
+        os.chmod(blast_file, os.stat(blast_file).st_mode | stat.S_IEXEC)
+
     if not os.path.isfile(db_fpath + '.nsq') or os.path.getsize(db_fpath + '.nsq') < db_nsq_fsize:
+        if os.path.isdir(blastdb_dirpath):
+            shutil.rmtree(blastdb_dirpath)
         return_code = download_blastdb()
         logger.info()
         if return_code != 0:
@@ -246,24 +288,26 @@ def do(assemblies, downloaded_dirpath):
                     score = float(line[11])
                     if idy >= qconfig.identity_threshold and length >= qconfig.min_length and score >= qconfig.min_bitscore:  # and (not scores or min(scores) - score < max_identity_difference):
                         taxons = line[1][line[1].find('_')+1:].replace('_', " ")
-                        taxons = taxons.replace(';', '\t')
-                        organism = line[1].split(';')[-1]
-                        organism = re.sub('[\[\]]', '', organism)
-                        specie = organism.split('_')
-                        if len(specie) > 1 and 'uncultured' not in organism:
-                            specie = specie[0] + '_' + specie[1]
-                            if specie not in organisms:
-                                all_scores.append((score, organism))
-                                taxons_for_crona[re.sub('[/.=]', '', organism)] = taxons
-                                organisms.append(specie)
-                                refs_for_query += 1
-                            else:
-                                tuple_scores = [x for x in all_scores if specie in x[1]]
-                                if tuple_scores and score > tuple_scores[0][0]:
-                                    all_scores.remove((tuple_scores[0][0], tuple_scores[0][1]))
+                        domain = taxons.split(';')[0]
+                        if domain in ['Bacteria', 'Archaea'] and 'Chloroplast' not in taxons and 'mitochondria' not in taxons:
+                            taxons = taxons.replace(';', '\t')
+                            organism = line[1].split(';')[-1]
+                            organism = re.sub('[\[\]]', '', organism)
+                            specie = organism.split('_')
+                            if len(specie) > 1 and 'uncultured' not in organism:
+                                specie = specie[0] + '_' + specie[1]
+                                if specie not in organisms:
                                     all_scores.append((score, organism))
-                                    taxons_for_crona[re.sub('[/.=]', '', organism)] = taxons
+                                    taxons_for_krona[re.sub('[/.=]', '', organism)] = taxons
+                                    organisms.append(specie)
                                     refs_for_query += 1
+                                else:
+                                    tuple_scores = [x for x in all_scores if specie in x[1]]
+                                    if tuple_scores and score > tuple_scores[0][0]:
+                                        all_scores.remove((tuple_scores[0][0], tuple_scores[0][1]))
+                                        all_scores.append((score, organism))
+                                        taxons_for_krona[re.sub('[/.=]', '', organism)] = taxons
+                                        refs_for_query += 1
                 elif line.startswith('#'):
                     refs_for_query = 0
         all_scores = sorted(all_scores, reverse=True)
@@ -287,18 +331,20 @@ def do(assemblies, downloaded_dirpath):
 
     total_downloaded = 0
     total_scored_left = len(scores_organisms)
+
+    list_organisms = [organism for organisms_assembly in organisms_assemblies.values() for organism in organisms_assembly]
     for organism in downloaded_organisms:
         ref_fpath = os.path.join(downloaded_dirpath, re.sub('[/.=]', '', organism) + '.fasta')
         if os.path.exists(ref_fpath):
             if len(ref_fpaths) == qconfig.max_references:
                 break
-            total_downloaded += 1
-            if organisms_assemblies and organism in organisms_assemblies.values()[0]:
+            if organisms_assemblies and organism in list_organisms:
+                total_downloaded += 1
                 total_scored_left -= 1
-            spaces = (max_organism_name_len - len(organism)) * ' '
-            logger.info("  %s%s | was downloaded previously (total %d)" %
-                            (organism.replace('+', ' '), spaces, total_downloaded))
-            ref_fpaths.append(ref_fpath)
+                spaces = (max_organism_name_len - len(organism)) * ' '
+                logger.info("  %s%s | was downloaded previously (total %d)" %
+                                (organism.replace('+', ' '), spaces, total_downloaded))
+                ref_fpaths.append(ref_fpath)
         else:
             scores_organisms.insert(0, (5000, organism))
 
@@ -314,7 +360,6 @@ def do(assemblies, downloaded_dirpath):
                 'Totally ' + str(total_scored_left) + ' organisms to try.')
 
     for (score, organism) in scores_organisms:
-        total_scored_left -= 1
         ref_fpath = os.path.join(downloaded_dirpath, re.sub('[/.=]', '', organism) + '.fasta')
         spaces = (max_organism_name_len - len(organism)) * ' '
         new_ref_fpath = None
@@ -325,6 +370,7 @@ def do(assemblies, downloaded_dirpath):
             was_downloaded = True
             new_ref_fpath = ref_fpath
         if new_ref_fpath:
+            total_scored_left -= 1
             total_downloaded += 1
             if was_downloaded:
                 logger.info("  %s%s | was downloaded previously (total %d, %d more to go)" %
@@ -337,6 +383,7 @@ def do(assemblies, downloaded_dirpath):
                 ref_fpaths.append(new_ref_fpath)
             downloaded_organisms.add(organism)
         elif organism not in downloaded_organisms:
+            total_scored_left -= 1
             logger.info("  %s%s | not found in the NCBI database" % (organism.replace('+', ' '), spaces))
             not_founded_organisms.add(organism)
     for contig_name in contigs_names:

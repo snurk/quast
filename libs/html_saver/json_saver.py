@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -29,6 +30,7 @@ aligned_contigs_fn    = '/aligned_contigs_lengths.json'
 assemblies_lengths_fn = '/assemblies_lengths.json'
 in_contigs_suffix_fn  = '_in_contigs.json'
 gc_fn                 = '/gc.json'
+krona_fn                 = '/krona.json'
 
 prefix_fn             = '/'
 suffix_fn             = '.json'
@@ -162,6 +164,11 @@ def save_GC_info(output_dirpath, contigs_fpaths, list_of_GC_distributions):
         'lists_of_gc_info': None,
     })
 
+def save_krona_paths(output_dirpath, krona_fpaths, labels):
+    return save(output_dirpath + krona_fn, {
+        'assemblies': labels,
+        'paths': krona_fpaths,
+    })
 
 
 

@@ -131,7 +131,7 @@ class NucmerStatus:
     NOT_ALIGNED = 2
 
 
-def run_nucmer(prefix, ref_fpath, contigs_fpath, log_out_fpath, log_err_fpath, index, planta_err_f):
+def run_nucmer(prefix, ref_fpath, contigs_fpath, log_out_fpath, log_err_fpath, index):
     # additional GAGE params of Nucmer: '-l', '30', '-banded'
     return_code = qutils.call_subprocess(
         [bin_fpath('nucmer'),
@@ -144,9 +144,6 @@ def run_nucmer(prefix, ref_fpath, contigs_fpath, log_out_fpath, log_err_fpath, i
         stdout=open(log_out_fpath, 'a'),
         stderr=open(log_err_fpath, 'a'),
         indent='  ' + qutils.index_to_str(index))
-
-    if return_code != 0:
-        print >> planta_err_f, qutils.index_to_str(index) + 'Nucmer failed for', contigs_fpath, '\n'
 
     return return_code
 
@@ -230,7 +227,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
         if not qconfig.splitted_ref:
             nucmer_exit_code = run_nucmer(nucmer_fpath, ref_fpath, contigs_fpath,
-                                          log_out_fpath, log_err_fpath, index, planta_err_f)
+                                          log_out_fpath, log_err_fpath, index)
             if nucmer_exit_code != 0:
                 return __fail(contigs_fpath, index)
 
@@ -252,8 +249,13 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             # processing each chromosome separately (if we can)
             from joblib import Parallel, delayed
             nucmer_exit_codes = Parallel(n_jobs=n_jobs)(delayed(run_nucmer)(
-                prefix, chr_file, contigs_fpath, log_out_fpath, log_err_fpath, index, planta_err_f)
-                for (prefix, chr_file) in prefixes_and_chr_files)
+                prefix, chr_file, contigs_fpath, log_out_fpath, log_err_fpath + "_part%d" % (i + 1), index)
+                for i, (prefix, chr_file) in enumerate(prefixes_and_chr_files))
+
+            print >> planta_err_f, "Stderr outputs for reference parts are in:"
+            for i in range(len(prefixes_and_chr_files)):
+                print >> planta_err_f, log_err_fpath + "_part%d" % (i + 1)
+            print >> planta_err_f, ""
 
             if 0 not in nucmer_exit_codes:
                 return __fail(contigs_fpath, index)
@@ -265,6 +267,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 delta_file.write("NUCMER\n")
                 for i, (prefix, chr_fname) in enumerate(prefixes_and_chr_files):
                     if nucmer_exit_codes[i] != 0:
+                        logger.warning('  ' + qutils.index_to_str(index) +
+                        'Failed aligning contigs %s to reference part %s! Skipping this part. ' % (qutils.label_from_fpath(contigs_fpath),
+                        chr_fname) + ('Run with the --debug flag to see additional information.' if not qconfig.debug else ''))
                         continue
 
                     chr_delta_fpath = prefix + '.delta'
@@ -457,8 +462,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
         def __shift_start(align, new_start, indent=''):
             print >> planta_out_f, indent + '%s' % align.short_str(),
-            if qconfig.debug:
-                print >> planta_out_f, '\t\t\t\tchanging %s' % str(align),
             if align.s2 < align.e2:
                 align.s1 += (new_start - align.s2)
                 align.s2 = new_start
@@ -497,10 +500,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             else:
                 __shift_end(align1, min(align2.e2, align2.s2) - 1)
         else:  # ambiguity_usage == 'none':  removing both copies
-             print >> planta_out_f
-             new_end = min(align2.e2, align2.s2) - 1
-             __shift_start(align2, max(align1.e2, align1.s2) + 1, '\t\t\t  ')
-             __shift_end(align1, new_end, '\t\t\t  ')
+            print >> planta_out_f
+            new_end = min(align2.e2, align2.s2) - 1
+            __shift_start(align2, max(align1.e2, align1.s2) + 1, '\t\t\t  ')
+            __shift_end(align1, new_end, '\t\t\t  ')
         return prev_len2 - align1.len2
 
     def check_chr_for_refs(chr1, chr2):
@@ -517,7 +520,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         is_misassembled = False
         contig_is_printed = False
         indels_info = IndelsInfo()
-        contig_aligned_length = 0
+        contig_aligned_length = 0  # for internal debugging purposes
 
         for i in range(len(sorted_aligns) - 1):
             cur_aligned_length -= exclude_internal_overlaps(sorted_aligns[i], sorted_aligns[i+1], i)
@@ -629,6 +632,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                                                          (sorted_aligns[0].contig, contig_aligned_length, len(contig_seq))
 
         return is_misassembled, misassembly_internal_overlap, references_misassemblies, indels_info, misassemblies_matched_sv
+
     #### end of aux. functions ###
 
     # Loading the assembly contigs
@@ -1628,7 +1632,6 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
             print >> txt_file, '  '.join('%-*s' % (colwidth, cell) for colwidth, cell
                                          in zip(colwidths, [row['metricName']] + map(val_to_str, row['values'])))
 
-
     if qconfig.is_combined_ref:
         ref_misassemblies = [result['istranslocations_by_refs'] if result else None for result in results]
         if ref_misassemblies:
@@ -1638,7 +1641,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
             all_rows.append(row)
             for fpath in contigs_fpaths:
                 all_rows[0]['values'].append(qutils.name_from_fpath(fpath))
-            for k in ref_misassemblies[0].keys():
+            for k in ref_labels_by_chromosomes.values():
                 row = {'metricName': k, 'values': []}
                 for index, fpath in enumerate(contigs_fpaths):
                     if ref_misassemblies[index]:

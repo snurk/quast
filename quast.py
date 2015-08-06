@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -92,6 +93,7 @@ def correct_fasta(original_fpath, corrected_fpath, min_contig,
                 dic = {'M': 'N', 'K': 'N', 'R': 'N', 'Y': 'N', 'W': 'N', 'S': 'N', 'V': 'N', 'B': 'N', 'H': 'N', 'D': 'N'}
                 pat = "(%s)" % "|".join(map(re.escape, dic.keys()))
                 corr_seq = re.sub(pat, lambda m: dic[m.group()], corr_seq)
+
                 # make sure that only A, C, G, T or N are in the sequence
                 if re.compile(r'[^ACGTN]').search(corr_seq):
                     logger.warning('Skipping ' + original_fpath + ' because it contains non-ACGTN characters.',
@@ -101,29 +103,33 @@ def correct_fasta(original_fpath, corrected_fpath, min_contig,
     fastaparser.write_fasta(corrected_fpath, modified_fasta_entries)
 
     if is_reference:
-        qconfig.ref_len = sum(lengths)
+        ref_len = sum(lengths)
         if qconfig.ref_len > qconfig.MAX_REFERENCE_FILE_LENGTH:
+            qconfig.splitted_ref = []  # important for MetaQUAST which runs QUAST multiple times
             _, fasta_ext = os.path.splitext(corrected_fpath)
             split_ref_dirpath = os.path.join(os.path.dirname(corrected_fpath), 'split_ref')
             os.makedirs(split_ref_dirpath)
-            cur_len = 0
-            num_file = 0
-            max_len = min(qconfig.ref_len/qconfig.max_threads, qconfig.MAX_REFERENCE_LENGTH)
+            max_len = min(ref_len/qconfig.max_threads, qconfig.MAX_REFERENCE_LENGTH)
+            cur_part_len = 0
+            cur_part_num = 1
+            cur_part_fpath = os.path.join(split_ref_dirpath, "part_%d" % cur_part_num) + fasta_ext
 
             for (chr_name, chr_seq) in modified_fasta_entries:
-                if len(chr_seq) > qconfig.MAX_REFERENCE_LENGTH:
+                cur_chr_len = len(chr_seq)
+                if cur_chr_len > qconfig.MAX_REFERENCE_LENGTH:
                     logger.warning("Skipping chromosome " + chr_name + " because its length is greater than " +
                             str(qconfig.MAX_REFERENCE_LENGTH) + " (Nucmer's constraint).")
                     continue
-                cur_len += len(chr_seq)
-                if cur_len > max_len:
-                    qconfig.splitted_ref.append(split_ref_fpath)
-                    cur_len = len(chr_seq)
-                    num_file += 1
-                split_ref_fpath = os.path.join(split_ref_dirpath, "chr_" + str(num_file + 1)) + fasta_ext
-                fastaparser.write_fasta(split_ref_fpath, [(chr_name, chr_seq)], mode='a')
-            if cur_len > 0:
-                qconfig.splitted_ref.append(split_ref_fpath)
+
+                cur_part_len += cur_chr_len
+                if cur_part_len > max_len and cur_part_len != cur_chr_len:
+                    qconfig.splitted_ref.append(cur_part_fpath)
+                    cur_part_len = cur_chr_len
+                    cur_part_num += 1
+                    cur_part_fpath = os.path.join(split_ref_dirpath, "part_%d" % cur_part_num) + fasta_ext
+                fastaparser.write_fasta(cur_part_fpath, [(chr_name, chr_seq)], mode='a')
+            if cur_part_len > 0:
+                qconfig.splitted_ref.append(cur_part_fpath)
             if len(qconfig.splitted_ref) == 0:
                 logger.warning("Skipping reference because all of its chromosomes exceeded Nucmer's constraint.")
                 return False
@@ -472,13 +478,13 @@ def main(args):
             reads_fpath_f = arg
             qconfig.reads = True
 
-        elif opt in ('-t', "--contig-thresholds"):
+        elif opt == "--contig-thresholds":
             qconfig.contig_thresholds = arg
 
-        elif opt in ('-M', "--min-contig"):
+        elif opt in ('-m', "--min-contig"):
             qconfig.min_contig = int(arg)
 
-        elif opt in ('-T', "--threads"):
+        elif opt in ('-t', "--threads"):
             qconfig.max_threads = int(arg)
             if qconfig.max_threads < 1:
                 qconfig.max_threads = 1
@@ -492,7 +498,7 @@ def main(args):
         elif opt == "--est-ref-size":
             qconfig.estimated_reference_size = int(arg)
 
-        elif opt in ('-S', "--gene-thresholds"):
+        elif opt == "--gene-thresholds":
             qconfig.genes_lengths = arg
 
         elif opt in ('-j', '--save-json'):
@@ -529,7 +535,7 @@ def main(args):
         elif opt in ('-u', "--use-all-alignments"):
             qconfig.use_all_alignments = True
 
-        elif opt in ('-n', "--strict-NA"):
+        elif opt == "--strict-NA":
             qconfig.strict_NA = True
 
         elif opt in ('-x', "--extensive-mis-size"):
@@ -560,7 +566,14 @@ def main(args):
             qconfig.draw_plots = False
             qconfig.html_report = False
 
-        elif opt in ('-m', '--meta'):
+        elif opt == '--plots-format':
+            if arg.lower() in qconfig.supported_plot_extensions:
+                qconfig.plot_extension = arg.lower()
+            else:
+                logger.error('Format "%s" is not supported. Please, use one of the supported formats: %s.' %
+                             (arg, ', '.join(qconfig.supported_plot_extensions)), to_stderr=True, exit_with_code=2)
+
+        elif opt == '--meta':
             qconfig.meta = True
 
         elif opt == '--no-check-meta':
@@ -626,17 +639,7 @@ def main(args):
     else:
         qconfig.genes_lengths = map(int, qconfig.genes_lengths.split(","))
 
-    # Threading
-    if qconfig.max_threads is None:
-        try:
-            import multiprocessing
-            qconfig.max_threads = multiprocessing.cpu_count()
-        except:
-            logger.warning('Failed to determine the number of CPUs')
-            qconfig.max_threads = qconfig.DEFAULT_MAX_THREADS
-
-        logger.info()
-        logger.notice('Maximum number of threads is set to ' + str(qconfig.max_threads) + ' (use --threads option to set it manually)')
+    qconfig.set_max_threads(logger)
 
     ########################################################################
     from libs import reporting

@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -36,8 +37,8 @@ MAX_REFERENCE_FILE_LENGTH = 50000000  # Max length of one part of reference
 long_options = "output-dir= save-json-to= genes= operons= coverage= reference= reads1= reads2= contig-thresholds= min-contig= "\
                "gene-thresholds= err-fpath= save-json gage eukaryote archaea glimmer no-plots no-html no-check no-check-meta combined-ref no-gc help debug "\
                "ambiguity-usage= scaffolds threads= min-cluster= min-alignment= est-ref-size= use-all-alignments gene-finding "\
-               "find-conserved-genes strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number= extensive-mis-size= ".split()
-short_options = "o:G:C:O:R:1:2:t:M:S:J:jehdsa:T:c:ufbnml:Lx:i:"
+               "find-conserved-genes strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number= extensive-mis-size= plots-format= ".split()
+short_options = "o:G:C:O:R:1:2:t:m:J:jehda:T:c:ufbl:Lx:i:"
 
 # default values for options
 contig_thresholds = "0,1000"
@@ -83,14 +84,18 @@ default_json_dirname = "json"
 
 # names of reports, log, etc.
 corrected_dirname = "quast_corrected_input"
-downloaded_dirname = "quast_downloaded_references"
 plots_fname = "report.pdf"
 report_prefix = "report"
 transposed_report_prefix = "transposed_report"
 gage_report_prefix = "gage_"
 html_aux_dir = "report_html_aux"
+# for MetaQUAST
+downloaded_dirname = "quast_downloaded_references"
 meta_summary_dir = "summary"
 not_aligned_name = "not_aligned"
+combined_name = "combined"
+quast_output_suffix = "_quast_output"
+
 
 # other settings (mostly constants). Can't be changed by command-line options
 
@@ -127,12 +132,29 @@ min_length = 300
 min_bitscore = 300
 max_references = 50
 
+# plot extension
+plot_extension = "pdf"
+supported_plot_extensions = ['emf', 'eps', 'pdf', 'png', 'ps', 'raw', 'rgba', 'svg', 'svgz']
 
 def check_python_version():
     if sys.version[0:3] not in SUPPORTED_PYTHON_VERSIONS:
         sys.stderr.write("ERROR! Python version " + sys.version[0:3] + " is not supported!\n" +\
                          "Supported versions are " + ", ".join(SUPPORTED_PYTHON_VERSIONS) + "\n")
         sys.exit(1)
+
+
+def set_max_threads(logger):
+    global max_threads
+    if max_threads is None:
+        try:
+            import multiprocessing
+            max_threads = max(1, multiprocessing.cpu_count() / 4)
+        except:
+            logger.warning('Failed to determine the number of CPUs')
+            max_threads = DEFAULT_MAX_THREADS
+        logger.info()
+        logger.notice('Maximum number of threads is set to ' + str(max_threads) +
+                      ' (use --threads option to set it manually)')
 
 
 def quast_version():
@@ -181,10 +203,10 @@ def usage(show_hidden=False, meta=False):
     print >> sys.stderr, "-G  --genes       <filename>  File with gene coordinates in the reference"
     print >> sys.stderr, "-C  --coverage    <filename>  File with coverage data"
     print >> sys.stderr, "-O  --operons     <filename>  File with operon coordinates in the reference"
-    print >> sys.stderr, "-M  --min-contig  <int>       Lower threshold for contig length [default: %s]" % min_contig
+    print >> sys.stderr, "-m  --min-contig  <int>       Lower threshold for contig length [default: %s]" % min_contig
     print >> sys.stderr, ""
     print >> sys.stderr, "Advanced options:"
-    print >> sys.stderr, "-T  --threads      <int>              Maximum number of threads [default: number of CPUs]"
+    print >> sys.stderr, "-t  --threads      <int>              Maximum number of threads [default: 25% of CPUs]"
     print >> sys.stderr, "-l  --labels \"label, label, ...\"      Names of assemblies to use in reports, comma-separated. If contain spaces, use quotes"
     print >> sys.stderr, "-L                                    Take assembly names from their parent directory names"
     if meta:
@@ -193,29 +215,31 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "-f  --gene-finding                    Predict genes (with GeneMark.hmm for prokaryotes (default), GeneMark-ES"
         print >> sys.stderr, "                                      for eukaryotes (--eukaryote), or MetaGeneMark for metagenomes (--meta)"
     print >> sys.stderr, "    --glimmer                         Predict genes with GlimmerHMM instead of GeneMark-ES"
-    print >> sys.stderr, "-S  --gene-thresholds                 Comma-separated list of threshold lengths of genes to search with Gene Finding module"
+    print >> sys.stderr, "    --gene-thresholds                 Comma-separated list of threshold lengths of genes to search with Gene Finding module"
     print >> sys.stderr, "                                      [default: %s]" % genes_lengths
     print >> sys.stderr, "-e  --eukaryote                       Genome is eukaryotic"
+    print >> sys.stderr, "-b  --find-conserved-genes            Use BUSCO for finding conserved orthologs"
     print >> sys.stderr, "--archaea                              Genome is archaeal. BUSCO does not work with archaeal genomes."
     if not meta:
-        print >> sys.stderr, "-m  --meta                            Use MetaGeneMark for gene prediction. "
+        print >> sys.stderr, "    --meta                            Use MetaGeneMark for gene prediction. "
         print >> sys.stderr, "    --est-ref-size <int>              Estimated reference size (for computing NGx metrics without a reference)"
     else:
         print >> sys.stderr, "    --max-ref-number <int>            Maximum number of references (per each assembly) to download after looking in SILVA database."
         print >> sys.stderr, "                                      Set 0 for not looking in SILVA at all [default: %s]" % max_references
     print >> sys.stderr, "    --gage                            Use GAGE (results are in gage_report.txt)"
-    print >> sys.stderr, "-b  --find-conserved-genes            Use BUSCO for finding conserved orthologs"
-    print >> sys.stderr, "-t  --contig-thresholds               Comma-separated list of contig length thresholds [default: %s]" % contig_thresholds
+    print >> sys.stderr, "    --contig-thresholds               Comma-separated list of contig length thresholds [default: %s]" % contig_thresholds
     print >> sys.stderr, "-s  --scaffolds                       Assemblies are scaffolds, split them and add contigs to the comparison"
     print >> sys.stderr, "-u  --use-all-alignments              Compute genome fraction, # genes, # operons in QUAST v.1.* style."
     print >> sys.stderr, "                                      By default, QUAST filters Nucmer\'s alignments to keep only best ones"
     print >> sys.stderr, "-i  --min-alignment <int>             Nucmer's parameter: the minimum alignment length [default: %s]" % min_alignment
     print >> sys.stderr, "-a  --ambiguity-usage <none|one|all>  Use none, one, or all alignments (or aligned fragments internal overlaps) of a contig"
-    print >> sys.stderr, "                                      when all of them are equally good. [default is %s]" % ambiguity_usage
-    print >> sys.stderr, "-n  --strict-NA                       Break contigs in any misassembly event when compute NAx and NGAx"
+    print >> sys.stderr, "                                      when all of them are equally good. [default: %s]" % ambiguity_usage
+    print >> sys.stderr, "    --strict-NA                       Break contigs in any misassembly event when compute NAx and NGAx"
     print >> sys.stderr, "                                      By default, QUAST breaks contigs only by extensive misassemblies (not local ones)"
     print >> sys.stderr, "-x  --extensive-mis-size  <int>       Lower threshold for extensive misassembly size. All relocations with inconsistency"
-    print >> sys.stderr, "                                      less than extensive-mis-size are counted as local misassemblies. [default is %s]" % extensive_misassembly_threshold
+    print >> sys.stderr, "                                      less than extensive-mis-size are counted as local misassemblies. [default: %s]" % extensive_misassembly_threshold
+    print >> sys.stderr, "    --plots-format  <str>             Save plots in specified format. [default: %s]" % plot_extension
+    print >> sys.stderr, "                                      Supported formats: %s." % ', '.join(supported_plot_extensions)
     print >> sys.stderr, ""
     print >> sys.stderr, "Speedup options:"
     print >> sys.stderr, "    --no-check                        Do not check and correct input fasta files. Use at your own risk (see manual)"

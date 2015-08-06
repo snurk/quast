@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -212,8 +213,8 @@ def _correct_references(ref_fpaths, corrected_dirpath):
         corr_seq_name = qutils.name_from_fpath(corr_seq_fpath)
         if total_references > 1:
             corr_seq_name += '_' + qutils.correct_name(seq_name[:20])
-        corr_seq = seq.upper()
         if not qconfig.no_check:
+            corr_seq = seq.upper()
             dic = {'M': 'N', 'K': 'N', 'R': 'N', 'Y': 'N', 'W': 'N', 'S': 'N', 'V': 'N', 'B': 'N', 'H': 'N', 'D': 'N'}
             pat = "(%s)" % "|".join(map(re.escape, dic.keys()))
             corr_seq = re.sub(pat, lambda m: dic[m.group()], corr_seq)
@@ -326,7 +327,6 @@ def main(args):
 
     genes = []
     operons = []
-    draw_plots = qconfig.draw_plots
     html_report = qconfig.html_report
     make_latest_symlink = True
 
@@ -414,10 +414,10 @@ def main(args):
             if qconfig.max_references < 0:
                 qconfig.max_references = 0
 
-        elif opt in ('-M', "--min-contig"):
+        elif opt in ('-m', "--min-contig"):
             qconfig.min_contig = int(arg)
 
-        elif opt in ('-T', "--threads"):
+        elif opt in ('-t', "--threads"):
             qconfig.max_threads = int(arg)
             if qconfig.max_threads < 1:
                 qconfig.max_threads = 1
@@ -434,13 +434,13 @@ def main(args):
             pass
         elif opt in ('-J', '--save-json-to'):
             pass
-        elif opt in ('-t', "--contig-thresholds"):
+        elif opt == "--contig-thresholds":
             pass
         elif opt in ('-c', "--mincluster"):
             pass
         elif opt == "--est-ref-size":
             pass
-        elif opt in ('-S', "--gene-thresholds"):
+        elif opt == "--gene-thresholds":
             pass
         elif opt in ('-s', "--scaffolds"):
             pass
@@ -460,11 +460,11 @@ def main(args):
             pass
         elif opt in ('-u', "--use-all-alignments"):
             pass
-        elif opt in ('-n', "--strict-NA"):
+        elif opt == "--strict-NA":
             pass
-        elif opt in ("-x", "--extensive-mis-size"):
+        elif opt in ('-x', "--extensive-mis-size"):
             pass
-        elif opt in ("-m", "--meta"):
+        elif opt == "--meta":
             pass
         elif opt == '--glimmer':
             pass
@@ -475,12 +475,13 @@ def main(args):
         elif opt == '--no-gc':
             pass
         elif opt == '--no-plots':
-            draw_plots = False
+            pass
         elif opt == '--no-html':
             html_report = False
         elif opt == '--fast':  # --no-check, --no-gc, --no-snps will automatically set in QUAST runs
-            draw_plots = False
             html_report = False
+        elif opt == '--plots-format':
+            pass
         else:
             logger.error('Unknown option: %s. Use -h for help.' % (opt + ' ' + arg), to_stderr=True, exit_with_code=2)
 
@@ -507,17 +508,7 @@ def main(args):
     logger.print_command_line(args, wrap_after=None)
     logger.start()
 
-    # Threading
-    if qconfig.max_threads is None:
-        try:
-            import multiprocessing
-            qconfig.max_threads = multiprocessing.cpu_count()
-        except:
-            logger.warning('Failed to determine the number of CPUs')
-            qconfig.max_threads = qconfig.DEFAULT_MAX_THREADS
-
-        logger.info()
-        logger.notice('Maximum number of threads is set to ' + str(qconfig.max_threads) + ' (use --threads option to set it manually)')
+    qconfig.set_max_threads(logger)
 
     ########################################################################
 
@@ -579,12 +570,12 @@ def main(args):
     if not ref_fpaths:
         # No references, running regular quast with MetaGenemark gene finder
         logger.info()
-        logger.notice('No references are provided, starting quast.py with MetaGeneMark gene finder')
+        logger.notice('No references are provided, starting regular QUAST with MetaGeneMark gene finder')
         _start_quast_main(
             None,
             quast_py_args,
             assemblies=assemblies,
-            output_dirpath=os.path.join(output_dirpath, 'quast_output'),
+            output_dirpath=output_dirpath,
             exit_on_exception=True)
         exit(0)
 
@@ -604,7 +595,7 @@ def main(args):
     return_code, total_num_notifications = _start_quast_main(run_name, quast_py_args + ["--ambiguity-usage"] + ['all'],
         assemblies=assemblies,
         reference_fpath=combined_ref_fpath,
-        output_dirpath=os.path.join(output_dirpath, 'combined_quast_output'),
+        output_dirpath=os.path.join(output_dirpath, qconfig.combined_name + qconfig.quast_output_suffix),
         num_notifications_tuple=total_num_notifications)
 
     if json_texts is not None:
@@ -628,7 +619,7 @@ def main(args):
             return_code, total_num_notifications = _start_quast_main(run_name, quast_py_args + ["--ambiguity-usage"] + ['all'],
                 assemblies=assemblies,
                 reference_fpath=combined_ref_fpath,
-                output_dirpath=os.path.join(output_dirpath, 'combined_quast_output'),
+                output_dirpath=os.path.join(output_dirpath, qconfig.combined_name + qconfig.quast_output_suffix),
                 num_notifications_tuple=total_num_notifications)
             if json_texts is not None:
                 json_texts = json_texts[:-1]
@@ -652,7 +643,7 @@ def main(args):
 
     assemblies_by_reference, not_aligned_assemblies = _partition_contigs(
         assemblies, corrected_ref_fpaths, corrected_dirpath,
-        os.path.join(output_dirpath, 'combined_quast_output', 'contigs_reports', 'alignments_%s.tsv'), labels)
+        os.path.join(output_dirpath, qconfig.combined_name + qconfig.quast_output_suffix, 'contigs_reports', 'alignments_%s.tsv'), labels)
 
     ref_names = []
     for ref_name, ref_assemblies in assemblies_by_reference.iteritems():
@@ -667,7 +658,7 @@ def main(args):
             return_code, total_num_notifications = _start_quast_main(run_name, quast_py_args,
                 assemblies=ref_assemblies,
                 reference_fpath=os.path.join(corrected_dirpath, ref_name) + common_ref_fasta_ext,
-                output_dirpath=os.path.join(output_dirpath, ref_name + '_quast_output'),
+                output_dirpath=os.path.join(output_dirpath, ref_name + qconfig.quast_output_suffix),
                 exit_on_exception=False, num_notifications_tuple=total_num_notifications)
             if json_texts is not None:
                 json_texts.append(json_saver.json_text)
@@ -679,7 +670,7 @@ def main(args):
 
     return_code, total_num_notifications = _start_quast_main(run_name, quast_py_args,
         assemblies=not_aligned_assemblies,
-        output_dirpath=os.path.join(output_dirpath, qconfig.not_aligned_name + '_quast_output'),
+        output_dirpath=os.path.join(output_dirpath, qconfig.not_aligned_name + qconfig.quast_output_suffix),
         exit_on_exception=False, num_notifications_tuple=total_num_notifications)
     if json_texts is not None:
         json_texts.append(json_saver.json_text)
@@ -696,12 +687,11 @@ def main(args):
         if html_report and json_texts:
             from libs.html_saver import html_saver
             html_saver.init_meta_report(summary_dirpath)
-        if draw_plots:
-            from libs import create_meta_summary
-            metrics_for_plots = reporting.Fields.main_metrics
-            misassembl_metrics = [reporting.Fields.MIS_RELOCATION, reporting.Fields.MIS_TRANSLOCATION, reporting.Fields.MIS_INVERTION,
-                               reporting.Fields.MIS_ISTRANSLOCATIONS]
-            create_meta_summary.do(output_dirpath, summary_dirpath, labels, metrics_for_plots, misassembl_metrics, ref_names)
+        from libs import create_meta_summary
+        metrics_for_plots = reporting.Fields.main_metrics
+        misassembl_metrics = [reporting.Fields.MIS_RELOCATION, reporting.Fields.MIS_TRANSLOCATION, reporting.Fields.MIS_INVERTION,
+                           reporting.Fields.MIS_ISTRANSLOCATIONS]
+        create_meta_summary.do(output_dirpath, summary_dirpath, metrics_for_plots, misassembl_metrics, ref_names)
         if html_report and json_texts:
             html_saver.create_meta_report(summary_dirpath, json_texts)
 

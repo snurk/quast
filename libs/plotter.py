@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -7,9 +8,6 @@
 ####################################################################################
 ###########################  CONFIGURABLE PARAMETERS  ##############################
 ####################################################################################
-
-# Supported plot formats: .emf, .eps, .pdf, .png, .ps, .raw, .rgba, .svg, .svgz
-plots_file_ext = '.pdf'
 
 # Feel free to add more colors
 #colors = ['#E41A1C', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#A65628', '#F781BF', '#FFFF33']  ## 8-color palette
@@ -54,6 +52,8 @@ meta_logger = get_logger(qconfig.LOGGER_META_NAME)
 
 import reporting
 
+# Supported plot formats: .emf, .eps, .pdf, .png, .ps, .raw, .rgba, .svg, .svgz
+plots_file_ext = '.' + qconfig.plot_extension
 
 # checking if matplotlib is installed
 matplotlib_error = False
@@ -624,7 +624,6 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
         ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
     except Exception:
         pass
-    plot_fpath += '.png'
     matplotlib.pyplot.tight_layout()
     matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
     logger.info('    saved to ' + plot_fpath)
@@ -683,9 +682,9 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
             ymax = max(ymax, ymax_j)
             refs.append(ref_names[j])
         else:
-            arr_x.insert(j, None)
-            json_points_x.append(j)
-            json_points_y.append(None)
+            for i in range(len(misassemblies)):
+                json_points_x.append(arr_x[j])
+                json_points_y.append(0)
 
     matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
     legend_n = set(legend_n)
@@ -703,7 +702,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
 
     ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
 
-    plot_fpath += '.png'
+    plot_fpath += plots_file_ext
     matplotlib.pyplot.tight_layout()
     matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
     logger.info('    saved to ' + plot_fpath)

@@ -1,5 +1,6 @@
 ############################################################################
-# Copyright (c) 2011-2015 Saint-Petersburg Academic University
+# Copyright (c) 2015 Saint Petersburg State University
+# Copyright (c) 2011-2015 Saint Petersburg Academic University
 # All Rights Reserved
 # See file LICENSE for details.
 ############################################################################
@@ -12,11 +13,11 @@ from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
 
-txt_pattern_gi = re.compile(r'gi\|(?P<id>\d+)\|\w+\|(?P<seqname>\S+)\|\s+(?P<number>\d+)\s+(?P<start>\d+)\s+(?P<end>\d+)', re.I)
+txt_pattern_gi = re.compile(r'gi\|(?P<id>\d+)\|\w+\|(?P<seqname>\S+)\|\s+(?P<gene_id>.+)\s+(?P<start>\d+)\s+(?P<end>\d+)$', re.I)
 
-txt_pattern = re.compile(r'(?P<seqname>\S+)\s+(?P<number>\d+)\s+(?P<start>\d+)\s+(?P<end>\d+)', re.I)
+txt_pattern = re.compile(r'(?P<seqname>\S+)\s+(?P<gene_id>.+)\s+(?P<start>\d+)\s+(?P<end>\d+)$', re.I)
 
-gff_pattern = re.compile(r'(?P<seqname>\S+)\s+\S+\s+(?P<feature>\S+)\s+(?P<start>\d+)\s+(?P<end>\d+)\s+\S+\s+(?P<strand>[\+\-\.]?)\s+\S+\s+(?P<attributes>.+)', re.I)
+gff_pattern = re.compile(r'(?P<seqname>\S+)\s+\S+\s+(?P<feature>\S+)\s+(?P<start>\d+)\s+(?P<end>\d+)\s+\S+\s+(?P<strand>[\+\-\.]?)\s+\S+\s+(?P<attributes>.+)$', re.I)
 
 ncbi_start_pattern = re.compile(r'(?P<number>\d+)\.\s*(?P<name>\S+)\s*$', re.I)
 
@@ -136,18 +137,21 @@ def parse_ncbi(ncbi_file):
 def parse_txt(file):
     genes = []
 
+    number = 0
+
     for line in file:
         m = txt_pattern_gi.match(line)
         if not m:
             m = txt_pattern.match(line)
         if m:
-            gene = Gene(number=int(m.group('number')),
+            gene = Gene(number=number,
                         seqname=qutils.correct_name(m.group('seqname')))
+            number += 1
             s = int(m.group('start'))
             e = int(m.group('end'))
             gene.start = min(s, e)
             gene.end = max(s, e)
-            gene.id = m.group('number')
+            gene.id = m.group('gene_id')
             genes.append(gene)
 
     return genes
@@ -175,7 +179,8 @@ def parse_gff(file, feature):
             attributes = m.group('attributes').split(';')
             for attr in attributes:
                 if attr and attr != '' and '=' in attr:
-                    key, val = attr.split('=')[:2]
+                    key = attr.split('=')[0]
+                    val = attr[len(key) + 1:]
                     if key.lower() == 'id':
                         gene.id = val
                     if key.lower() == 'name':
