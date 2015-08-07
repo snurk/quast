@@ -1162,8 +1162,6 @@ def do(f_args, output_dir):
             hammers = [hammers[i] for i in range(len(hammers)) if extracted_files[i]]
             startQueue(hammers, cpus)
 
-    shutil.rmtree(join(augustus_short_dirpath, 'config/species', assembly_name), ignore_errors=True)
-
     #parse results and write final summary
     #Categorizing genes found in Complete multi-copy and partial hits
     leng_dic = {}
