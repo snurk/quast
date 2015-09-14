@@ -402,10 +402,28 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         strand2 = (align2.s2 < align2.e2)
         inconsistency = distance_on_reference - distance_on_contig
 
+        # check for fake translocations (if reference is fragmented)
+        if (abs(align1.e1 - len(references[align1.ref])) > qconfig.MAX_INDEL_LENGTH) or ((align2.s1 - 1) > qconfig.MAX_INDEL_LENGTH):
+            align1, align2 = align2, align1
+        if align1.ref != align2.ref:
+            is_translocation = ((abs(align1.e1 - len(references[align1.ref])) > qconfig.MAX_INDEL_LENGTH) or ((align2.s1 - 1) > qconfig.MAX_INDEL_LENGTH))
+            if qconfig.is_combined_ref and \
+                not check_chr_for_refs(align1.ref, align2.ref):
+                is_translocation = True
+            if not is_translocation:
+                distance_on_reference = (align1.e1 - len(references[align1.ref])) + (align2.s1 - 1)
+                inconsistency = distance_on_reference - distance_on_contig
+                if abs(inconsistency) > smgap:
+                    is_translocation = True
+                strand1 = strand2
+        else:
+            is_translocation = False
         aux_data = {"inconsistency": inconsistency, "distance_on_contig": distance_on_contig,
-                    "misassembly_internal_overlap": misassembly_internal_overlap, "cyclic_moment": cyclic_moment}
+                    "misassembly_internal_overlap": misassembly_internal_overlap, "cyclic_moment": cyclic_moment,
+                    "is_translocation": is_translocation}
         # different chromosomes or large inconsistency (a gap or an overlap) or different strands
-        if align1.ref != align2.ref or abs(inconsistency) > smgap or (strand1 != strand2):
+        if (align1.ref != align2.ref and is_translocation) \
+                or abs(inconsistency) > smgap or (strand1 != strand2):
             return True, aux_data
         else:
             return False, aux_data
@@ -440,6 +458,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             print >> planta_out_f, '--> %s' % align.short_str()
 
         if qconfig.ambiguity_usage == 'all':
+            return 0
+        if align1.ref != align2.ref:
             return 0
         distance_on_contig = min(align2.e2, align2.s2) - max(align1.e2, align1.s2) - 1
         if distance_on_contig >= 0:  # no overlap
@@ -490,6 +510,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             distance_on_contig = aux_data["distance_on_contig"]
             misassembly_internal_overlap += aux_data["misassembly_internal_overlap"]
             cyclic_moment = aux_data["cyclic_moment"]
+            is_translocation = aux_data["is_translocation"]
 
             ref_aligns.setdefault(sorted_aligns[i].ref, []).append(sorted_aligns[i])
             print >> coords_filtered_file, str(prev)
@@ -510,7 +531,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         contig_is_printed = True
                     print >> misassembly_file, 'Extensive misassembly (',
                     print >> planta_out_f, '\t\t\t  Extensive misassembly (',
-                    if sorted_aligns[i].ref != sorted_aligns[i+1].ref:
+                    if sorted_aligns[i].ref != sorted_aligns[i+1].ref and is_translocation:
                         if qconfig.is_combined_ref and \
                                 not check_chr_for_refs(sorted_aligns[i].ref, sorted_aligns[i+1].ref):  # if chromosomes from different references
                                 region_misassemblies.append(Misassembly.INTERSPECTRANSLOCATION)
@@ -539,6 +560,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             else:
                 if inconsistency == 0 and cyclic_moment:
                     print >> planta_out_f, '\t\t\t  Fake misassembly (caused by linear representation of circular genome) between these two alignments'
+                elif abs(inconsistency) <= qconfig.MAX_INDEL_LENGTH and sorted_aligns[i].ref != sorted_aligns[i+1].ref:
+                    print >> planta_out_f, '\t\t\t  Fake misassembly (caused by fragmentation of reference genome) between these two alignments'
                 elif abs(inconsistency) <= qconfig.MAX_INDEL_LENGTH and \
                         count_not_ns_between_aligns(contig_seq, sorted_aligns[i], sorted_aligns[i+1]) <= qconfig.MAX_INDEL_LENGTH:
                     print >> planta_out_f, '\t\t\t  Fake misassembly between these two alignments: inconsistency =', inconsistency,
