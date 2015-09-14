@@ -437,6 +437,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             else:
                 is_translocation = True
         aux_data["is_translocation"] = is_translocation
+
         # different chromosomes or large inconsistency (a gap or an overlap) or different strands
         if (align1.ref != align2.ref and is_translocation) \
                 or abs(inconsistency) > smgap or (strand1 != strand2):
@@ -539,7 +540,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
         if qconfig.ambiguity_usage == 'all':
             return 0
-
+        if align1.ref != align2.ref:
+            return 0
         distance_on_contig = min(align2.e2, align2.s2) - max(align1.e2, align1.s2) - 1
         if distance_on_contig >= 0:  # no overlap
             return 0
@@ -590,12 +592,14 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             cyclic_moment = aux_data["cyclic_moment"]
             is_translocation = aux_data["is_translocation"]
             is_sv = aux_data["is_sv"]
+
             if sorted_aligns[i].ref == sorted_aligns[i+1].ref or (sorted_aligns[i].ref != sorted_aligns[i+1].ref and is_translocation):
                 cur_aligned_length -= exclude_internal_overlaps(sorted_aligns[i], sorted_aligns[i+1], i)
             print >> planta_out_f, '\t\t\tReal Alignment %d: %s' % (i+1, str(sorted_aligns[i]))
 
             ref_aligns.setdefault(sorted_aligns[i].ref, []).append(sorted_aligns[i])
             print >> coords_filtered_file, str(prev)
+
             if is_sv:
                 print >> planta_out_f, '\t\t\t  Fake misassembly (caused by structural variations of genome) between these two alignments'
                 misassemblies_matched_sv += 1
