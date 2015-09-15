@@ -218,9 +218,7 @@ def _correct_references(ref_fpaths, corrected_dirpath):
         else:
             corr_seq_fpath = qutils.unique_corrected_fpath(os.path.join(corrected_dirpath, seq_fname))
             corrected_ref_fpaths.append(corr_seq_fpath)
-        corr_seq_name = qutils.name_from_fpath(corr_seq_fpath)
-        if total_references > 1:
-            corr_seq_name += '_' + qutils.correct_name(seq_name[:20])
+        corr_seq_name = qutils.name_from_fpath(corr_seq_fpath) + '_' + qutils.correct_name(seq_name[:20])
         if not qconfig.no_check:
             corr_seq = seq.upper()
             dic = {'M': 'N', 'K': 'N', 'R': 'N', 'Y': 'N', 'W': 'N', 'S': 'N', 'V': 'N', 'B': 'N', 'H': 'N', 'D': 'N'}
