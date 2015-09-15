@@ -149,12 +149,13 @@ class Settings:
 
 
 class Alignment:
-    def __init__(self, name, start, end, is_rc, position_in_conitg):
+    def __init__(self, name, start, end, is_rc, position_in_contig, position_in_ref):
         self.name = name
         self.start = start
         self.end = end
         self.is_rc = is_rc
-        self.position_in_contig = position_in_conitg
+        self.position_in_contig = position_in_contig
+        self.position_in_ref = position_in_ref
 
         self.order = 0
         self.similar = False
@@ -605,7 +606,10 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
             if line.startswith('Analyzing contigs...'):
                 break
 
+        fake_misassembled_contigs_refs = []
+        fake_misassembled_contigs_positions = {}
         cur_contig_id = ''
+        prev_line = ''
         for line in report_file:
             if line.startswith('CONTIG:'):
                 cur_contig_id = line.split('CONTIG:')[1].strip()
@@ -614,13 +618,45 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 misassembled_contigs_ids.append(cur_contig_id.split()[0])
                 cur_contig_id = ''
 
+            if (line.find('Fake misassembly') != -1 and line.find('fragmentation') == -1):
+                ref = prev_line.split()[-2]
+                if ref not in fake_misassembled_contigs_refs:
+                    fake_misassembled_contigs_refs.append(ref)
+                if ref not in fake_misassembled_contigs_positions:
+                    fake_misassembled_contigs_positions[ref] = []
+                line_contig1 = prev_line.split()
+                while line:
+                    line = report_file.next()
+                    if line.find('Real Alignment') != -1:
+                        line_contig2 = line.split()
+                        break
+
+                position_in_ref1 = max(int(line_contig1[3]), int(line_contig1[4]))
+                position_in_ref2 = max(int(line_contig2[3]), int(line_contig2[4]))
+                fake_misassembled_contigs_positions[ref].append((line_contig1[-1], [min(position_in_ref1, position_in_ref2), max(position_in_ref1, position_in_ref2)]))
+
+            prev_line = line
             if line.startswith('Analyzing coverage...'):
                 break
 
         cur_shift = 0
+        ref_blocks = []
+        for ref in fake_misassembled_contigs_positions:
+            fake_misassembled_contigs_positions[ref] = sorted(fake_misassembled_contigs_positions[ref], key=lambda x: x[1][0])
         for line in report_file:
             split_line = line.strip().split(' ')
             if split_line and split_line[0] == 'Reference':
+                if ref_blocks:
+                    if ref_name in fake_misassembled_contigs_refs:
+                        for contig_pos in fake_misassembled_contigs_positions[ref_name]:
+                            blocks = [block for block in ref_blocks if block.position_in_ref in contig_pos[1] and block.name == contig_pos[0]]
+                            big_block = Alignment(blocks[0].name, min([block.start for block in blocks]), max([block.end for block in blocks]),
+                                                  blocks[0].is_rc, min([block.position_in_contig for block in blocks]), max([block.position_in_ref for block in blocks]))
+                            ref_blocks.insert(ref_blocks.index(blocks[0]), big_block)
+                            for block in blocks:
+                                ref_blocks.remove(block)
+                    aligned_blocks.extend(ref_blocks)
+                ref_blocks = []
                 ref_name = split_line[1][:-1]
                 if ref_name in sorted_ref_names:
                     cur_shift = cumulative_ref_lengths[sorted_ref_names.index(ref_name)]
@@ -635,13 +671,16 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 end_in_contig = int(split_line[6])
 
                 is_rc = ((start - end) * (start_in_contig - end_in_contig)) < 0
+                position_in_contig = min(start_in_contig, end_in_contig)
+                position_in_ref = max(int(split_line[2]), int(split_line[3]))
                 block = Alignment(
                     contig_id, start, end, is_rc,
-                    position_in_conitg=min(start_in_contig, end_in_contig))
-
+                    position_in_contig, position_in_ref)
                 if contig_id in misassembled_contigs_ids:
                     block.misassembled = True
+                ref_blocks.append(block)
 
-                aligned_blocks.append(block)
+        if ref_blocks:
+            aligned_blocks.extend(ref_blocks)
 
     return aligned_blocks
