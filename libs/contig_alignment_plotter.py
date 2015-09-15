@@ -640,6 +640,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
         last_contig_id = ''
 
         misassembled_id_to_structure = dict()
+        prev_line = ''
         for line in report_file:
             if line.startswith('CONTIG:'):
                 cur_contig_id = line.split('CONTIG:')[1].strip()
@@ -682,6 +683,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
 
         cur_shift = 0
         ref_blocks = []
+
         for ref in fake_misassembled_contigs_positions:
             fake_misassembled_contigs_positions[ref] = sorted(fake_misassembled_contigs_positions[ref], key=lambda x: x[1][0])
         for line in report_file:
@@ -720,7 +722,6 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 block = Alignment(
                     contig_id, start, end, unshifted_start, unshifted_end, is_rc,
                     position_in_contig, position_in_ref, ref_name)
-
                 if contig_id in misassembled_contigs_ids:
                     block.misassembled = True
                 ref_blocks.append(block)
