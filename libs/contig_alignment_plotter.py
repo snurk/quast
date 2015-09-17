@@ -649,12 +649,13 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 if ref_blocks:
                     if ref_name in fake_misassembled_contigs_refs:
                         for contig_pos in fake_misassembled_contigs_positions[ref_name]:
-                            blocks = [block for block in ref_blocks if block.position_in_ref in contig_pos[1] and block.name == contig_pos[0]]
-                            big_block = Alignment(blocks[0].name, min([block.start for block in blocks]), max([block.end for block in blocks]),
-                                                  blocks[0].is_rc, min([block.position_in_contig for block in blocks]), max([block.position_in_ref for block in blocks]))
-                            ref_blocks.insert(ref_blocks.index(blocks[0]), big_block)
-                            for block in blocks:
-                                ref_blocks.remove(block)
+                            blocks = [block for block in ref_blocks if block.position_in_ref in contig_pos[1]]
+                            if blocks:
+                                big_block = Alignment(blocks[0].name, min([block.start for block in blocks]), max([block.end for block in blocks]),
+                                                      blocks[0].is_rc, min([block.position_in_contig for block in blocks]), max([block.position_in_ref for block in blocks]))
+                                ref_blocks.insert(ref_blocks.index(blocks[0]), big_block)
+                                for block in blocks:
+                                    ref_blocks.remove(block)
                     aligned_blocks.extend(ref_blocks)
                 ref_blocks = []
                 ref_name = split_line[1][:-1]
