@@ -28,7 +28,7 @@
 		var isOverlapping = function(item, lane) {
 			if (lane)
 				for (var i = 0; i < lane.length; i++)
-					if (item.start <= lane[i].end && lane[i].start <= item.end)
+					if (item.corr_start <= lane[i].corr_end && lane[i].corr_start <= item.corr_end)
 						return true;
 
 			return false;

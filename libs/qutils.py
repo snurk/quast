@@ -142,6 +142,8 @@ def check_is_fasta_file(fname):
     basename, fasta_ext = os.path.splitext(basename_plus_innerext)
     if fasta_ext == '':
         outer_ext, fasta_ext = fasta_ext, outer_ext
+    if outer_ext in ['.fa', '.fasta', '.fas', '.seq', '.fna']:
+        return True
     if outer_ext not in ['.zip', '.gz', '.gzip', '.bz2', '.bzip2', '']:
         logger.warning('Skipping %s because it is not a supported archive.' % fname)
         return False

@@ -19,6 +19,9 @@ from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
 MAX_REF_NAME = 20
+MAX_SIZE_FOR_COMB_PLOT = 50000000  # if reference is small and has many contigs
+MIN_CONTIGS_FOR_COMB_PLOT = 10
+NAME_FOR_ONE_PLOT = 'Main plot'
 
 from libs import plotter  # Do not remove this line! It would lead to a warning in matplotlib.
 if not plotter.matplotlib_error:
@@ -585,7 +588,7 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
         chr_len = len(seq)
         total_genome_size += chr_len
         reference_chromosomes[chr_name] = chr_len
-    virtual_genome_shift = int(0.1 * total_genome_size)
+    virtual_genome_shift = 100
     sorted_ref_names = sorted(reference_chromosomes, key=reference_chromosomes.get, reverse=True)
     sorted_ref_lengths = sorted(reference_chromosomes.values(), reverse=True)
     cumulative_ref_lengths = [0]
@@ -606,7 +609,7 @@ def do(contigs_fpaths, contig_report_fpath_pattern, output_dirpath,
         contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift, output_dirpath,
         lists_of_aligned_blocks, arcs, similar, coverage_hist)
     if assemblies:
-        js_data_gen(assemblies, contigs_fpaths, chr_names, reference_chromosomes, output_dirpath, cov_fpath)
+        js_data_gen(assemblies, contigs_fpaths, chr_names, reference_chromosomes, output_dirpath, cov_fpath, ref_fpath, virtual_genome_size)
 
     return plot_fpath
 
@@ -682,7 +685,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
     return aligned_blocks
 
 
-def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, output_dir_path, cov_fpath):
+def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, output_dir_path, cov_fpath, ref_fpath, genome_size):
     if cov_fpath:
         cov_data = dict()
         not_covered = dict()
@@ -718,41 +721,67 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
         for align in assembly.alignments:
             chr_to_aligned_blocks[align.ref_name].append(align)
 
-    for i, chr in enumerate(chr_names):
-        short_chr = chr[:30]
-        with open(os.path.join(output_dir_path, 'data_%s.js' % short_chr), 'w') as result:
-            result.write('"use strict";\n')
+    summary_fname = 'alignment_summary.html'
+    summary_path = os.path.join(output_dir_path, summary_fname)
+    output_all_files_dir_path = os.path.join(output_dir_path, 'alignment_plot')
+    if not os.path.exists(output_all_files_dir_path):
+        os.mkdir(output_all_files_dir_path)
+    import contigs_analyzer
+    if contigs_analyzer.ref_labels_by_chromosomes:
+        contig_names_by_refs = contigs_analyzer.ref_labels_by_chromosomes
+        chr_full_names = list(set([contig_names_by_refs[contig] for contig in chr_names]))
+    elif genome_size < MAX_SIZE_FOR_COMB_PLOT and len(chr_names) >= MIN_CONTIGS_FOR_COMB_PLOT:
+        chr_full_names = [NAME_FOR_ONE_PLOT]
+    else:
+        chr_full_names = chr_names
 
+    for i, chr in enumerate(chr_full_names):
+        short_chr = chr[:30]
+        with open(os.path.join(output_all_files_dir_path, 'data_%s.js' % short_chr), 'w') as result:
+            result.write('"use strict";\n')
+            if contigs_analyzer.ref_labels_by_chromosomes:
+                contigs = [contig for contig in chr_names if contig_names_by_refs[contig] == chr]
+            elif chr == NAME_FOR_ONE_PLOT:
+                contigs = chr_names
+            else:
+                contigs = [chr]
             data_str = 'var chromosomes_len = {};\n'
-            l = chromosomes_length[chr]
-            data_str += 'chromosomes_len["{chr}"] = {l};\n'.format(**locals())
+            for contig in contigs:
+                l = chromosomes_length[contig]
+                data_str += 'chromosomes_len["{contig}"] = {l};\n'.format(**locals())
             result.write(data_str)
 
             # adding assembly data
             data_str = 'var contig_data = {};\n'
-            data_str += 'contig_data["{chr}"] = ['.format(**locals())
-            if len(chr_to_aligned_blocks[chr]) > 0:
-                for alignment in chr_to_aligned_blocks[chr]:
-                    data_str += '{{name: "{alignment.name}", start: {alignment.unshifted_start}, end: {alignment.unshifted_end}, assembly: "{alignment.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}", order: {alignment.order} '.format(**locals())
-                    if alignment.name != 'FICTIVE':
-                        data_str += ', structure: ['
-                        for el in alignment.misassembled_structure:
-                            if type(el) == list:
-                                data_str += '{{type: "A", start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}, chr: "{el[5]}"}},'.format(**locals())
-                            elif type(el) == str:
-                                data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
-                        data_str = data_str[: -1] + ']},'
-                    else: data_str += '},'
-                data_str = data_str[: -1] + '];\n\n'
-                result.write(data_str)
-                data_str = ''
-            else:
-                data_str += '];\n\n'
-                result.write(data_str)
-
-            #add chr -> int
-            data_str = 'var chr_to_int = {};\n'
-            data_str += 'chr_to_int["{chr}"] = {i};\n'.format(**locals())
+            data_str += 'contig_data["{chr}"] = [ '.format(**locals())
+            prev_len = 0
+            chr_lengths = [0] + [chromosomes_length[contig] for contig in contigs]
+            for num_contig, contig in enumerate(contigs):
+                if num_contig > 0:
+                    prev_len += chr_lengths[num_contig]
+                if len(chr_to_aligned_blocks[contig]) > 0:
+                    for alignment in chr_to_aligned_blocks[contig]:
+                        corr_start = prev_len + alignment.unshifted_start
+                        corr_end = prev_len + alignment.unshifted_end
+                        data_str += '{{name: "{alignment.name}", corr_start: {corr_start}, corr_end: {corr_end},' \
+                                    'start: {alignment.unshifted_start}, end: {alignment.unshifted_end}, assembly: "{alignment.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}" '.format(**locals())
+                        if alignment.name != 'FICTIVE':
+                            data_str += ', structure: ['
+                            for el in alignment.misassembled_structure:
+                                if type(el) == list:
+                                    if el[5] in contigs:
+                                        num_chr = contigs.index(el[5])
+                                        corr_len = sum(chr_lengths[:num_chr+1])
+                                    else:
+                                        corr_len = -int(el[1])
+                                    corr_start = corr_len + int(el[0])
+                                    corr_end = corr_len + int(el[1])
+                                    data_str += '{{type: "A", corr_start: {corr_start}, corr_end: {corr_end}, start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}, chr: "{el[5]}"}},'.format(**locals())
+                                elif type(el) == str:
+                                    data_str += '{{type: "M", mstype: "{el}"}},'.format(**locals())
+                            data_str = data_str[: -1] + ']},'
+                        else: data_str += '},'
+            data_str = data_str[:-1] + '];\n\n'
             result.write(data_str)
             if cov_fpath:
                 # adding coverage data
@@ -781,15 +810,8 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 result.write(data_str)
                 data_str = ''
 
-            with open(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_data_template.js')), 'r') \
-                        as template:
-                result.write(template.read())
-
-            summary_fname = 'alignment_summary.html'
-            summary_path = os.path.join(output_dir_path, summary_fname)
-
             with open(html_saver.get_real_path('_chr_templ.html'), 'r') as template:
-                with open(os.path.join(output_dir_path, '_{short_chr}.html'.format(**locals())), 'w') as result:
+                with open(os.path.join(output_all_files_dir_path, '_{short_chr}.html'.format(**locals())), 'w') as result:
                     for line in template:
                         if line.find('<script type="text/javascript" src=""></script>') != -1:
                             result.write('<script type="text/javascript" src="data_{short_chr}.js"></script>\n'.format(**locals()))
@@ -797,22 +819,26 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                             result.write(line)
                             if line.find('<body>') != -1:
                                 title = chr.replace('_', ' ')
-                                result.write('<div class = "block title">{title}<a href="{summary_fname}"><div class = "subtitle">(BACK TO MAIN MENU)</div></a></div>\n'.format(**locals()))
+                                result.write('<div class = "block title">{title}<a href="../{summary_fname}"><div class = "subtitle">(BACK TO MAIN MENU)</div></a></div>\n'.format(**locals()))
                             if line.find('<script type="text/javascript">') != -1:
+                                chromosome = '","'.join(contigs)
                                 result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))
+                                result.write('var chrContigs = ["{chromosome}"];\n'.format(**locals()))
 
     with open(html_saver.get_real_path('alignment_summary_templ.html'), 'r') as template:
         with open(summary_path, 'w') as result:
             for line in template:
                 result.write(line)
                 if line.find('<!--- references: ---->') != -1:
-                    for i, chr in enumerate(chr_names):
+                    for chr in sorted(chr_full_names):
                         short_chr = chr[:30]
-                        p = '_{short_chr}.html'.format(**locals())
+                        p = os.path.join(output_all_files_dir_path, '_{short_chr}.html'.format(**locals()))
                         t = chr.replace('_', ' ')
                         result.write('<a href="{p}"><div class="block">{t}</div></a>'.format(**locals()))
 
     copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),
-             os.path.join(output_dir_path, 'contig_alignment_plot.css'))
+             os.path.join(output_all_files_dir_path, 'contig_alignment_plot.css'))
     copyfile(html_saver.get_real_path(os.path.join('static', 'd3.js')),
-             os.path.join(output_dir_path, 'd3.js'))
+             os.path.join(output_all_files_dir_path, 'd3.js'))
+    copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot_script.js')),
+             os.path.join(output_all_files_dir_path, 'contig_alignment_plot_script.js'))
