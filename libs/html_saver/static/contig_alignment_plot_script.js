@@ -502,14 +502,36 @@ THE SOFTWARE.
     var arrow = "M0,101.08h404.308L202.151,303.229L0,101.08z";
     var lines = [];
     var len = 0;
-    for (var chr in chromosomes_len) {
-        lines.push({x1: len + chromosomes_len[chr], x2: len + chromosomes_len[chr], y1: 0, y2: mainHeight});
-        len += chromosomes_len[chr];
-    };
+    var commonChrName = CHROMOSOME.length + 1;
+    if (chromosomes_len.length > 1) {
+        for (var chr in chromosomes_len) {
+            var shortName = chr.slice(commonChrName, chr.length);
+            lines.push({name: shortName, corr_start: len, corr_end: len + chromosomes_len[chr], y1: 0, y2: mainHeight});
+            len += chromosomes_len[chr];
+        }
+    }
     var itemLines = main.append('g')
             .attr('clip-path', 'url(#clip)');
+    var refNames = main.append('g');
 
     display();
+
+    document.getElementById('left').onclick=function() {
+            keyPress('left', 2) };
+    document.getElementById('left_shift').onclick=function() {
+            keyPress('left', 10) };
+    document.getElementById('right').onclick=function() {
+            keyPress('right', 2) };
+    document.getElementById('right_shift').onclick=function() {
+            keyPress('right', 10) };
+    document.getElementById('zoom_in').onclick=function() {
+            keyPress('zoom_in', 25) };
+    document.getElementById('zoom_in_5').onclick=function() {
+            keyPress('zoom_in', 40) };
+    document.getElementById('zoom_out').onclick=function() {
+            keyPress('zoom_out', 50) };
+    document.getElementById('zoom_out_5').onclick=function() {
+            keyPress('zoom_out', 200) };
 
     function display() {
         x_main = d3.scale.linear()
@@ -533,7 +555,10 @@ THE SOFTWARE.
                     if (d.corr_start < maxExtent && d.corr_end > minExtent) return d;
                 }),
                 visibleLines = lines.filter(function (d) {
-                    if (d.x1 < maxExtent && d.x2 > minExtent) return d;
+                    if (d.corr_end < maxExtent) return d;
+                }),
+                visibleRefNames = lines.filter(function (d) {
+                    if (d.corr_start < maxExtent && d.corr_end > minExtent) return d;
                 });
         mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
         if (typeof coverage_data != "undefined")
@@ -562,8 +587,8 @@ THE SOFTWARE.
         var others = lineContigs.enter().append('g')
                 .attr('class', 'lines')
                 .attr('transform', function (d) {
-                    var x = x_main(d.x1);
-                    var y = 4;
+                    var x = x_main(d.corr_end);
+                    var y = 0;
 
                     return 'translate(' + x + ', ' + y + ')';
                 });
@@ -572,10 +597,9 @@ THE SOFTWARE.
                     return 1;
                 })
                 .attr('height', function (d) {
-                    return d.y2 - 12;
+                    return d.y2;
                 })
                 .attr('fill', '#300000');
-        
 
         var chartArrows = main.selectAll('.arrow')
                 .data(visibleArrows, function (d) {
@@ -741,25 +765,77 @@ THE SOFTWARE.
                     .append('path')
                     .attr('d', not_covered_line);
         }
+        main.selectAll('.refs').remove();
+
+        var visibleRefs = refNames.selectAll('.g')
+                .data(visibleRefNames, function (d) {
+                    return d.id;
+                });
+        
+        var otherRefs = visibleRefs.enter().append('g')
+                .attr('class', 'refs')
+                .attr('transform', function (d) {
+                    var x = x_main(Math.max(minExtent, d.corr_start));
+                    var y = d.y2 + 6;
+
+                    return 'translate(' + x + ', ' + y + ')';
+                })
+                .attr('width', function (d) {
+                    return x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start));
+                });
+        otherRefs.append('text')
+                .text(visibleText)
+                .attr('text-anchor', 'start')
+                .attr('class', 'itemLabel')
+                .attr('transform', 'translate(10, 5)');
     }
 
-
-    function keyDownAnswer() {
-        var key = d3.event.keyCode;
+    function keyPress (cmd, deltaCoeff) {
         var ext = brush.extent();
         var delta = .01 * (ext[1] - ext[0]);
-        if (key == 109) // +
-            brush.extent([ext[0] - delta, ext[1] + delta]);
-        if (key == 107 && ext[1] - ext[0] > 0) // -
-            brush.extent([ext[0] + delta, ext[1] - delta]);
-        if (key == 39) // >
-            brush.extent([ext[0] + delta, ext[1] + delta]);
-        if (key == 37) // <
-            brush.extent([ext[0] - delta, ext[1] - delta]);
-
+        if (deltaCoeff) delta *= deltaCoeff;
+        switch (cmd) {
+            case 'zoom_in':
+                brush.extent([ext[0] + delta, ext[1] - delta]);
+                break;
+            case 'zoom_out':
+                brush.extent([ext[0] - delta, ext[1] + delta]);
+                break;
+            case 'left':
+                brush.extent([ext[0] - delta, ext[1] - delta]);
+                break;
+            case 'right':
+                brush.extent([ext[0] + delta, ext[1] + delta]);
+                break;
+            case 'esc': { 
+                info.selectAll('p')
+                    .remove();
+                info.append('p')
+                    .text('<SELECT CONTIG>');
+                arrows = [];
+                mini.selectAll('.arrow').remove();
+                selected_id = null;
+                break
+            }
+        }
         display();
     }
 
+    function keyDownAnswer() {
+        var key = d3.event.keyCode;
+        if (d3.event.shiftKey) deltaCoeff = 5;
+        else deltaCoeff = 1;
+        if (key == 109) // +
+            keyPress('zoom_out', deltaCoeff);
+        else if (key == 107 && ext[1] - ext[0] > 0) // -
+            keyPress('zoom_in', deltaCoeff);
+        else if (key == 39) // >
+            keyPress('right', deltaCoeff);
+        else if (key == 37) // <
+            keyPress('left', deltaCoeff);
+        else if (key == 27) 
+            keyPress('esc');
+    }
 
     function sync() {
         var minExtent = Math.max(brush_cov.extent()[0], x_cov_mini_S.domain()[0]),
@@ -931,6 +1007,7 @@ THE SOFTWARE.
                 .remove();
 
         info.append('p')
+                .style({'display': 'block', 'word-break': 'break-all', 'word-wrap': 'break-word'})
                 .text('Name: ' + d.name, 280);
 
         info.append('p')
@@ -958,7 +1035,6 @@ THE SOFTWARE.
             var e = data.filter(function (d) {
                 if (d.type == 'A' && d.corr_start <= start && end <= d.corr_end) return d;
             })[0];
-            console.log(e,data)
             var ndash = String.fromCharCode(8211);
             var d = whereAppend.append('p')
                     .attr('class', 'head')
@@ -966,7 +1042,7 @@ THE SOFTWARE.
                     .text(['Position:', posVal(e.start), ndash, posVal(e.end), mainTickValue, ' '].join(' '));
             if (chrContigs.indexOf(e.chr) == -1) {
                 d.append('a')
-                        .attr('href', '_chr' + e.chr + '.html')
+                        .attr('href', '_' + (links_to_chromosomes ? links_to_chromosomes[e.chr] : e.chr) + '.html')
                         .attr('target', '_blank')
                         .text('(' + e.chr + ')');
             }

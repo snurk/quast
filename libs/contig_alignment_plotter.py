@@ -22,6 +22,7 @@ MAX_REF_NAME = 20
 MAX_SIZE_FOR_COMB_PLOT = 50000000  # if reference is small and has many contigs
 MIN_CONTIGS_FOR_COMB_PLOT = 10
 NAME_FOR_ONE_PLOT = 'Main plot'
+alignment_plots_dirname = 'alignment_plot'
 
 from libs import plotter  # Do not remove this line! It would lead to a warning in matplotlib.
 if not plotter.matplotlib_error:
@@ -686,27 +687,6 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
 
 
 def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, output_dir_path, cov_fpath, ref_fpath, genome_size):
-    if cov_fpath:
-        cov_data = dict()
-        not_covered = dict()
-        cur_len = dict()
-        with open(cov_fpath, 'r') as coverage:
-            name = chr_names[0]
-            for chr in chr_names:
-                cov_data.setdefault(chr, [])
-                not_covered.setdefault(chr, [])
-                cur_len.setdefault(chr, 0)
-
-            for index, line in enumerate(coverage):
-                c = list(line.split())
-                name = qutils.correct_name(c[0])
-                cur_len[name] += int(c[2])
-                if index % 100 == 0 and index > 0:
-                    cov_data[name].append(cur_len[name]/100)
-                    cur_len[name] = 0
-                if c[2] == '0':
-                    not_covered[name].append(c[1])
-
     chr_to_aligned_blocks = dict()
     for chr in chr_names:
         chr_init = []
@@ -723,7 +703,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
 
     summary_fname = 'alignment_summary.html'
     summary_path = os.path.join(output_dir_path, summary_fname)
-    output_all_files_dir_path = os.path.join(output_dir_path, 'alignment_plot')
+    output_all_files_dir_path = os.path.join(output_dir_path, alignment_plots_dirname)
     if not os.path.exists(output_all_files_dir_path):
         os.mkdir(output_all_files_dir_path)
     import contigs_analyzer
@@ -735,16 +715,50 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
     else:
         chr_full_names = chr_names
 
+    if cov_fpath:
+        cov_data = dict()
+        not_covered = dict()
+        cur_len = dict()
+        with open(cov_fpath, 'r') as coverage:
+            name = chr_names[0]
+            contig_to_chr = {}
+            for chr in chr_full_names:
+                cov_data.setdefault(chr, [])
+                not_covered.setdefault(chr, [])
+                cur_len.setdefault(chr, 0)
+                if contigs_analyzer.ref_labels_by_chromosomes:
+                    contigs = [contig for contig in chr_names if contig_names_by_refs[contig] == chr]
+                elif chr == NAME_FOR_ONE_PLOT:
+                    contigs = chr_names
+                else:
+                    contigs = [chr]
+                for contig in contigs:
+                    contig_to_chr[contig] = chr
+            for index, line in enumerate(coverage):
+                c = list(line.split())
+                name = contig_to_chr[qutils.correct_name(c[0])]
+                cur_len[name] += int(c[2])
+                if index % 100 == 0 and index > 0:
+                    cov_data[name].append(cur_len[name]/100)
+                    cur_len[name] = 0
+                if c[2] == '0':
+                    not_covered[name].append(c[1])
+    chr_sizes = {}
     for i, chr in enumerate(chr_full_names):
         short_chr = chr[:30]
         with open(os.path.join(output_all_files_dir_path, 'data_%s.js' % short_chr), 'w') as result:
             result.write('"use strict";\n')
             if contigs_analyzer.ref_labels_by_chromosomes:
                 contigs = [contig for contig in chr_names if contig_names_by_refs[contig] == chr]
+                result.write('var links_to_chromosomes = {};\n')
+                links_to_chromosomes = []
+                used_chromosomes = []
             elif chr == NAME_FOR_ONE_PLOT:
                 contigs = chr_names
             else:
                 contigs = [chr]
+            chr_size = sum([chromosomes_length[contig] for contig in contigs])
+            chr_sizes[chr] = chr_size
             data_str = 'var chromosomes_len = {};\n'
             for contig in contigs:
                 l = chromosomes_length[contig]
@@ -774,6 +788,10 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                                         corr_len = sum(chr_lengths[:num_chr+1])
                                     else:
                                         corr_len = -int(el[1])
+                                        if contigs_analyzer.ref_labels_by_chromosomes and el[5] not in used_chromosomes:
+                                            used_chromosomes.append(el[5])
+                                            new_chr = contig_names_by_refs[el[5]]
+                                            links_to_chromosomes.append('links_to_chromosomes["{el[5]}"] = "{new_chr}";\n'.format(**locals()))
                                     corr_start = corr_len + int(el[0])
                                     corr_end = corr_len + int(el[1])
                                     data_str += '{{type: "A", corr_start: {corr_start}, corr_end: {corr_end}, start: {el[0]}, end: {el[1]}, start_in_contig: {el[2]}, end_in_contig: {el[3]}, IDY: {el[4]}, chr: "{el[5]}"}},'.format(**locals())
@@ -783,6 +801,8 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         else: data_str += '},'
             data_str = data_str[:-1] + '];\n\n'
             result.write(data_str)
+            if contigs_analyzer.ref_labels_by_chromosomes:
+                result.write(''.join(links_to_chromosomes))
             if cov_fpath:
                 # adding coverage data
                 data_str = 'var coverage_data = {};\n'
@@ -832,9 +852,10 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 if line.find('<!--- references: ---->') != -1:
                     for chr in sorted(chr_full_names):
                         short_chr = chr[:30]
-                        p = os.path.join(output_all_files_dir_path, '_{short_chr}.html'.format(**locals()))
+                        p = os.path.join(alignment_plots_dirname, '_{short_chr}.html'.format(**locals()))
                         t = chr.replace('_', ' ')
-                        result.write('<a href="{p}"><div class="block">{t}</div></a>'.format(**locals()))
+                        chr_size = chr_sizes[chr]
+                        result.write('<a href="{p}"><div class="block">{t} ({chr_size} bp)</div></a>'.format(**locals()))
 
     copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),
              os.path.join(output_all_files_dir_path, 'contig_alignment_plot.css'))
