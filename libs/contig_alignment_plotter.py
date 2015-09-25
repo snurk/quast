@@ -9,7 +9,7 @@
 
 
 from __future__ import with_statement
-from libs import qconfig, qutils, fastaparser
+from libs import qconfig, qutils, fastaparser, genome_analyzer
 import os
 import math
 import libs.html_saver.html_saver as html_saver
@@ -37,6 +37,8 @@ def get_similar_threshold(total):
         return 2
     return total / 2 + total % 2
 
+def format_long_numbers(number):
+    return ''.join(reversed([x + (' ' if i and not i % 3 else '') for i, x in enumerate(reversed(str(number)))]))
 
 class Settings:
     def __init__(self, virtual_genome_size, max_cov_pos, max_cov, assemblies_num):
@@ -530,8 +532,8 @@ class Visualizer:
 def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift,
                         output_dirpath, lists_of_aligned_blocks, arcs=False, similar=False,
                         coverage_hist=None):
-    if plotter.matplotlib_error:
-        return None, None
+    #if plotter.matplotlib_error:
+     #   return None, None
 
     output_fpath = os.path.join(output_dirpath, 'alignment')
 
@@ -564,9 +566,9 @@ def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, s
 
     assemblies.apply_colors(settings)
 
-    v = Visualizer(assemblies, coverage_hist, settings, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift)
-    v.visualize()
-    return v.save(output_fpath), assemblies
+#    v = Visualizer(assemblies, coverage_hist, settings, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift)
+ #   v.visualize()
+    return None, assemblies
 
 
 def make_output_dir(output_dir_path):
@@ -639,10 +641,10 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                 l = line.split(':')[1].split(' ')
                 misassembled_id_to_structure[last_contig_id].append([l[1], l[2], l[4], l[5], l[10], qutils.correct_name(l[12])])
 
-            if line.find('Extensive misassembly') != -1:
+            if line.find('misassembly') != -1 and line.find('fake') == -1:
                 misassembled_id_to_structure[last_contig_id].append(line.split('(')[1].split(')')[0])
 
-            if (line.find('Extensive misassembly') != -1) and (cur_contig_id != ''):
+            if (line.find('misassembly') != -1) and line.find('fake') == -1 and (cur_contig_id != ''):
                 misassembled_contigs_ids.append(cur_contig_id.split()[0])
                 cur_contig_id = ''
 
@@ -674,7 +676,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                     position_in_conitg = min(start_in_contig, end_in_contig))
                 block.unshifted_start = unshifted_start
                 block.unshifted_end = unshifted_end
-                block.ref_name = ref_name;
+                block.ref_name = ref_name
 
                 if contig_id in misassembled_contigs_ids:
                     block.misassembled = True
@@ -744,8 +746,17 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 if c[2] == '0':
                     not_covered[name].append(c[1])
     chr_sizes = {}
+    num_contigs = {}
+    aligned_bases = genome_analyzer.get_ref_aligned_lengths()
+    aligned_bases_by_chr = {}
+    num_misassemblies = {}
+    aligned_assemblies = {}
+
     for i, chr in enumerate(chr_full_names):
         short_chr = chr[:30]
+        num_misassemblies[chr] = 0
+        aligned_bases_by_chr[chr] = []
+        aligned_assemblies[chr] = []
         with open(os.path.join(output_all_files_dir_path, 'data_%s.js' % short_chr), 'w') as result:
             result.write('"use strict";\n')
             if contigs_analyzer.ref_labels_by_chromosomes:
@@ -759,6 +770,9 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                 contigs = [chr]
             chr_size = sum([chromosomes_length[contig] for contig in contigs])
             chr_sizes[chr] = chr_size
+            num_contigs[chr] = len(contigs)
+            for contig in contigs:
+                aligned_bases_by_chr[chr].extend(aligned_bases[contig])
             data_str = 'var chromosomes_len = {};\n'
             for contig in contigs:
                 l = chromosomes_length[contig]
@@ -775,6 +789,10 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     prev_len += chr_lengths[num_contig]
                 if len(chr_to_aligned_blocks[contig]) > 0:
                     for alignment in chr_to_aligned_blocks[contig]:
+                        if len(aligned_assemblies[chr]) < len(contigs_fpaths) and alignment.name not in aligned_assemblies[chr]:
+                            aligned_assemblies[chr].append(alignment.name)
+                        if alignment.misassembled:
+                            num_misassemblies[chr] += 1
                         corr_start = prev_len + alignment.unshifted_start
                         corr_end = prev_len + alignment.unshifted_end
                         data_str += '{{name: "{alignment.name}", corr_start: {corr_start}, corr_end: {corr_end},' \
@@ -838,8 +856,12 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         else:
                             result.write(line)
                             if line.find('<body>') != -1:
-                                title = chr.replace('_', ' ')
-                                result.write('<div class = "block title">{title}<a href="../{summary_fname}"><div class = "subtitle">(BACK TO MAIN MENU)</div></a></div>\n'.format(**locals()))
+                                chr_size = chr_sizes[chr]
+                                chr_name = chr.replace('_', ' ')
+                                if len(chr_name) > 30:
+                                    chr_name = chr_name[:30] + '...'
+                                title = 'CONTIG ALIGNMENT BROWSER: %s (%s bp)' % (chr_name, format_long_numbers(chr_size))
+                                result.write('<div class = "block title">{title}<a href="../{summary_fname}"></a></div>\n'.format(**locals()))
                             if line.find('<script type="text/javascript">') != -1:
                                 chromosome = '","'.join(contigs)
                                 result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))
@@ -847,15 +869,33 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
 
     with open(html_saver.get_real_path('alignment_summary_templ.html'), 'r') as template:
         with open(summary_path, 'w') as result:
+            num_aligned_assemblies = [len(aligned_assemblies[chr]) for chr in chr_full_names]
+            is_unaligned_asm_exists = len(set(num_aligned_assemblies)) > 1
             for line in template:
                 result.write(line)
+                if line.find('<!--- assemblies: ---->') != -1:
+                    if not is_unaligned_asm_exists:
+                        result.write('<div class="subtitle"># assemblies: %s</div>' % len(contigs_fpaths))
+                if line.find('<!--- th_assemblies: ---->') != -1:
+                    if is_unaligned_asm_exists:
+                        result.write('<th># assemblies</th>' % len(contigs_fpaths))
                 if line.find('<!--- references: ---->') != -1:
                     for chr in sorted(chr_full_names):
+                        result.write('<tr>')
                         short_chr = chr[:30]
-                        p = os.path.join(alignment_plots_dirname, '_{short_chr}.html'.format(**locals()))
-                        t = chr.replace('_', ' ')
+                        chr_link = os.path.join(alignment_plots_dirname, '_{short_chr}.html'.format(**locals()))
+                        chr_name = chr.replace('_', ' ')
+                        aligned_lengths = [aligned_len for aligned_len in aligned_bases_by_chr[chr] if aligned_len is not None]
+                        chr_genome = sum(aligned_lengths) * 100.0 / (chr_sizes[chr] * len(contigs_fpaths))
                         chr_size = chr_sizes[chr]
-                        result.write('<a href="{p}"><div class="block">{t} ({chr_size} bp)</div></a>'.format(**locals()))
+                        result.write('<td><a href="%s">%s</a></td>' % (chr_link, chr_name))
+                        result.write('<td>%s</td>' % num_contigs[chr])
+                        result.write('<td>%s</td>' % format_long_numbers(chr_size))
+                        if is_unaligned_asm_exists:
+                            result.write('<td>%s</td>' % len(aligned_assemblies[chr]))
+                        result.write('<td>%.3f</td>' % chr_genome)
+                        result.write('<td>%s</td>' % num_misassemblies[chr])
+                        result.write('</tr>')
 
     copyfile(html_saver.get_real_path(os.path.join('static', 'contig_alignment_plot.css')),
              os.path.join(output_all_files_dir_path, 'contig_alignment_plot.css'))

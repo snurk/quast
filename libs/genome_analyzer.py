@@ -14,6 +14,7 @@ from libs.html_saver import json_saver
 
 from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
+ref_lengths_by_contigs = {}
 
 
 # reading genes and operons
@@ -23,6 +24,10 @@ class FeatureContainer:
         self.fpaths = fpaths
         self.region_list = []
         self.chr_names_dict = {}
+
+
+def get_ref_aligned_lengths():
+    return ref_lengths_by_contigs
 
 
 def chromosomes_names_dict(feature, regions, chr_names):
@@ -335,7 +340,6 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
 
     ref_lengths = [process_results[i][0] for i in range(len(process_results))]
     results_genes_operons_tuples = [process_results[i][1] for i in range(len(process_results))]
-    ref_lengths_by_contigs = {}
     for ref in reference_chromosomes:
         ref_lengths_by_contigs[ref] = [ref_lengths[i][ref] for i in range(len(ref_lengths))]
     res_file.write('reference chromosomes:\n')

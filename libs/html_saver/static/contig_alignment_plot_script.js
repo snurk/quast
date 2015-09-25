@@ -101,21 +101,21 @@ THE SOFTWARE.
     var data = contigData(CHROMOSOME),
             lanes = data.lanes,
             items = data.items;
-
+    var w = 0.9 * (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth) - 300;
     var margin = {
                 top: 20, right: 15, bottom: 15, left: /*Math.max(d3.max(lanes, function (d) {
                  return getTextSize(d.label);
                  }), 120)*/ 145
             },
-            mainLanesHegiht = 40,
+            mainLanesHeight = 40,
             miniLanesHeight = 18,
             lanesInterval = 20,
             miniScale = 50,
             mainScale = 50,
-            width = 800,
-            chartWidth = 800,
+            width = w,
+            chartWidth = w,
             miniHeight = lanes.length * miniLanesHeight,
-            mainHeight = lanes.length * (mainLanesHegiht + lanesInterval),
+            mainHeight = lanes.length * (mainLanesHeight + lanesInterval),
             coverageHeight = typeof coverage_data != 'undefined' ? 125 : 0;
             coverageSpace = typeof coverage_data != 'undefined' ? 50 : 0;
     height = Math.max(mainHeight + 4 * coverageHeight + miniHeight + miniScale + mainScale - margin.bottom - margin.top, 500);
@@ -135,7 +135,7 @@ THE SOFTWARE.
     var y_main = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, mainHeight]);
     var y_mini = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, miniHeight]);
 
-    var letterSize = getSize('w') - 1;
+    var letterSize = getSize('n') - 1;
     var numberSize = getSize('0') - 1;
 
     var chart = d3.select('body').append('div').attr('id', 'chart')
@@ -274,30 +274,14 @@ THE SOFTWARE.
             .attr('class', 'main axis')
             .call(xMainAxis);
 
-    var scaleText = main.append('g')
-            .attr('class', 'scaleText');
-
-    scaleText.append('text')
-            .attr('x', -45)
-            .attr('y', mainHeight + 5)
-            .attr('dy', '.5ex')
-            .attr('text-anchor', 'end')
-            .text('Tick value: ');
-
-    scaleText.append('text')
-            .attr('x', -40)
-            .attr('y', mainHeight + 5)
-            .attr('dy', '.5ex')
-            .attr('class', 'val')
-            .text(mainTickValue);
-
     mini.append('g')
             .attr('transform', 'translate(0,' + miniHeight + ')')
             .attr('class', 'axis')
             .call(xMiniAxis).append('text')
-            .text('Genome, ' + miniTickValue)
-            .attr('transform', 'translate(' + x_mini((x_mini.domain()[1] - x_mini.domain()[0]) / 2) + ',' + (miniScale / 2 + 2) + ')');
-
+            .attr('transform', 'translate(' + x_mini(x_mini.domain()[1]) + ',' + (miniScale / 2 + 2) + ')');
+    var lastTickValue = miniTicksValues.pop();
+    var lastTick = mini.select(".axis").selectAll("g")[0].pop();
+    d3.select(lastTick).select('text').text(format(lastTickValue) + ' ' + miniTickValue);
     // draw a line representing today's date
     main.append('line')
             .attr('y1', 0)
@@ -314,6 +298,36 @@ THE SOFTWARE.
             .attr('y2', miniHeight)
             .attr('class', 'curSegment');
 
+    var visItems = null;
+    main.append('rect')
+            .attr('pointer-events', 'painted')
+            .attr('width', chartWidth)
+            .attr('height', mainHeight)
+            .attr('visibility', 'hidden')
+            .on('click', function (d) {
+                coordinates = d3.mouse(this);
+                var x = coordinates[0];
+                var y = coordinates[1];
+                var laneHeight = mainHeight / lanes.length;
+                var lane = parseInt(y / laneHeight);
+                var laneCoords1 = laneHeight*lane;
+                var laneCoords2 = laneHeight*(lane+1);
+                var e = itemRects.selectAll(".mainItem").filter(function () {
+                    var width = this.getBoundingClientRect().width;
+                    var curCoords = d3.transform(d3.select(this).attr("transform")).translate;
+                    var curY = curCoords[1];
+                    if (curY > laneCoords1 && curY < laneCoords2) {
+                        var currentx = curCoords[0];
+                        if (Math.abs(currentx - x) < 10 || Math.abs(currentx + width - x) < 10 ) {
+                            return d3.select(this);
+                        }   
+                    }
+                }); // each
+                if (e.length > 0) {
+                    e = e[0].pop();
+                    e.__onclick();
+                }
+    });
     // draw the items
     var itemRects = main.append('g')
             .attr('clip-path', 'url(#clip)');
@@ -343,6 +357,7 @@ THE SOFTWARE.
             .x(x_mini)
             .extent([current - delta, current + delta])
             .on("brush", display);
+    d3.select('body').on("keypress", keyPressAnswer);
     d3.select('body').on("keydown", keyDownAnswer);
 
     mini.append('g')
@@ -363,7 +378,8 @@ THE SOFTWARE.
     info = menu.append('div')
             .attr('class', 'block');
     info.append('p')
-            .text('<SELECT CONTIG>');
+            .style({'text-align': 'center'})
+            .text('<CLICK ON CONTIG>');
 
     var selected_id;
     var prev = undefined;
@@ -503,7 +519,7 @@ THE SOFTWARE.
     var lines = [];
     var len = 0;
     var commonChrName = CHROMOSOME.length + 1;
-    if (chromosomes_len.length > 1) {
+    if (chrContigs.length > 1) {
         for (var chr in chromosomes_len) {
             var shortName = chr.slice(commonChrName, chr.length);
             lines.push({name: shortName, corr_start: len, corr_end: len + chromosomes_len[chr], y1: 0, y2: mainHeight});
@@ -539,17 +555,11 @@ THE SOFTWARE.
         var rects
                 , minExtent = Math.max(brush.extent()[0], x_mini.domain()[0])
                 , maxExtent = Math.min(brush.extent()[1], x_mini.domain()[1])
-                , visItems = items.filter(function (d) {
-                    if (d.corr_start < maxExtent && d.corr_end > minExtent) {
-                        var drawLimit = 1;
-                        var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start));
-                        if (visibleLength > drawLimit)
-                            return d;
-                    }
-                }),
-                visibleText = function (d) {
-                    var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start)) - 10;
-                    return getVisibleText(d.name, visibleLength);
+                , visibleText = function (d) {
+                    var drawLimit = letterSize * 3;
+                    var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start));
+                    if (visibleLength > drawLimit)
+                        return getVisibleText(d.name, visibleLength);
                 },
                 visibleArrows = arrows.filter(function (d) {
                     if (d.corr_start < maxExtent && d.corr_end > minExtent) return d;
@@ -560,6 +570,14 @@ THE SOFTWARE.
                 visibleRefNames = lines.filter(function (d) {
                     if (d.corr_start < maxExtent && d.corr_end > minExtent) return d;
                 });
+        visItems = items.filter(function (d) {
+                if (d.corr_start < maxExtent && d.corr_end > minExtent) {
+                    var drawLimit = 1;
+                    var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start));
+                    if (visibleLength > drawLimit)
+                        return d;
+                }
+            }),
         mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
         if (typeof coverage_data != "undefined")
             mini_cov.select('.brush').call(brush_cov.extent([minExtent, maxExtent]));
@@ -653,7 +671,7 @@ THE SOFTWARE.
                     return (d.id == selected_id ? Math.max(w - 2, .5) : w);
                 })
                 .attr('height', function (d) {
-                    return (d.id == selected_id ? mainLanesHegiht - 4 : mainLanesHegiht);
+                    return (d.id == selected_id ? mainLanesHeight - 2 : mainLanesHeight);
                 })
                 .attr('stroke', 'black')
                 .attr('stroke-width', function (d) {
@@ -686,14 +704,14 @@ THE SOFTWARE.
         other.append('rect')
                 .attr('class', 'R')
                 .attr('transform',  function (d) {
-                    if (d.id == selected_id){return 'translate(2,2)';}
+                    if (d.id == selected_id){return 'translate(1,1)';}
                 })
                 .attr('width', function (d) {
                     var w = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start));
                     return (d.id == selected_id ? Math.max(w - 2, .5) : w);
                 })
                 .attr('height', function (d) {
-                    return (d.id == selected_id ? mainLanesHegiht - 4 : mainLanesHegiht);
+                    return (d.id == selected_id ? mainLanesHeight - 4 : mainLanesHeight);
                 })
                 .attr('stroke', 'black')
                 .attr('stroke-width', function (d) {
@@ -811,7 +829,7 @@ THE SOFTWARE.
                 info.selectAll('p')
                     .remove();
                 info.append('p')
-                    .text('<SELECT CONTIG>');
+                    .text('<CLICK ON CONTIG>');
                 arrows = [];
                 mini.selectAll('.arrow').remove();
                 selected_id = null;
@@ -821,15 +839,23 @@ THE SOFTWARE.
         display();
     }
 
+    function keyPressAnswer() {
+        var key = d3.event.keyCode;
+        var charCode = d3.event.which || d3.event.keyCode;
+        var charStr = String.fromCharCode(charCode);
+        if (d3.event.shiftKey) deltaCoeff = 5;
+        else deltaCoeff = 1;
+        if (charStr == '-' || charStr == '_') // -
+            keyPress('zoom_out', deltaCoeff);
+        else if ((charStr == '+' || charStr == '=') && ext[1] - ext[0] > 0) // +
+            keyPress('zoom_in', deltaCoeff);
+    }
+
     function keyDownAnswer() {
         var key = d3.event.keyCode;
         if (d3.event.shiftKey) deltaCoeff = 5;
         else deltaCoeff = 1;
-        if (key == 109) // +
-            keyPress('zoom_out', deltaCoeff);
-        else if (key == 107 && ext[1] - ext[0] > 0) // -
-            keyPress('zoom_in', deltaCoeff);
-        else if (key == 39) // >
+        if (key == 39) // >
             keyPress('right', deltaCoeff);
         else if (key == 37) // <
             keyPress('left', deltaCoeff);
@@ -964,8 +990,6 @@ THE SOFTWARE.
 
         main.select('.main.axis')
                 .call(xMainAxis);
-        scaleText.select('.val')
-                .text(mainTickValue);
     }
 
 
@@ -995,6 +1019,7 @@ THE SOFTWARE.
         var t = s;
 
         if (getTextSize(t, letterSize) > l) {
+            if (getTextSize(t, letterSize) <= l - letterSize) return t
             while (t.length > 2 && getTextSize(t + 'w', letterSize) > l)
                 t = t.slice(0, t.length - 1);
             return (t.length < 3 ? '' : t + '...');
@@ -1013,8 +1038,7 @@ THE SOFTWARE.
         info.append('p')
                 .text('Type: ' + (d.misassembled == "True" ? 'misassembled' : 'correct'));
 
-
-        var appendPositionElement = function(data, start, end, whereAppend) {
+        var appendPositionElement = function(data, start, end, whereAppend, start_in_contig, end_in_contig, is_expanded) {
             var posVal = function (d) {
                 if (mainTickValue == 'Gbp')
                     return d3.round(d / 1000000000, 2);
@@ -1033,12 +1057,16 @@ THE SOFTWARE.
             };
 
             var e = data.filter(function (d) {
-                if (d.type == 'A' && d.corr_start <= start && end <= d.corr_end) return d;
+                if (d.type == 'A') {
+                    if (start_in_contig && d.start_in_contig == start_in_contig && d.end_in_contig == end_in_contig) return d;
+                    else if (!start_in_contig && d.corr_start <= start && end <= d.corr_end) return d;
+                } 
             })[0];
             var ndash = String.fromCharCode(8211);
             var d = whereAppend.append('p')
                     .attr('class', 'head')
-                    .on('click', openClose)
+                    .on('click', is_expanded ? openClose : null)
+                    .style({'display': 'block', 'word-break': 'break-all', 'word-wrap': 'break-word'})
                     .text(['Position:', posVal(e.start), ndash, posVal(e.end), mainTickValue, ' '].join(' '));
             if (chrContigs.indexOf(e.chr) == -1) {
                 d.append('a')
@@ -1051,7 +1079,7 @@ THE SOFTWARE.
                         .text('(' + e.chr + ')');
             }
             d = d.append('p')
-                    .attr('class', 'close');
+                    .attr('class', is_expanded ? 'close' : 'open');
             d.append('p')
                     .text(['reference:',
                         format(e.start), ndash, format(e.end),
@@ -1063,7 +1091,6 @@ THE SOFTWARE.
             d.append('p')
                     .text(['IDY:', e.IDY, '%'].join(' '));
         };
-
         appendPositionElement(d.structure, d.corr_start, d.corr_end, info);
 
         showArrows(d);
@@ -1071,15 +1098,14 @@ THE SOFTWARE.
             var blocks = info.append('p')
                     .attr('class', 'head')
                     .text('Blocks: ' + d.structure.filter(function(d) { if (d.type == "A") return d;}).length)
-                    .on('click', openClose)
                     .append('p')
-                    .attr('class', 'close');
+                    .attr('class', 'open');
 
 
             for (var i = 0; i < d.structure.length; ++i) {
                 var e = d.structure[i];
                 if (e.type == "A") {
-                    appendPositionElement(d.structure, e.corr_start, e.corr_end, blocks);
+                    appendPositionElement(d.structure, e.corr_start, e.corr_end, blocks, e.start_in_contig, e.end_in_contig, true);
                 } else {
                     blocks.append('p')
                             .text(e.mstype);
@@ -1121,7 +1147,9 @@ THE SOFTWARE.
     }
 
     function openClose() {
-        c = d3.select(this).select('p');
-        c.attr('class', c.attr('class') == 'open' ? 'close' : 'open');
+        var c = d3.select(this);
+        c.attr('class', c.attr('class') == 'head expanded' ? 'head collapsed' : 'head expanded');
+        p = c.select('p');
+        p.attr('class', p.attr('class') == 'open' ? 'close' : 'open');
         d3.event.stopPropagation();
     }
