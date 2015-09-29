@@ -331,3 +331,7 @@ a {
     background-repeat: no-repeat;
     background-size:20px 17px;
 }
+
+.temp_text {
+    font-size: 12px;
+}

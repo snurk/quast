@@ -528,7 +528,7 @@ THE SOFTWARE.
     if (chrContigs.length > 1) {
         for (var chr in chromosomes_len) {
             var shortName = chr.slice(commonChrName, chr.length);
-            lines.push({name: shortName, corr_start: len, corr_end: len + chromosomes_len[chr], y1: 0, y2: mainHeight});
+            lines.push({name: shortName, corr_start: len, corr_end: len + chromosomes_len[chr], y1: 0, y2: mainHeight, len: chromosomes_len[chr]});
             len += chromosomes_len[chr];
         }
     }
@@ -565,7 +565,7 @@ THE SOFTWARE.
                     var drawLimit = letterSize * 3;
                     var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start)) - 25;
                     if (visibleLength > drawLimit)
-                        return getVisibleText(d.name, visibleLength);
+                        return getVisibleText(d.name, visibleLength, d.len);
                 },
                 visibleArrows = arrows.filter(function (d) {
                     if (d.corr_start < maxExtent && d.corr_end > minExtent) return d;
@@ -909,6 +909,7 @@ THE SOFTWARE.
         var tmp = document.createElement("span");
         tmp.innerHTML = text;
         tmp.style.visibility = "hidden";
+        tmp.className = "itemLabel";
         tmp.style.whiteSpace = "nowrap";
         document.body.appendChild(tmp);
         size = tmp.offsetWidth;
@@ -1028,14 +1029,18 @@ THE SOFTWARE.
     }
 
 
-    function getVisibleText(fullText, l) {
+    function getVisibleText(fullText, l, lenChromosome) {
         var size = 0;
         var t = '';
         while (size <= l && t.length < fullText.length) {
             t = fullText.slice(0, t.length + 1);
-            size += getSize(t.slice(-1));
+            size = getSize(t);
         }
-        return (t.length < 3 ? '' : t + (t.length == fullText.length ? '' : '...'));
+        if (lenChromosome && t.length == fullText.length) {
+            var meanLenSize = letterSize * (lenChromosome.toString().length + 4);
+            if (size + meanLenSize <= l) t = fullText + ' (' + lenChromosome + ' bp)'
+        }
+        return (t.length < 3 ? '' : t + (t.length >= fullText.length ? '' : '...'));
     }
 
 
