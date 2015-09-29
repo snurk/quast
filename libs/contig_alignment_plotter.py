@@ -34,8 +34,8 @@ if not plotter.matplotlib_error:
 
 def get_similar_threshold(total):
     if total <= 2:
-        return 2
-    return total / 2 + total % 2
+        return 1
+    return total // 2
 
 def format_long_numbers(number):
     return ''.join(reversed([x + (' ' if i and not i % 3 else '') for i, x in enumerate(reversed(str(number)))]))
@@ -146,7 +146,7 @@ class Settings:
         self.totalWidthInches = 14
         self.totalHeightInches = self.totalWidthInches * self.totalHeight / self.totalWidth
 
-        self.contigEdgeDelta = 3000
+        self.contigEdgeDelta = 0.05
         self.minSimilarContig = 10000
 
         self.minConnectedBlock = 2000
@@ -180,8 +180,9 @@ class Alignment:
         return (self.end + self.start) / 2
 
     def compare_inexact(self, alignment, settings):
-        return abs(alignment.start - self.start) <= settings.contigEdgeDelta and \
-               abs(alignment.end - self.end) <= settings.contigEdgeDelta
+        contig_len = abs(self.end - self.start)
+        return abs(alignment.start - self.start) <= (settings.contigEdgeDelta * contig_len) and \
+               abs(alignment.end - self.end) <= (settings.contigEdgeDelta * contig_len)
 
 
 class Arc:
@@ -858,10 +859,10 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                             if line.find('<body>') != -1:
                                 chr_size = chr_sizes[chr]
                                 chr_name = chr.replace('_', ' ')
-                                if len(chr_name) > 30:
-                                    chr_name = chr_name[:30] + '...'
+                                if len(chr_name) > 50:
+                                    chr_name = chr_name[:50] + '...'
                                 title = 'CONTIG ALIGNMENT BROWSER: %s (%s bp)' % (chr_name, format_long_numbers(chr_size))
-                                result.write('<div class = "block title">{title}<a href="../{summary_fname}"></a></div>\n'.format(**locals()))
+                                result.write('<div class = "block title"><a href="../{summary_fname}"><div class="back_button"></div></a>{title}</div>\n'.format(**locals()))
                             if line.find('<script type="text/javascript">') != -1:
                                 chromosome = '","'.join(contigs)
                                 result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))

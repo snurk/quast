@@ -135,7 +135,7 @@ THE SOFTWARE.
     var y_main = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, mainHeight]);
     var y_mini = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, miniHeight]);
 
-    var letterSize = getSize('n') - 1;
+    var letterSize = getSize('w') - 1;
     var numberSize = getSize('0') - 1;
 
     var chart = d3.select('body').append('div').attr('id', 'chart')
@@ -312,6 +312,8 @@ THE SOFTWARE.
                 var lane = parseInt(y / laneHeight);
                 var laneCoords1 = laneHeight*lane;
                 var laneCoords2 = laneHeight*(lane+1);
+                var itemToSelect = null;
+                var minX = 10;
                 var e = itemRects.selectAll(".mainItem").filter(function () {
                     var width = this.getBoundingClientRect().width;
                     var curCoords = d3.transform(d3.select(this).attr("transform")).translate;
@@ -319,12 +321,16 @@ THE SOFTWARE.
                     if (curY > laneCoords1 && curY < laneCoords2) {
                         var currentx = curCoords[0];
                         if (Math.abs(currentx - x) < 10 || Math.abs(currentx + width - x) < 10 ) {
-                            return d3.select(this);
+                            if (Math.abs(currentx - x) < minX) {
+                                minX = Math.abs(currentx - x);
+                                itemToSelect = d3.select(this);
+                                return d3.select(this)
+                            }
                         }   
                     }
                 }); // each
                 if (e.length > 0) {
-                    e = e[0].pop();
+                    e = itemToSelect[0].pop();
                     e.__onclick();
                 }
     });
@@ -557,7 +563,7 @@ THE SOFTWARE.
                 , maxExtent = Math.min(brush.extent()[1], x_mini.domain()[1])
                 , visibleText = function (d) {
                     var drawLimit = letterSize * 3;
-                    var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start));
+                    var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start)) - 25;
                     if (visibleLength > drawLimit)
                         return getVisibleText(d.name, visibleLength);
                 },
@@ -732,7 +738,7 @@ THE SOFTWARE.
                 .text(visibleText)
                 .attr('text-anchor', 'start')
                 .attr('class', 'itemLabel')
-                .attr('transform', 'translate(10, ' + 20 + ')');
+                .attr('transform', 'translate(5, 20)');
 
 
         // upd coverage
@@ -794,7 +800,7 @@ THE SOFTWARE.
                 .attr('class', 'refs')
                 .attr('transform', function (d) {
                     var x = x_main(Math.max(minExtent, d.corr_start));
-                    var y = d.y2 + 6;
+                    var y = d.y2 + 10;
 
                     return 'translate(' + x + ', ' + y + ')';
                 })
@@ -805,7 +811,7 @@ THE SOFTWARE.
                 .text(visibleText)
                 .attr('text-anchor', 'start')
                 .attr('class', 'itemLabel')
-                .attr('transform', 'translate(10, 5)');
+                .attr('transform', 'translate(10, 0)');
     }
 
     function keyPress (cmd, deltaCoeff) {
@@ -916,12 +922,16 @@ THE SOFTWARE.
     // is there a better way to do a bunch of lines as a single path with d3?
     function getPaths(items) {
         var paths = {}, d, result = [];
+        var curLane = 0;
+        var isSimilarNow = "False";
+        var numItem = 0;
         for (var c, i = 0; i < items.length; i++) {
             d = items[i];
-
+            if (d.lane != curLane) numItem = 0;
             c = (d.misassembled == "False" ? "correct" : "misassembled");
             c += (d.similar == "True" ? " similar" : "");
-            c += (i % 2 == 0 ? " odd" : "");
+            if (d.similar != isSimilarNow) numItem = 0;
+            c += (numItem % 2 == 0 ? " odd" : "");
 
             items[i].class = c;
 
@@ -935,6 +945,9 @@ THE SOFTWARE.
                 y += .04 * miniLanesHeight;
 
             paths[c] += ['M', x_mini(d.corr_start), (y), 'H', x_mini(d.corr_end)].join(' ');
+            isSimilarNow = d.similar;
+            curLane = d.lane;
+            numItem++;
         }
 
         for (var className in paths) {
@@ -1015,20 +1028,22 @@ THE SOFTWARE.
     }
 
 
-    function getVisibleText(s, l) {
-        var t = s;
-
-        if (getTextSize(t, letterSize) > l) {
-            if (getTextSize(t, letterSize) <= l - letterSize) return t
-            while (t.length > 2 && getTextSize(t + 'w', letterSize) > l)
-                t = t.slice(0, t.length - 1);
-            return (t.length < 3 ? '' : t + '...');
-        } else return t;
+    function getVisibleText(fullText, l) {
+        var size = 0;
+        var t = '';
+        while (size <= l && t.length < fullText.length) {
+            t = fullText.slice(0, t.length + 1);
+            size += getSize(t.slice(-1));
+        }
+        return (t.length < 3 ? '' : t + (t.length == fullText.length ? '' : '...'));
     }
 
 
     function changeInfo(d) {
         info.selectAll('p')
+                .remove();
+
+        info.selectAll('span')
                 .remove();
 
         info.append('p')
@@ -1063,10 +1078,14 @@ THE SOFTWARE.
                 } 
             })[0];
             var ndash = String.fromCharCode(8211);
-            var d = whereAppend.append('p')
-                    .attr('class', 'head')
-                    .on('click', is_expanded ? openClose : null)
-                    .style({'display': 'block', 'word-break': 'break-all', 'word-wrap': 'break-word'})
+            if (is_expanded) 
+                var whereAppendBlock = whereAppend.append('p')
+                        .attr('class', 'head_plus collapsed')
+                        .on('click', openClose);
+            else var whereAppendBlock = whereAppend;
+            var d = whereAppendBlock.append('span')
+                    .attr('class', is_expanded ? 'head' : 'head main')
+                    .on('click', openClose)
                     .text(['Position:', posVal(e.start), ndash, posVal(e.end), mainTickValue, ' '].join(' '));
             if (chrContigs.indexOf(e.chr) == -1) {
                 d.append('a')
@@ -1096,10 +1115,8 @@ THE SOFTWARE.
         showArrows(d);
         if (d.misassembled == "True") {
             var blocks = info.append('p')
-                    .attr('class', 'head')
-                    .text('Blocks: ' + d.structure.filter(function(d) { if (d.type == "A") return d;}).length)
-                    .append('p')
-                    .attr('class', 'open');
+                    .attr('class', 'head main')
+                    .text('Blocks: ' + d.structure.filter(function(d) { if (d.type == "A") return d;}).length);
 
 
             for (var i = 0; i < d.structure.length; ++i) {
@@ -1148,8 +1165,10 @@ THE SOFTWARE.
 
     function openClose() {
         var c = d3.select(this);
-        c.attr('class', c.attr('class') == 'head expanded' ? 'head collapsed' : 'head expanded');
-        p = c.select('p');
-        p.attr('class', p.attr('class') == 'open' ? 'close' : 'open');
+        if (c.attr('class') == 'head_plus expanded' || c.attr('class') == 'head_plus collapsed' ){
+            c.attr('class', c.attr('class') == 'head_plus expanded' ? 'head_plus collapsed' : 'head_plus expanded');
+            p = c.select('span').select('p');
+            p.attr('class', p.attr('class') == 'open' ? 'close' : 'open');
+        }
         d3.event.stopPropagation();
     }
