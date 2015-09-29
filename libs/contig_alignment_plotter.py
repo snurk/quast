@@ -790,8 +790,6 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                     prev_len += chr_lengths[num_contig]
                 if len(chr_to_aligned_blocks[contig]) > 0:
                     for alignment in chr_to_aligned_blocks[contig]:
-                        if len(aligned_assemblies[chr]) < len(contigs_fpaths) and alignment.name not in aligned_assemblies[chr]:
-                            aligned_assemblies[chr].append(alignment.name)
                         if alignment.misassembled:
                             num_misassemblies[chr] += 1
                         corr_start = prev_len + alignment.unshifted_start
@@ -799,6 +797,8 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         data_str += '{{name: "{alignment.name}", corr_start: {corr_start}, corr_end: {corr_end},' \
                                     'start: {alignment.unshifted_start}, end: {alignment.unshifted_end}, assembly: "{alignment.label}", similar: "{alignment.similar}", misassembled: "{alignment.misassembled}" '.format(**locals())
                         if alignment.name != 'FICTIVE':
+                            if len(aligned_assemblies[chr]) < len(contigs_fpaths) and alignment.label not in aligned_assemblies[chr]:
+                                aligned_assemblies[chr].append(alignment.label)
                             data_str += ', structure: ['
                             for el in alignment.misassembled_structure:
                                 if type(el) == list:
@@ -879,7 +879,7 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                         result.write('<div class="subtitle"># assemblies: %s</div>' % len(contigs_fpaths))
                 if line.find('<!--- th_assemblies: ---->') != -1:
                     if is_unaligned_asm_exists:
-                        result.write('<th># assemblies</th>' % len(contigs_fpaths))
+                        result.write('<th># assemblies</th>')
                 if line.find('<!--- references: ---->') != -1:
                     for chr in sorted(chr_full_names):
                         result.write('<tr>')
