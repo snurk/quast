@@ -533,8 +533,6 @@ class Visualizer:
 def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift,
                         output_dirpath, lists_of_aligned_blocks, arcs=False, similar=False,
                         coverage_hist=None):
-    #if plotter.matplotlib_error:
-     #   return None, None
 
     output_fpath = os.path.join(output_dirpath, 'alignment')
 
@@ -567,9 +565,13 @@ def draw_alignment_plot(contigs_fpaths, virtual_genome_size, sorted_ref_names, s
 
     assemblies.apply_colors(settings)
 
-#    v = Visualizer(assemblies, coverage_hist, settings, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift)
- #   v.visualize()
-    return None, assemblies
+    if not plotter.matplotlib_error:
+        v = Visualizer(assemblies, coverage_hist, settings, sorted_ref_names, sorted_ref_lengths, virtual_genome_shift)
+        v.visualize()
+        plot_fpath = v.save(output_fpath)
+    else:
+        plot_fpath = None
+    return plot_fpath, assemblies
 
 
 def make_output_dir(output_dir_path):
@@ -861,8 +863,8 @@ def js_data_gen(assemblies, contigs_fpaths, chr_names, chromosomes_length, outpu
                                 chr_name = chr.replace('_', ' ')
                                 if len(chr_name) > 50:
                                     chr_name = chr_name[:50] + '...'
-                                title = 'CONTIG ALIGNMENT BROWSER: %s (%s bp)' % (chr_name, format_long_numbers(chr_size))
-                                result.write('<div class = "block title"><a href="../{summary_fname}"><div class="back_button"></div></a>{title}</div>\n'.format(**locals()))
+                                title = 'CONTIG ALIGNMENT BROWSER: %s (' % chr_name + ('%s fragments, ' % num_contigs[chr] if num_contigs[chr] > 1 else '') + '%s bp)' % format_long_numbers(chr_size)
+                                result.write('<div class = "block title"><a href="../{summary_fname}"><button class="back_button">&crarr;</button></a>{title}</div>\n'.format(**locals()))
                             if line.find('<script type="text/javascript">') != -1:
                                 chromosome = '","'.join(contigs)
                                 result.write('var CHROMOSOME = "{chr}";\n'.format(**locals()))

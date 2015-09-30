@@ -268,7 +268,10 @@ THE SOFTWARE.
             .scale(x_main)
             .orient('bottom')
             .tickSize(6, 0, 0);
+    var mainTicksValues = [];
 
+    xMainAxis.tickValues(mainTicksValues)
+                .tickFormat(format);
     main.append('g')
             .attr('transform', 'translate(0,' + mainHeight + ')')
             .attr('class', 'main axis')
@@ -281,7 +284,8 @@ THE SOFTWARE.
             .attr('transform', 'translate(' + x_mini(x_mini.domain()[1]) + ',' + (miniScale / 2 + 2) + ')');
     var lastTickValue = miniTicksValues.pop();
     var lastTick = mini.select(".axis").selectAll("g")[0].pop();
-    d3.select(lastTick).select('text').text(format(lastTickValue) + ' ' + miniTickValue);
+    d3.select(lastTick).select('text').text(format(lastTickValue) + ' ' + miniTickValue)
+            .attr('transform', 'translate(-10, 0)');
     // draw a line representing today's date
     main.append('line')
             .attr('y1', 0)
@@ -563,7 +567,7 @@ THE SOFTWARE.
                 , maxExtent = Math.min(brush.extent()[1], x_mini.domain()[1])
                 , visibleText = function (d) {
                     var drawLimit = letterSize * 3;
-                    var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start)) - 25;
+                    var visibleLength = x_main(Math.min(maxExtent, d.corr_end)) - x_main(Math.max(minExtent, d.corr_start)) - 20;
                     if (visibleLength > drawLimit)
                         return getVisibleText(d.name, visibleLength, d.len);
                 },
@@ -594,9 +598,6 @@ THE SOFTWARE.
         main.select('.main.curLine')
                 .attr('x1', x_main(current) + .5)
                 .attr('x2', x_main(current) + .5);
-
-        // update the axis
-        mainAxisUpdate();
 
         //upd arrows
         var shift = 4.03;
@@ -834,6 +835,8 @@ THE SOFTWARE.
             case 'esc': { 
                 info.selectAll('p')
                     .remove();
+                info.selectAll('span')
+                    .remove();
                 info.append('p')
                     .text('<CLICK ON CONTIG>');
                 arrows = [];
@@ -959,54 +962,6 @@ THE SOFTWARE.
     }
 
 
-    function mainAxisUpdate() {
-        var domain = x_main.domain()[1] - x_main.domain()[0];
-
-        mainTickValue = 'bp';
-        if (domain > 100)
-            mainTickValue = 'kbp';
-        if (domain > 10000)
-            mainTickValue = 'Mbp';
-        if (domain > 100000000)
-            mainTickValue = 'Gbp';
-
-        var mainTicksValues = [];
-        if (x_main.domain()[0] != x_main.ticks(5)[0])
-            mainTicksValues = [x_main.domain()[0]];
-        mainTicksValues = mainTicksValues.concat(x_main.ticks(5));
-        if (x_main.domain()[1] != mainTicksValues[mainTicksValues.length - 1])
-            mainTicksValues.push(x_main.domain()[1]);
-
-        var format = function (d) {
-            if (mainTickValue == 'Gbp')
-                return d3.round(d / 1000000000, 2);
-            else if (mainTickValue == 'Mbp')
-                return d3.round(d / 1000000, 2);
-            else if (mainTickValue == 'kbp')
-                return d3.round(d / 1000, 2);
-            else
-                return d3.round(d, 2);
-        };
-
-        xMainAxis.tickValues(mainTicksValues)
-                .tickFormat(format);
-
-        var min_ticks_delta = Math.max(getTextSize(format(mainTicksValues[0]).toString(), numberSize),
-                getTextSize(format(mainTicksValues[1]).toString(), numberSize));
-
-        if (x_main(mainTicksValues[1]) - x_main(mainTicksValues[0]) < min_ticks_delta) {
-            mainTicksValues.splice(1, 1)
-        }
-
-        if (x_main(mainTicksValues.slice(-1)[0]) - x_main(mainTicksValues.slice(-2)[0]) < min_ticks_delta) {
-            mainTicksValues.splice(-2, 1)
-        }
-
-        main.select('.main.axis')
-                .call(xMainAxis);
-    }
-
-
     function getTextSize(text, size) {
 
         return text.length * size;
@@ -1030,15 +985,17 @@ THE SOFTWARE.
 
 
     function getVisibleText(fullText, l, lenChromosome) {
-        var size = 0;
         var t = '';
-        while (size <= l && t.length < fullText.length) {
-            t = fullText.slice(0, t.length + 1);
-            size = getSize(t);
+        if (getSize(fullText) > l) {
+            t = fullText.slice(0, fullText.length - 1);
+            while (getSize(t) > l && t.length > 3) {
+                t = fullText.slice(0, t.length - 1);
+            }
         }
+        else t = fullText;
         if (lenChromosome && t.length == fullText.length) {
-            var meanLenSize = letterSize * (lenChromosome.toString().length + 4);
-            if (size + meanLenSize <= l) t = fullText + ' (' + lenChromosome + ' bp)'
+            var t_plus_len = fullText + ' (' + lenChromosome + ' bp)';
+            if (getSize(t_plus_len) <= l) return t_plus_len;
         }
         return (t.length < 3 ? '' : t + (t.length >= fullText.length ? '' : '...'));
     }
