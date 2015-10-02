@@ -414,8 +414,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         strand2 = (align2.s2 < align2.e2)
         inconsistency = distance_on_reference - distance_on_contig
         aux_data = {"inconsistency": inconsistency, "distance_on_contig": distance_on_contig,
-                        "misassembly_internal_overlap": misassembly_internal_overlap, "cyclic_moment": cyclic_moment,
-                        "is_sv": False, "is_translocation": False}
+                    "misassembly_internal_overlap": misassembly_internal_overlap, "cyclic_moment": cyclic_moment,
+                    "is_sv": False, "is_translocation": False}
         if region_struct_variations:
             #check if it is structural variation
             is_sv = check_sv(align1, align2, inconsistency, region_struct_variations)
@@ -509,6 +509,15 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     region_struct_variations.relocations.append((align1, align2))
         return region_struct_variations
 
+    def check_is_reference_fragmented(align1, align2):
+        is_fragmented = ((abs(align1.e1 - len(references[align1.ref])) <= qconfig.MAX_INDEL_LENGTH) and ((align2.s1 - 1) <= qconfig.MAX_INDEL_LENGTH))
+        return is_fragmented
+
+    def check_is_scaffold_gap(distance_on_contig, inconsistency, contig_seq, align1, align2):
+        if abs(inconsistency) <= qconfig.scaffolds_gap_threshold and align1.ref == align2.ref and is_gap_filled_ns(contig_seq, align1, align2):
+            return True
+        return False
+
     def exclude_internal_overlaps(align1, align2, i):
         # returns size of align1.len2 decrease (or 0 if not changed). It is important for cur_aligned_len calculation
 
@@ -540,8 +549,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
         if qconfig.ambiguity_usage == 'all':
             return 0
-        if align1.ref != align2.ref:
-            return 0
+
         distance_on_contig = min(align2.e2, align2.s2) - max(align1.e2, align1.s2) - 1
         if distance_on_contig >= 0:  # no overlap
             return 0
@@ -1453,7 +1461,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         print >> planta_out_f, '\tMisassemblies caused by fragmented reference: %d' % region_misassemblies.count(Misassembly.FRAGMENTED)
     if bed_fpath:
         print >> planta_out_f, '\tFake misassemblies matched with structural variations: %d' % misassemblies_matched_sv
-
+    if qconfig.check_for_fragmented_ref:
+        print >> planta_out_f, '\tMisassemblies caused by fragmented reference: %d' % region_misassemblies.count(Misassembly.FRAGMENTED)
     print >> planta_out_f, '\tMisassembled Contigs: %d' % len(misassembled_contigs)
     misassembled_bases = sum(misassembled_contigs.itervalues())
     print >> planta_out_f, '\tMisassembled Contig Bases: %d' % misassembled_bases
