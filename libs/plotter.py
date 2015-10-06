@@ -75,6 +75,7 @@ pdf_tables_figures = []
 dict_color_and_ls = {}
 ####################################################################################
 
+preset_colors = {{'MetaSPAdes', '#E31A1C'}, {'IDBA-UD', '#1F78B4'}, {'MEGAHIT', '#33A02C'}, {'Ray-Meta', '#6A3D9A'}, {'GOLD_ASSEMBLY', '#FF7F00'}}
 
 def save_colors_and_ls(fpaths):
     if not dict_color_and_ls:
@@ -83,16 +84,19 @@ def save_colors_and_ls(fpaths):
         ls = primary_line_style
         for fpath in fpaths:
             label = qutils.label_from_fpath(fpath)
+            if label not in preset_colors:
+                print "Unknown assembler %" % label
+                sys.exit(3)
             # contigs and scaffolds should be equally colored but scaffolds should be dashed
             if fpath and fpath in qconfig.dict_of_broken_scaffolds:
                 color = dict_color_and_ls[qutils.label_from_fpath(qconfig.dict_of_broken_scaffolds[fpath])][0]
                 ls = secondary_line_style
             else:
                  next_color_id += 1
-                 color = colors[color_id % len(colors)]
+                 #color = colors[color_id % len(colors)]
+                 color = preset_colors[label]
             dict_color_and_ls[label] = (color, ls)
             color_id = next_color_id
-
 
 def get_color_and_ls(fpath):
     label = qutils.label_from_fpath(fpath)
