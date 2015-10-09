@@ -42,13 +42,14 @@ ref_labels_by_chromosomes = {}
 COMBINED_REF_FNAME = 'combined_reference.fasta'
 
 class Misassembly:
-    LOCAL = 0
-    RELOCATION = 1
-    TRANSLOCATION = 2
-    INVERSION = 3
-    INTERSPECTRANSLOCATION = 4  #for --meta, if translocation occurs between chromosomes of different references
+    RELOCATION = 0
+    TRANSLOCATION = 1
+    INVERSION = 2
+    INTERSPECTRANSLOCATION = 3  #for --meta, if translocation occurs between chromosomes of different references
+    POTENTIALLY_IS_TRANSLOCATIONS = 4
     SCAFFOLD_GAP = 5
     FRAGMENTED = 6
+    LOCAL = 7
 
 
 class Mapping(object):
@@ -506,7 +507,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             return False
         return gap_in_contig.count('N')/len(gap_in_contig) > 0.95
 
-    def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, contig_seq, references_misassemblies):
+    def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns,
+                                    ref_features, contig_seq, references_misassemblies, total_misassemblies_by_refs):
         misassembly_internal_overlap = 0
         prev = sorted_aligns[0]
         cur_aligned_length = prev.len2
@@ -561,20 +563,31 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                             ref1, ref2 = ref_labels_by_chromosomes[sorted_aligns[i].ref], ref_labels_by_chromosomes[sorted_aligns[i+1].ref]
                             references_misassemblies[ref1][ref2] += 1
                             references_misassemblies[ref2][ref1] += 1
+                            total_misassemblies_by_refs[ref1][Misassembly.INTERSPECTRANSLOCATION] += 1
+                            total_misassemblies_by_refs[ref2][Misassembly.INTERSPECTRANSLOCATION] += 1
                             print >> planta_out_f, 'interspecies translocation',
                             print >> misassembly_file, 'interspecies translocation',
                     else:
                         region_misassemblies.append(Misassembly.TRANSLOCATION)
+                        if ref_labels_by_chromosomes:
+                            cur_ref = ref_labels_by_chromosomes[sorted_aligns[i].ref]
+                            total_misassemblies_by_refs[cur_ref][Misassembly.TRANSLOCATION] += 1
                         print >> planta_out_f, 'translocation',
                         print >> misassembly_file, 'translocation',
                 elif abs(inconsistency) > smgap:
                     region_misassemblies.append(Misassembly.RELOCATION)
+                    if ref_labels_by_chromosomes:
+                        cur_ref = ref_labels_by_chromosomes[sorted_aligns[i].ref]
+                        total_misassemblies_by_refs[cur_ref][Misassembly.RELOCATION] += 1
                     print >> planta_out_f, 'relocation, inconsistency =', inconsistency, \
                         ', fragmentation of reference genome' if sorted_aligns[i].ref != sorted_aligns[i+1].ref else '',
                     print >> misassembly_file, 'relocation, inconsistency =', inconsistency, \
                         ', fragmentation of reference genome' if sorted_aligns[i].ref != sorted_aligns[i+1].ref else '',
                 else: #if strand1 != strand2:
                     region_misassemblies.append(Misassembly.INVERSION)
+                    if ref_labels_by_chromosomes:
+                        cur_ref = ref_labels_by_chromosomes[sorted_aligns[i].ref]
+                        total_misassemblies_by_refs[cur_ref][Misassembly.INVERSION] += 1
                     print >> planta_out_f, 'inversion',
                     print >> misassembly_file, 'inversion',
                 print >> planta_out_f, ') between these two alignments'
@@ -641,7 +654,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                                                          "contig length (contig: %s, len: %d, aligned: %d)!" % \
                                                          (sorted_aligns[0].contig, contig_aligned_length, len(contig_seq))
 
-        return is_misassembled, misassembly_internal_overlap, references_misassemblies, indels_info
+        return is_misassembled, misassembly_internal_overlap, references_misassemblies, indels_info, total_misassemblies_by_refs
     #### end of aux. functions ###
 
     # Loading the reference sequences
@@ -724,7 +737,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     references_misassemblies = {}
     for ref in ref_labels_by_chromosomes.values():
         references_misassemblies[ref] = dict((key, 0) for key in ref_labels_by_chromosomes.values())
-
+    total_misassemblies_by_refs = {}
+    for ref in ref_labels_by_chromosomes.values():
+        total_misassemblies_by_refs[ref] = [0] * (Misassembly.POTENTIALLY_IS_TRANSLOCATIONS+1)
     aligned_lengths = []
 
     # for counting SNPs and indels (both original (.all_snps) and corrected from Nucmer's local misassemblies)
@@ -940,6 +955,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                             print >> planta_out_f, '\t\tThis contig has both significant aligned and unaligned parts ' \
                                                    '(of length >= min-contig)!' + (' It can contain interspecies translocations' if qconfig.meta else '')
                             if qconfig.meta:
+                                cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
+                                total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
                                 contigs_with_istranslocations += 1
 
                     ref_aligns.setdefault(the_only_align.ref, []).append(the_only_align)
@@ -1011,12 +1028,14 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                             print >> planta_out_f, '\t\tThis contig has both significant aligned and unaligned parts ' \
                                                    '(of length >= min-contig)!' + (' It can contain interspecies translocations' if qconfig.meta else '')
                             if qconfig.meta:
+                                cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
+                                total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
                                 contigs_with_istranslocations += 1
                         continue
 
                     ### processing misassemblies
-                    is_misassembled, current_mio, references_misassemblies, indels_info = process_misassembled_contig(sorted_aligns, cyclic,
-                        aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, seq, references_misassemblies)
+                    is_misassembled, current_mio, references_misassemblies, indels_info, total_misassemblies_by_refs = process_misassembled_contig(sorted_aligns, cyclic,
+                        aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, seq, references_misassemblies, total_misassemblies_by_refs)
                     misassembly_internal_overlap += current_mio
                     total_indels_info += indels_info
                     if is_misassembled:
@@ -1025,6 +1044,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         print >> planta_out_f, '\t\tThis contig has significant unaligned parts ' \
                                                '(of length >= min-contig)!' + (' It can contain interspecies translocations' if qconfig.meta else '')
                         contigs_with_istranslocations += 1
+                        cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
+                        total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
         else:
             #No aligns to this contig
             print >> planta_out_f, '\t\tThis contig is unaligned. (%d bp)' % ctg_len
@@ -1474,7 +1495,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
               'partially_unaligned_with_misassembly': partially_unaligned_with_misassembly,
               'partially_unaligned_with_significant_parts': partially_unaligned_with_significant_parts,
               'contigs_with_istranslocations': contigs_with_istranslocations,
-              'istranslocations_by_refs': references_misassemblies}
+              'istranslocations_by_refs': references_misassemblies,
+              'total_misassemblies_by_refs': total_misassemblies_by_refs}
 
     ## outputting misassembled contigs to separate file
     fasta = [(name, seq) for name, seq in fastaparser.read_fasta(contigs_fpath)
@@ -1596,13 +1618,26 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
                                          in zip(colwidths, [row['metricName']] + map(val_to_str, row['values'])))
 
     if qconfig.is_combined_ref:
+        import plotter
+
         ref_misassemblies = [result['istranslocations_by_refs'] if result else [] for result in results]
+        total_misassemblies_by_refs = [result['total_misassemblies_by_refs'] if result else [] for result in results]
+        all_refs = sorted(list(set([ref for ref in ref_labels_by_chromosomes.values()])))
+        for i, fpath in enumerate(contigs_fpaths):
+            assembly_name = qutils.name_from_fpath(fpath)
+            misassemblies_by_ref_plot_fpath = os.path.join(output_dir, 'all_misassemblies_%s' % assembly_name)
+            plotter.draw_all_misassemblies_plot(total_misassemblies_by_refs[i],all_refs, misassemblies_by_ref_plot_fpath, assembly_name)
         if ref_misassemblies:
+            plots_dirpath = os.path.join(output_dir, 'interspecies_translocations')
+            if not os.path.exists(plots_dirpath):
+                os.mkdir(plots_dirpath)
+            for ref in all_refs:
+                misassembly_by_ref_plot_fpath = os.path.join(plots_dirpath, '%s' % ref)
+                plotter.draw_interspecies_translocations_plot(ref_misassemblies, all_refs, ref, contigs_fpaths, misassembly_by_ref_plot_fpath)
             for i, fpath in enumerate(contigs_fpaths):
                 if ref_misassemblies[i]:
                     assembly_name = qutils.name_from_fpath(fpath)
                     all_rows = []
-                    all_refs = sorted(list(set([ref for ref in ref_labels_by_chromosomes.values()])))
                     row = {'metricName': 'References', 'values': [ref_num+1 for ref_num in range(len(all_refs))]}
                     all_rows.append(row)
                     for k in all_refs:

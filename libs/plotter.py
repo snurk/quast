@@ -11,6 +11,8 @@
 
 # Feel free to add more colors
 #colors = ['#E41A1C', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#A65628', '#F781BF', '#FFFF33']  ## 8-color palette
+import sys
+
 colors = ['#E31A1C', '#1F78B4', '#33A02C', '#6A3D9A', '#FF7F00', '#FB9A99', '#A6CEE3', '#B2DF8A','#CAB2D6', '#FDBF6F'] # 10-color palette
 
 # Font of plot captions, axes labels and ticks
@@ -85,7 +87,7 @@ def save_colors_and_ls(fpaths):
         for fpath in fpaths:
             label = qutils.label_from_fpath(fpath)
             if label not in preset_colors:
-                print "Unknown assembler %" % label
+                print "Unknown assembler %s" % label
                 sys.exit(3)
             # contigs and scaffolds should be equally colored but scaffolds should be dashed
             if fpath and fpath in qconfig.dict_of_broken_scaffolds:
@@ -600,7 +602,7 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
         points_x = [arr_x[j][i] for i in range(len(arr_y_by_refs))]
         points_y = [arr_y_by_refs[i][j] for i in range(len(arr_y_by_refs))]
         color, ls = get_color_and_ls(None, labels[j])
-        ax.plot(points_x, points_y, 'ro:', color=color)
+        ax.plot(points_x, points_y, 'ro:', color=color, ls=ls)
         json_points_x.append(points_x)
         json_points_y.append(points_y)
 
@@ -813,6 +815,153 @@ def draw_misassembl_plot(reports, plot_fpath, title='', yaxis_title=''):
     logger.info('    saved to ' + plot_fpath)
     ax.set_position([box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8])
     pdf_plots_figures.append(figure)
+
+def draw_interspecies_translocations_plot(results, ref_names, target_ref, contigs_fpaths, plot_fpath, title=''):
+    if matplotlib_error:
+        return
+
+    import matplotlib.pyplot
+    import matplotlib.ticker
+    import math
+
+    contigs_num = len(contigs_fpaths)
+    refs = [ref for ref in ref_names if ref != target_ref]
+    values = []
+    for ref in refs:
+        points_y = [results[i][target_ref][ref] for i in range(contigs_num)]
+        values.append((ref, sum(filter(None, points_y))/float(len(points_y))))
+
+    values = sorted(values, key=lambda x: x[1])
+    if values[-1][1] == 0:
+        return
+
+    sorted_refs = [res[0] for res in values]
+    refs_num = len(sorted_refs)
+    fig = matplotlib.pyplot.figure()
+    matplotlib.pyplot.title(target_ref)
+    ax = fig.add_subplot(111)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
+    ax.yaxis.grid(with_grid)
+    legend_n = []
+
+    bar_width = 0.3
+    ymax = 0
+    main_arr_x = range(1, (refs_num + 1))
+    if contigs_num > 1:
+        main_arr_x = [x*contigs_num/1.5 for x in main_arr_x]
+    arr_x = []
+    arr_y = []
+    for j, ref in enumerate(sorted_refs):
+        arr_x.append([0 for x in range(contigs_num)])
+        arr_y.append([0 for x in range(contigs_num)])
+        ymax_j = 0
+        for i in range(contigs_num):
+            result = results[i][target_ref][ref]
+            if result != '-':
+                arr_y[j][i] = float(result)
+                arr_x[j][i] = main_arr_x[j] + bar_width * 1.5 * (i - (contigs_num * 0.5))
+                legend_n.append(ref)
+                ymax_j = max(float(result), ymax_j)
+        ymax = max(ymax, ymax_j)
+
+    values = []
+    arr_y_by_refs = []
+    for i in range(refs_num):
+        points_y = [arr_y[i][j] for j in range(contigs_num)]
+        significant_points_y = [points_y[k] for k in range(len(points_y)) if points_y[k] is not None]
+        if significant_points_y:
+            arr_y_by_refs.append(points_y)
+            values.append(sum(filter(None, points_y))/len(points_y))
+
+    contigs_labels = []
+    for i in range(contigs_num):
+        points_x = [arr_x[j][i] for j in range(len(arr_x)) if arr_x[j][i] != 0]
+        points_y = [arr_y_by_refs[j][i] for j in range(len(arr_y_by_refs))]
+        if points_y and points_x:
+            color, ls = get_color_and_ls(contigs_fpaths[i])
+            contigs_labels.append(qutils.label_from_fpath(contigs_fpaths[i]))
+            ax.plot(points_x, points_y, 'o:', color=color, ls=ls)
+
+    matplotlib.pyplot.xticks(main_arr_x, sorted_refs, size='small', rotation='vertical')
+    matplotlib.pyplot.xlim([0, main_arr_x[-1]+1])
+
+    if ymax == 0:
+        matplotlib.pyplot.ylim([0, 5])
+    else:
+        matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
+    matplotlib.pyplot.ylabel('# misassemblies', fontsize=axes_fontsize)
+    legend = ax.legend(contigs_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True, numpoints=1)
+
+    matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
+    matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
+    plot_fpath += plots_file_ext
+    matplotlib.pyplot.tight_layout()
+    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath)
+    return
+
+def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
+    if matplotlib_error:
+        return
+
+    meta_logger.info('  Drawing metaQUAST summary misassemblies plot for ' + title + '...')
+    import matplotlib.pyplot
+    import matplotlib.ticker
+    import math
+
+    refs_num = len(refs)
+    fig = matplotlib.pyplot.figure()
+    ax = fig.add_subplot(111)
+    matplotlib.pyplot.title(title)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
+    ax.yaxis.grid(with_grid)
+    misassemblies = [reporting.Fields.MIS_RELOCATION, reporting.Fields.MIS_TRANSLOCATION, reporting.Fields.MIS_INVERTION,
+                           reporting.Fields.MIS_ISTRANSLOCATIONS, reporting.Fields.TAB + reporting.Fields.CONTIGS_WITH_ISTRANSLOCATIONS]
+
+    sorted_results = []
+    for ref in refs:
+        sorted_results.append((ref, sum(results[ref])))
+    sorted_results = sorted(sorted_results, key=lambda x: x[1])
+    sorted_refs = [res[0] for res in sorted_results]
+    legend_n = []
+    ymax = 0
+    arr_x = range(1, refs_num + 1)
+    bar_width = 0.3
+    to_plot = {}
+    for type_misassembly in range(len(misassemblies)):
+        for j, ref in enumerate(sorted_refs):
+            if type_misassembly == 0:
+                to_plot[ref] = []
+            result = results[ref][type_misassembly] if results[ref][type_misassembly] else None
+            if result and result != '-':
+                to_plot[ref].append(float(result))
+                ax.bar(arr_x[j], to_plot[ref][-1], width=bar_width, color=colors[type_misassembly], bottom=sum(to_plot[ref][:-1]))
+                legend_n.append(type_misassembly)
+                ymax = max(ymax, float(sum(to_plot[ref])))
+
+    matplotlib.pyplot.xticks(range(1, len(sorted_refs) + 1), sorted_refs, size='small', rotation='vertical')
+
+    matplotlib.pyplot.xlim([0, refs_num + 1])
+
+    if ymax == 0:
+        matplotlib.pyplot.ylim([0, 5])
+    else:
+        matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
+    matplotlib.pyplot.ylabel('# misassemblies', fontsize=axes_fontsize)
+
+    legend = ax.legend(misassemblies, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True)
+    for num_line in range(len(legend.legendHandles)):
+        legend.legendHandles[num_line].set_color(colors[num_line])
+
+    matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
+    matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
+    plot_fpath += plots_file_ext
+    matplotlib.pyplot.tight_layout()
+    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath)
+    return
 
 
 def draw_report_table(report_name, extra_info, table_to_draw, column_widths):
