@@ -38,6 +38,8 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
     import N50
     for i, (contigs_fpath, lens, assembly_len) in enumerate(
             itertools.izip(aligned_contigs_fpaths, aligned_lengths_lists, assembly_lengths)):
+        if not lens:
+            continue
         na50 = N50.NG50(lens, assembly_len)
         nga50 = N50.NG50(lens, reference_length)
         na75 = N50.NG50(lens, assembly_len, 75)

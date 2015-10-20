@@ -79,7 +79,7 @@ def GC_content(contigs_fpath, skip=False):
     return total_GC, (GC_distribution_x, GC_distribution_y)
 
 
-def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
+def do(ref_fpath, contigs_fpaths, aligned_percents_lists, output_dirpath, json_output_dir, results_dir):
     logger.print_timestamp()
     logger.info("Running Basic statistics processor...")
     
@@ -117,9 +117,10 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
         #lists_of_lengths.append(fastaparser.get_lengths_from_fastafile(contigs_fpath))
         list_of_length = []
         number_of_Ns = 0
-        for (name, seq) in fastaparser.read_fasta(contigs_fpath):
-            list_of_length.append(len(seq))
-            number_of_Ns += seq.count('N')
+        for i, (name, seq) in enumerate(fastaparser.read_fasta(contigs_fpath)):
+            if not aligned_percents_lists or aligned_percents_lists[id][i] >= qconfig.min_percent_aligned:  # if aligned length > 20%
+                list_of_length.append(len(seq))
+                number_of_Ns += seq.count('N')
 
         lists_of_lengths.append(list_of_length)
         numbers_of_Ns.append(number_of_Ns)
@@ -159,6 +160,10 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     import N50
     for id, (contigs_fpath, lengths_list, number_of_Ns) in enumerate(itertools.izip(contigs_fpaths, lists_of_lengths, numbers_of_Ns)):
         report = reporting.get(contigs_fpath)
+        if not lengths_list:
+            total_length = 0
+            report.add_field(reporting.Fields.TOTALLEN, total_length)
+            continue
         n50, l50 = N50.N50_and_L50(lengths_list)
         ng50, lg50 = None, None
         if reference_length:

@@ -88,15 +88,15 @@ def save_colors_and_ls(fpaths):
             label = qutils.label_from_fpath(fpath)
             if label not in preset_colors:
                 print "Unknown assembler %s" % label
-                sys.exit(3)
+                #sys.exit(3)
             # contigs and scaffolds should be equally colored but scaffolds should be dashed
             if fpath and fpath in qconfig.dict_of_broken_scaffolds:
                 color = dict_color_and_ls[qutils.label_from_fpath(qconfig.dict_of_broken_scaffolds[fpath])][0]
                 ls = secondary_line_style
             else:
                  next_color_id += 1
-                 #color = colors[color_id % len(colors)]
-                 color = preset_colors[label]
+                 color = colors[color_id % len(colors)]
+                 #color = preset_colors[label]
             dict_color_and_ls[label] = (color, ls)
             color_id = next_color_id
 
