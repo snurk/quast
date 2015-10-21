@@ -269,7 +269,7 @@ def _correct_references(ref_fpaths, corrected_dirpath):
 
 
 def remove_unaligned_downloaded_refs(output_dirpath, ref_fpaths, chromosomes_by_refs):
-    genome_info_dirpath = os.path.join(output_dirpath, 'combined_quast_output', 'genome_stats')
+    genome_info_dirpath = os.path.join(output_dirpath, qconfig.combined_output_name, 'genome_stats')
     genome_info_fpath = os.path.join(genome_info_dirpath, 'genome_info.txt')
     refs_len = {}
     with open(genome_info_fpath, 'r') as report_file:
