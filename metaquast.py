@@ -622,9 +622,9 @@ def main(args):
             logger.info()
             logger.info('Filtered reference(s):')
             os.remove(combined_ref_fpath)
+            contigs_analyzer.ref_labels_by_chromosomes = {}
             corrected_ref_fpaths, common_ref_fasta_ext, combined_ref_fpath, chromosomes_by_refs, ref_names =\
                     _correct_references(corr_ref_fpaths, corrected_dirpath)
-            contigs_analyzer.ref_labels_by_chromosomes = corr_ref_labels_by_chromosomes
             run_name = 'for the corrected combined reference'
             logger.info()
             logger.info('Starting quast.py ' + run_name + '...')
