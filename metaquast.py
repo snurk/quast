@@ -291,7 +291,7 @@ def remove_unaligned_downloaded_refs(output_dirpath, ref_fpaths, chromosomes_by_
             if chromosome[0] in refs_len:
                 aligned_len += int(refs_len[chromosome[0]][1])
                 all_len += int(refs_len[chromosome[0]][0])
-        if aligned_len > all_len * 0.1 and aligned_len > 0:
+        if aligned_len > all_len * 0.5 and aligned_len > 0:
             corr_refs.append(ref_fpath)
             good_ref = qutils.name_from_fpath(ref_fpath)
             for chromosome in contigs_analyzer.ref_labels_by_chromosomes.keys():
