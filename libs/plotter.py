@@ -185,7 +185,7 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
     # Put a legend below current axis
     try: # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<3 else 3)
+            shadow=True, ncol=n_columns if n_columns<4 else 4)
     except Exception: # ZeroDivisionError: ValueError:
         pass
 
@@ -291,7 +291,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     # Put a legend below current axis
     try: # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<3 else 3)
+            shadow=True, ncol=n_columns if n_columns<4 else 4)
     except Exception:
         pass
 
@@ -369,7 +369,7 @@ def GC_content_plot(ref_fpath, contigs_fpaths, list_of_GC_distributions, plot_fp
 
     try:  # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<3 else 3)
+            shadow=True, ncol=n_columns if n_columns<4 else 4)
     except Exception:
         pass
 
@@ -452,7 +452,7 @@ def genes_operons_plot(reference_value, contigs_fpaths, files_feature_in_contigs
     # Put a legend below current axis
     try:  # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<3 else 3)
+            shadow=True, ncol=n_columns if n_columns<4 else 4)
     except Exception:
         pass
 
@@ -531,7 +531,7 @@ def histogram(contigs_fpaths, values, plot_fpath, title='', yaxis_title='', bott
     # Put a legend below current axis
     try:  # for matplotlib <= 2009-12-09
         ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<3 else 3)
+            shadow=True, ncol=n_columns if n_columns<4 else 4)
     except Exception:
         pass
 
