@@ -79,7 +79,7 @@ def GC_content(contigs_fpath, skip=False):
     return total_GC, (GC_distribution_x, GC_distribution_y)
 
 
-def do(ref_fpath, contigs_fpaths, aligned_percents_lists, output_dirpath, json_output_dir, results_dir):
+def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     logger.print_timestamp()
     logger.info("Running Basic statistics processor...")
     
@@ -118,9 +118,8 @@ def do(ref_fpath, contigs_fpaths, aligned_percents_lists, output_dirpath, json_o
         list_of_length = []
         number_of_Ns = 0
         for i, (name, seq) in enumerate(fastaparser.read_fasta(contigs_fpath)):
-            if not aligned_percents_lists or aligned_percents_lists[id][i] >= qconfig.min_percent_aligned:  # if aligned length > 20%
-                list_of_length.append(len(seq))
-                number_of_Ns += seq.count('N')
+            list_of_length.append(len(seq))
+            number_of_Ns += seq.count('N')
 
         lists_of_lengths.append(list_of_length)
         numbers_of_Ns.append(number_of_Ns)

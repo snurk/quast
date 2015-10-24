@@ -53,8 +53,8 @@ class Misassembly:
 
 
 class Mapping(object):
-    def __init__(self, s1, e1, s2, e2, len1, len2, idy, ref, contig):
-        self.s1, self.e1, self.s2, self.e2, self.len1, self.len2, self.idy, self.ref, self.contig = s1, e1, s2, e2, len1, len2, idy, ref, contig
+    def __init__(self, s1, e1, s2, e2, len1, len2, idy, ref, contig, aligned_bp=None):
+        self.s1, self.e1, self.s2, self.e2, self.len1, self.len2, self.idy, self.ref, self.contig, self.aligned_bp = s1, e1, s2, e2, len1, len2, idy, ref, contig, aligned_bp
 
     @classmethod
     def from_line(cls, line):
@@ -512,7 +512,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         misassembly_internal_overlap = 0
         prev = sorted_aligns[0]
         cur_aligned_length = prev.len2
-        ctg_aligned_lengths = []
         is_misassembled = False
         contig_is_printed = False
         indels_info = IndelsInfo()
@@ -530,11 +529,12 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             if sorted_aligns[i].ref == sorted_aligns[i+1].ref or (sorted_aligns[i].ref != sorted_aligns[i+1].ref and is_translocation):
                 cur_aligned_length -= exclude_internal_overlaps(sorted_aligns[i], sorted_aligns[i+1], i)
             print >> planta_out_f, '\t\t\tReal Alignment %d: %s' % (i+1, str(sorted_aligns[i]))
-
+            sorted_aligns[i].aligned_bp = sorted_aligns[i].len2
             ref_aligns.setdefault(sorted_aligns[i].ref, []).append(sorted_aligns[i])
             print >> coords_filtered_file, str(prev)
 
             if qconfig.scaffolds and is_scaffold_gap and (abs(inconsistency) > qconfig.MAX_INDEL_LENGTH or is_extensive_misassembly):
+                aligned_lengths.append(cur_aligned_length)
                 if (sorted_aligns[i].s2 < sorted_aligns[i].e2) != (sorted_aligns[i+1].s2 < sorted_aligns[i+1].e2):
                     print >> planta_out_f, '\t\t\t  Extensive misassembly (inversion) between these two alignments'
                     print >> misassembly_file, 'Extensive misassembly (inversion) between %s %s and %s %s' % (sorted_aligns[i].s2, sorted_aligns[i].e2,
@@ -549,7 +549,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
             elif is_extensive_misassembly:
                 is_misassembled = True
-                ctg_aligned_lengths.append(cur_aligned_length)
+                aligned_lengths.append(cur_aligned_length)
                 contig_aligned_length += cur_aligned_length
                 cur_aligned_length = 0
                 if not contig_is_printed:
@@ -625,7 +625,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         indels_info.mismatches += mismatches
                 else:
                     if qconfig.strict_NA:
-                        ctg_aligned_lengths.append(cur_aligned_length)
+                        aligned_lengths.append(cur_aligned_length)
                         contig_aligned_length += cur_aligned_length
                         cur_aligned_length = 0
 
@@ -646,18 +646,17 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         #Record the very last alignment
         i = len(sorted_aligns) - 1
         print >> planta_out_f, '\t\t\tReal Alignment %d: %s' % (i + 1, str(sorted_aligns[i]))
+        sorted_aligns[i].aligned_bp = sorted_aligns[i].len2
         ref_aligns.setdefault(sorted_aligns[i].ref, []).append(sorted_aligns[i])
         print >> coords_filtered_file, str(prev)
-        ctg_aligned_lengths.append(cur_aligned_length)
+        aligned_lengths.append(cur_aligned_length)
         contig_aligned_length += cur_aligned_length
-        if contig_aligned_length/float(len(contig_seq)) >= qconfig.min_percent_aligned:
-            aligned_lengths.extend(ctg_aligned_lengths)
 
         assert contig_aligned_length <= len(contig_seq), "Internal QUAST bug: contig aligned length is greater than " \
                                                          "contig length (contig: %s, len: %d, aligned: %d)!" % \
                                                          (sorted_aligns[0].contig, contig_aligned_length, len(contig_seq))
 
-        return aligned_lengths, is_misassembled, misassembly_internal_overlap, references_misassemblies, indels_info, total_misassemblies_by_refs
+        return is_misassembled, misassembly_internal_overlap, references_misassemblies, indels_info, total_misassemblies_by_refs
     #### end of aux. functions ###
 
     # Loading the reference sequences
@@ -744,14 +743,15 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     for ref in ref_labels_by_chromosomes.values():
         total_misassemblies_by_refs[ref] = [0] * (Misassembly.POTENTIALLY_IS_TRANSLOCATIONS+1)
     aligned_lengths = []
-    aligned_percents = []
     # for counting SNPs and indels (both original (.all_snps) and corrected from Nucmer's local misassemblies)
     total_indels_info = IndelsInfo()
 
     print >> planta_out_f, 'Analyzing contigs...'
 
     unaligned_file = open(unaligned_fpath, 'w')
+    contigs_lengths = {}
     for contig, seq in fastaparser.read_fasta(contigs_fpath):
+        contigs_lengths[contig] = len(seq)
         contig_ns = None
         if 'N' in seq:
             contig_ns = [pos for pos in xrange(len(seq)) if seq[pos] == 'N']
@@ -775,7 +775,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             if top_len > ctg_len * epsilon or ctg_len - top_len < maxun:
                 #Reset top aligns: aligns that share the same value of longest and highest identity
                 top_aligns.append(sorted_aligns[0])
-                aligned_percents.append(top_len/float(ctg_len))
                 sorted_aligns = sorted_aligns[1:]
 
                 #Continue grabbing alignments while length and identity are identical
@@ -793,6 +792,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                 if len(top_aligns) == 1:
                     #There is only one top align, life is good
                     print >> planta_out_f, '\t\tOne align captures most of this contig: %s' % str(top_aligns[0])
+                    top_aligns[0].aligned_bp = top_len
                     ref_aligns.setdefault(top_aligns[0].ref, []).append(top_aligns[0])
                     print >> coords_filtered_file, str(top_aligns[0])
                     aligned_lengths.append(top_aligns[0].len2)
@@ -815,6 +815,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     elif qconfig.ambiguity_usage == "one":
                         print >> planta_out_f, '\t\tUsing only first of these alignment (option --ambiguity-usage is set to "one"):'
                         print >> planta_out_f, '\t\tAlignment: %s' % str(top_aligns[0])
+                        top_aligns[0].aligned_bp = top_len
                         ref_aligns.setdefault(top_aligns[0].ref, []).append(top_aligns[0])
                         aligned_lengths.append(top_aligns[0].len2)
                         print >> coords_filtered_file, str(top_aligns[0])
@@ -827,6 +828,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         first_alignment = True
                         while len(top_aligns):
                             print >> planta_out_f, '\t\tAlignment: %s' % str(top_aligns[0])
+                            top_aligns[0].aligned_bp = top_len
                             ref_aligns.setdefault(top_aligns[0].ref, []).append(top_aligns[0])
                             if first_alignment:
                                 first_alignment = False
@@ -931,10 +933,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
 
                     #There is only one alignment of this contig to the reference
                     print >> coords_filtered_file, str(the_only_align)
-                    cov_percent = the_only_align.len2/float(ctg_len)
-                    if cov_percent >= qconfig.min_percent_aligned:
-                       aligned_lengths.append(the_only_align.len2)
-                    aligned_percents.append(cov_percent)
+                    aligned_lengths.append(the_only_align.len2)
 
                     #Is the contig aligned in the reverse compliment?
                     #Record beginning and end of alignment in contig
@@ -965,12 +964,11 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                                 cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
                                 total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
                                 contigs_with_istranslocations += 1
-
+                    the_only_align.aligned_bp = the_only_align.len2
                     ref_aligns.setdefault(the_only_align.ref, []).append(the_only_align)
                 else:
                     #Sort real alignments by position on the contig
                     sorted_aligns = sorted(real_aligns, key=lambda x: (min(x.s2, x.e2), max(x.s2, x.e2)))
-                    cur_aligned_len = []
                     #Extra skipping of redundant alignments (fully or almost fully covered by adjacent alignments)
                     if len(sorted_aligns) >= 3:
                         was_extra_skip = False
@@ -1012,8 +1010,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         else:
                             aligned_bases_in_contig += (max(cur_align.s2, cur_align.e2) - last_e2)
                         last_e2 = max(cur_align.s2, cur_align.e2)
-                    cov_percent = aligned_bases_in_contig/float(ctg_len)
-                    aligned_percents.append(cov_percent)
                     #aligned_bases_in_contig = sum(x.len2 for x in sorted_aligns)
                     if aligned_bases_in_contig < umt * ctg_len:
                         print >> planta_out_f, '\t\t\tWarning! This contig is more unaligned than misassembled. ' + \
@@ -1022,10 +1018,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         for align in sorted_aligns:
                             print >> planta_out_f, '\t\tAlignment: %s' % str(align)
                             print >> coords_filtered_file, str(align)
-                            cur_aligned_len.append(align.len2)
+                            aligned_lengths.append(align.len2)
+                            align.aligned_bp = aligned_bases_in_contig
                             ref_aligns.setdefault(align.ref, []).append(align)
-                        if cov_percent >= qconfig.min_percent_aligned:
-                            aligned_lengths.extend(cur_aligned_len)
+
                         #Increment tally of partially unaligned contigs
                         partially_unaligned += 1
                         #Increment tally of partially unaligned bases
@@ -1043,7 +1039,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         continue
 
                     ### processing misassemblies
-                    aligned_lengths, is_misassembled, current_mio, references_misassemblies, indels_info, total_misassemblies_by_refs = process_misassembled_contig(sorted_aligns, cyclic,
+                    is_misassembled, current_mio, references_misassemblies, indels_info, total_misassemblies_by_refs = process_misassembled_contig(sorted_aligns, cyclic,
                         aligned_lengths, region_misassemblies, reg_lens, ref_aligns, ref_features, seq, references_misassemblies, total_misassemblies_by_refs)
                     misassembly_internal_overlap += current_mio
                     total_indels_info += indels_info
@@ -1061,7 +1057,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             print >> unaligned_file, contig
 
             #Increment unaligned contig count and bases
-            aligned_percents.append(0)
             unaligned += 1
             fully_unaligned_bases += ctg_len
             print >> planta_out_f, '\t\tUnaligned bases: %d  total: %d' % (ctg_len, fully_unaligned_bases)
@@ -1519,11 +1514,24 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     alignment_tsv_fpath = os.path.join(output_dirpath, "alignments_" + assembly_label + '.tsv')
     logger.debug('  ' + qutils.index_to_str(index) + 'Alignments: ' + qutils.relpath(alignment_tsv_fpath))
     alignment_tsv_f = open(alignment_tsv_fpath, 'w')
-    for ref_name, aligns in ref_aligns.iteritems():
-        alignment_tsv_f.write(ref_name)
-        for align in aligns:
-            alignment_tsv_f.write('\t' + align.contig)
-        alignment_tsv_f.write('\n')
+    for ref_name in set(ref_labels_by_chromosomes.values()):
+        aligned_contigs = []
+        for chr_name, aligns in ref_aligns.iteritems():
+            if ref_labels_by_chromosomes[chr_name] == ref_name:
+                for align in aligns:
+                    aligned_contigs.append(align.contig)
+        alignments = []
+        contigs = {}
+        for chr_name, aligns in ref_aligns.iteritems():
+            for align in aligns:
+                if align.contig in aligned_contigs:
+                    contigs.setdefault(align.contig, []).append(align.aligned_bp)
+        for contig in contigs:
+            if sum([x if x else 0 for x in contigs[contig]])/float(contigs_lengths[contig]) >= qconfig.min_percent_aligned:
+                alignments.append(contig)
+        if alignments:
+            alignment_tsv_f.write(ref_name + '\t' + '\t'.join(alignments))
+            alignment_tsv_f.write('\n')
     alignment_tsv_f.close()
 
     planta_out_f.close()
@@ -1533,9 +1541,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     logger.info('  ' + qutils.index_to_str(index) + 'Analysis is finished.')
     logger.debug('')
     if nothing_aligned:
-        return NucmerStatus.NOT_ALIGNED, result, aligned_lengths, aligned_percents
+        return NucmerStatus.NOT_ALIGNED, result, aligned_lengths
     else:
-        return NucmerStatus.OK, result, aligned_lengths, aligned_percents
+        return NucmerStatus.OK, result, aligned_lengths
 
 
 def plantakolya_process(cyclic, nucmer_output_dirpath, contigs_fpath, i, output_dirpath, ref_fpath, parallel_by_chr=False):
@@ -1543,11 +1551,11 @@ def plantakolya_process(cyclic, nucmer_output_dirpath, contigs_fpath, i, output_
     assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     nucmer_fname = os.path.join(nucmer_output_dirpath, assembly_label)
-    nucmer_is_ok, result, aligned_lengths, aligned_percents = plantakolya(cyclic, i, contigs_fpath, nucmer_fname,
+    nucmer_is_ok, result, aligned_lengths = plantakolya(cyclic, i, contigs_fpath, nucmer_fname,
                                                         output_dirpath, ref_fpath, old_contigs_fpath, parallel_by_chr=parallel_by_chr)
 
     clear_files(contigs_fpath, nucmer_fname)
-    return nucmer_is_ok, result, aligned_lengths, aligned_percents
+    return nucmer_is_ok, result, aligned_lengths
 
 
 def all_required_binaries_exist(mummer_dirpath):
@@ -1607,10 +1615,9 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
                                                                            output_dir, reference, parallel_by_chr=True))
 
     # unzipping
-    statuses, results, aligned_lengths, aligned_percents = [x[0] for x in statuses_results_lengths_tuples], \
+    statuses, results, aligned_lengths = [x[0] for x in statuses_results_lengths_tuples], \
                                                             [x[1] for x in statuses_results_lengths_tuples], \
-                                                            [x[2] for x in statuses_results_lengths_tuples], \
-                                                            [x[3] for x in statuses_results_lengths_tuples]
+                                                            [x[2] for x in statuses_results_lengths_tuples]
     reports = []
 
     def val_to_str(val):
@@ -1637,14 +1644,16 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
         for i, fpath in enumerate(contigs_fpaths):
             assembly_name = qutils.name_from_fpath(fpath)
             misassemblies_by_ref_plot_fpath = os.path.join(output_dir, 'all_misassemblies_%s' % assembly_name)
-            plotter.draw_all_misassemblies_plot(total_misassemblies_by_refs[i],all_refs, misassemblies_by_ref_plot_fpath, assembly_name)
+            if qconfig.draw_plots:
+                plotter.draw_all_misassemblies_plot(total_misassemblies_by_refs[i],all_refs, misassemblies_by_ref_plot_fpath, assembly_name)
         if ref_misassemblies:
             plots_dirpath = os.path.join(output_dir, 'interspecies_translocations')
             if not os.path.exists(plots_dirpath):
                 os.mkdir(plots_dirpath)
             for ref in all_refs:
                 misassembly_by_ref_plot_fpath = os.path.join(plots_dirpath, '%s' % ref)
-                plotter.draw_interspecies_translocations_plot(ref_misassemblies, all_refs, ref, contigs_fpaths, misassembly_by_ref_plot_fpath)
+                if qconfig.draw_plots:
+                    plotter.draw_interspecies_translocations_plot(ref_misassemblies, all_refs, ref, contigs_fpaths, misassembly_by_ref_plot_fpath)
             for i, fpath in enumerate(contigs_fpaths):
                 if ref_misassemblies[i]:
                     assembly_name = qutils.name_from_fpath(fpath)
@@ -1760,7 +1769,6 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
 
     nucmer_statuses = dict(zip(contigs_fpaths, statuses))
     aligned_lengths_per_fpath = dict(zip(contigs_fpaths, aligned_lengths))
-    aligned_percents_per_fpath = dict(zip(contigs_fpaths, aligned_percents))
 
 #    nucmer_statuses = {}
 #
@@ -1795,4 +1803,4 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
 #    if problems == all:
 #        log.info('  Nucmer failed.')
 
-    return nucmer_statuses, aligned_lengths_per_fpath, aligned_percents_per_fpath
+    return nucmer_statuses, aligned_lengths_per_fpath

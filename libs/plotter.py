@@ -95,8 +95,8 @@ def save_colors_and_ls(fpaths):
                 ls = secondary_line_style
             else:
                  next_color_id += 1
-                 color = colors[color_id % len(colors)]
-                 #color = preset_colors[label]
+                 #color = colors[color_id % len(colors)]
+                 color = preset_colors[label]
             dict_color_and_ls[label] = (color, ls)
             color_id = next_color_id
 

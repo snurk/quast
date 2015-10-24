@@ -52,8 +52,8 @@ def parallel_partition_contigs(asm, assemblies_by_ref, corrected_dirpath, alignm
     if os.path.exists(alignments_fpath_template % asm.name):
         for line in open(alignments_fpath_template % asm.name):
             values = line.split()
-            if values[0] in contigs_analyzer.ref_labels_by_chromosomes.keys():
-                ref_name = contigs_analyzer.ref_labels_by_chromosomes[values[0]]
+            if values and values[0] in contigs_analyzer.ref_labels_by_chromosomes.values():
+                ref_name = values[0]
                 ref_contigs_names = values[1:]
                 ref_contigs_fpath = os.path.join(
                     corrected_dirpath, asm.name + '_to_' + ref_name[:40] + '.fasta')

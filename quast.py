@@ -196,7 +196,7 @@ def _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels):
                     corrected_contigs_fpaths.append(broken_scaffold_fpath)
                     old_contigs_fpaths.append(broken_scaffold_fpath)  # no "old" fpaths for broken scaffolds
                 qconfig.dict_of_broken_scaffolds[broken_scaffold_fpath] = corrected_contigs_fpaths[i]
-    if qconfig.draw_plots:
+    if qconfig.draw_plots or qconfig.html_report:
         from libs import plotter
         if not plotter.dict_color_and_ls:
             plotter.save_colors_and_ls(corrected_contigs_fpaths)
@@ -665,8 +665,7 @@ def main(args):
     # Where all pdfs will be saved
     all_pdf_fpath = os.path.join(output_dirpath, qconfig.plots_fname)
     all_pdf_file = None
-
-    if qconfig.draw_plots:
+    if qconfig.draw_plots or qconfig.html_report:
         from libs import plotter  # Do not remove this line! It would lead to a warning in matplotlib.
         try:
             from matplotlib.backends.backend_pdf import PdfPages
@@ -686,23 +685,22 @@ def main(args):
 
     aligned_contigs_fpaths = []
     aligned_lengths_lists = []
-    aligned_percents_lists = []
+
     contig_alignment_plot_fpath = None
     if ref_fpath:
         ########################################################################
         ### former PLANTAKOLYA, PLANTAGORA
         ########################################################################
         from libs import contigs_analyzer
-        nucmer_statuses, aligned_lengths_per_fpath, aligned_percents_per_fpath = contigs_analyzer.do(
+        nucmer_statuses, aligned_lengths_per_fpath = contigs_analyzer.do(
             ref_fpath, contigs_fpaths, qconfig.prokaryote, os.path.join(output_dirpath, 'contigs_reports'), old_contigs_fpaths)
         for contigs_fpath in contigs_fpaths:
             if nucmer_statuses[contigs_fpath] == contigs_analyzer.NucmerStatus.OK:
                 aligned_contigs_fpaths.append(contigs_fpath)
                 aligned_lengths_lists.append(aligned_lengths_per_fpath[contigs_fpath])
-                aligned_percents_lists.append(aligned_percents_per_fpath[contigs_fpath])
 
     from libs import basic_stats
-    basic_stats.do(ref_fpath, contigs_fpaths, aligned_percents_lists, os.path.join(output_dirpath, 'basic_stats'),
+    basic_stats.do(ref_fpath, contigs_fpaths, os.path.join(output_dirpath, 'basic_stats'),
                        json_output_dirpath, output_dirpath)
     # Before continue evaluating, check if nucmer didn't skip all of the contigs files.
     detailed_contigs_reports_dirpath = None
