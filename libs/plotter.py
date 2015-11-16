@@ -77,7 +77,7 @@ pdf_tables_figures = []
 dict_color_and_ls = {}
 ####################################################################################
 
-preset_colors = {'MetaSPAdes':'#E31A1C', 'IDBA-UD':'#1F78B4', 'MEGAHIT':'#33A02C', 'Ray-Meta':'#6A3D9A', 'GOLD_ASSEMBLY':'#FF7F00'}
+preset_colors = {'metaSPAdes':'#E31A1C', 'IDBA-UD':'#1F78B4', 'MEGAHIT':'#33A02C', 'Ray-Meta':'#6A3D9A', 'GOLD_ASSEMBLY':'#FF7F00'}
 
 def save_colors_and_ls(fpaths):
     if not dict_color_and_ls:

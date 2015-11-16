@@ -95,7 +95,7 @@ not_aligned_name = "not_aligned"
 combined_output_name = "combined_reference"
 quast_output_suffix = "_quast_output"
 
-min_percent_aligned = 0.0
+min_percent_aligned = 0.2
 # other settings (mostly constants). Can't be changed by command-line options
 
 # indels and misassemblies
