@@ -606,7 +606,7 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
         json_points_x.append(points_x)
         json_points_y.append(points_y)
 
-    matplotlib.pyplot.xlim([0, ref_num + 1])
+    matplotlib.pyplot.xlim([0, len(refs) + 1])
     ymax = 0
     for i in range(ref_num):
         for j in range(contigs_num):

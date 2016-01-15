@@ -1645,8 +1645,9 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
             assembly_name = qutils.name_from_fpath(fpath)
             misassemblies_by_ref_plot_fpath = os.path.join(output_dir, 'all_misassemblies_%s' % assembly_name)
             if qconfig.draw_plots:
-                plotter.draw_all_misassemblies_plot(total_misassemblies_by_refs[i],all_refs, misassemblies_by_ref_plot_fpath, assembly_name)
+                plotter.draw_all_misassemblies_plot(total_misassemblies_by_refs[i], all_refs, misassemblies_by_ref_plot_fpath, assembly_name)
         if ref_misassemblies:
+            labels = [qutils.label_from_fpath(contigs_fpath) for contigs_fpath in contigs_fpaths]
             plots_dirpath = os.path.join(output_dir, 'interspecies_translocations')
             if not os.path.exists(plots_dirpath):
                 os.mkdir(plots_dirpath)
@@ -1654,12 +1655,18 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
                 misassembly_by_ref_plot_fpath = os.path.join(plots_dirpath, '%s' % ref)
                 if qconfig.draw_plots:
                     plotter.draw_interspecies_translocations_plot(ref_misassemblies, all_refs, ref, contigs_fpaths, misassembly_by_ref_plot_fpath)
+            all_rows = []
+            row = {'metricName': 'References', 'values': all_refs}
+            all_rows.append(row)
+            misassemblies = []
             for i, fpath in enumerate(contigs_fpaths):
+                row = {'metricName': labels[i], 'values': []}
+                all_rows.append(row)
                 if ref_misassemblies[i]:
                     assembly_name = qutils.name_from_fpath(fpath)
-                    all_rows = []
+                    cur_rows = []
                     row = {'metricName': 'References', 'values': [ref_num+1 for ref_num in range(len(all_refs))]}
-                    all_rows.append(row)
+                    cur_rows.append(row)
                     for k in all_refs:
                         row = {'metricName': k, 'values': []}
                         for ref in all_refs:
@@ -1667,16 +1674,24 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
                                 row['values'].append(None)
                             else:
                                 row['values'].append(ref_misassemblies[i][ref][k])
-                        all_rows.append(row)
+                        all_rows[-1]['values'].append(max(0, sum([r for r in row['values'] if r])))
+                        cur_rows.append(row)
                     misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs_%s.info' % assembly_name)
                     print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecies translocations by references: \n'
-                    print_file(all_rows, len(all_refs), misassembly_by_ref_fpath)
+                    print_file(cur_rows, len(all_refs), misassembly_by_ref_fpath)
 
                     print >> open(misassembly_by_ref_fpath, 'a'), 'References: \n'
                     for ref_num, ref in enumerate(all_refs):
                         print >> open(misassembly_by_ref_fpath, 'a'), str(ref_num+1) + ' - ' + ref
                     logger.info('  Information about interspecies translocations by references for %s is saved to %s' %
                                 (assembly_name, misassembly_by_ref_fpath))
+            for i in range(len(all_refs)):
+                cur_results = []
+                for row in all_rows[1:]:
+                    cur_results.append(row['values'][i])
+                misassemblies.append(cur_results)
+            is_translocations_plot_fpath = os.path.join(output_dir, 'interspecies_translocations.' + qconfig.plot_extension)
+            plotter.draw_meta_summary_plot(output_dir, labels, all_refs, all_rows, misassemblies, is_translocations_plot_fpath, title='Interspecies translocations', reverse=False, yaxis_title=None)
 
     def save_result(result):
         report = reporting.get(fname)
