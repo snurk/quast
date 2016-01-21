@@ -1691,7 +1691,8 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
                     cur_results.append(row['values'][i])
                 misassemblies.append(cur_results)
             is_translocations_plot_fpath = os.path.join(output_dir, 'interspecies_translocations.' + qconfig.plot_extension)
-            plotter.draw_meta_summary_plot(output_dir, labels, all_refs, all_rows, misassemblies, is_translocations_plot_fpath, title='Interspecies translocations', reverse=False, yaxis_title=None)
+            plotter.draw_meta_summary_plot(output_dir, labels, all_refs, all_rows, misassemblies, is_translocations_plot_fpath,
+                                           title='Interspecies translocations', reverse=False, yaxis_title=None, print_all_refs=True)
 
     def save_result(result):
         report = reporting.get(fname)

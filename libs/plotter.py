@@ -548,7 +548,8 @@ def histogram(contigs_fpaths, values, plot_fpath, title='', yaxis_title='', bott
 
 
 # metaQuast summary plots (per each metric separately)
-def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results, plot_fpath, title='', reverse=False, yaxis_title=''):
+def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results, plot_fpath, title='', reverse=False, yaxis_title='',
+                           print_all_refs=False):
     if matplotlib_error:
         return
 
@@ -560,7 +561,7 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
     ref_num = len(ref_names)
     contigs_num = len(labels)
 
-    fig = matplotlib.pyplot.figure()
+    fig = matplotlib.pyplot.figure(figsize=(12, 9))
     ax = fig.add_subplot(111)
     matplotlib.pyplot.title(title)
     box = ax.get_position()
@@ -579,6 +580,8 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
             to_plot_x.append(arr[i])
             if results[i][j] and results[i][j] != '-':
                 to_plot_y.append(float(results[i][j]))
+            elif print_all_refs and results[i][j] != '-':
+                to_plot_y.append(0)
             else:
                 to_plot_y.append(None)
         arr_x.append(to_plot_x)
@@ -588,7 +591,7 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
     for i in range(ref_num):
         points_y = [arr_y[j][i] for j in range(contigs_num) if i < len(arr_y[j])]
         significant_points_y = [points_y[k] for k in range(len(points_y)) if points_y[k] is not None]
-        if significant_points_y:
+        if significant_points_y or print_all_refs:
             arr_y_by_refs.append(points_y)
             values.append(sum(filter(None, points_y))/len(points_y))
             refs.append(ref_names[i])
