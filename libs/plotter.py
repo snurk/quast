@@ -94,9 +94,11 @@ def save_colors_and_ls(fpaths):
                 color = dict_color_and_ls[qutils.label_from_fpath(qconfig.dict_of_broken_scaffolds[fpath])][0]
                 ls = secondary_line_style
             else:
-                 next_color_id += 1
-                 #color = colors[color_id % len(colors)]
-                 color = preset_colors[label]
+                 if label in preset_colors:
+                     color = preset_colors[label]
+		 else:
+		     next_color_id += 1
+                     color = colors[color_id % len(colors)]
             dict_color_and_ls[label] = (color, ls)
             color_id = next_color_id
 
