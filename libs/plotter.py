@@ -824,7 +824,8 @@ def draw_misassembl_plot(reports, plot_fpath, title='', yaxis_title=''):
 def draw_interspecies_translocations_plot(results, ref_names, target_ref, contigs_fpaths, plot_fpath, title=''):
     if matplotlib_error:
         return
-
+    if len(ref_names) <= 1:
+        return
     import matplotlib.pyplot
     import matplotlib.ticker
     import math
