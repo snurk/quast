@@ -81,26 +81,15 @@ preset_colors = {'metaSPAdes':'#E31A1C', 'IDBA-UD':'#1F78B4', 'MEGAHIT':'#33A02C
 
 def save_colors_and_ls(fpaths):
     if not dict_color_and_ls:
-        color_id = 0
-        next_color_id = color_id
+        next_color_id = len(preset_colors)
         ls = primary_line_style
         for fpath in fpaths:
             label = qutils.label_from_fpath(fpath)
-            if label not in preset_colors:
-                print "Unknown assembler %s" % label
-                #sys.exit(3)
-            # contigs and scaffolds should be equally colored but scaffolds should be dashed
-            if fpath and fpath in qconfig.dict_of_broken_scaffolds:
-                color = dict_color_and_ls[qutils.label_from_fpath(qconfig.dict_of_broken_scaffolds[fpath])][0]
-                ls = secondary_line_style
+            if label in preset_colors:
+                dict_color_and_ls[label] = (preset_colors[label], ls)
             else:
-                 if label in preset_colors:
-                     color = preset_colors[label]
-		 else:
-		     next_color_id += 1
-                     color = colors[color_id % len(colors)]
-            dict_color_and_ls[label] = (color, ls)
-            color_id = next_color_id
+                dict_color_and_ls[label] = (colors[next_color_id % len(colors)], ls)
+                next_color_id += 1
 
 def get_color_and_ls(fpath, label=None):
     if not label:
