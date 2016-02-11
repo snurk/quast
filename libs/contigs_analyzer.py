@@ -417,18 +417,21 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             if qconfig.is_combined_ref and \
                 not check_chr_for_refs(align1.ref, align2.ref):
                 is_translocation = True
-            if (abs(align1.e1 - len(references[align1.ref])) > qconfig.MAX_INDEL_LENGTH) or ((align2.s1 - 1) > qconfig.MAX_INDEL_LENGTH):
-                align1, align2 = align2, align1
-            if qconfig.check_for_fragmented_ref and check_is_reference_fragmented(align1, align2):
-                distance_on_reference = (len(references[align1.ref]) - align1.e1) + (align2.s1 - 1)
-                inconsistency = distance_on_reference - max(0, distance_on_contig)
-                strand1 = strand2
             else:
-                is_translocation = True
+                if (abs(align1.e1 - len(references[align1.ref])) > qconfig.MAX_INDEL_LENGTH) or ((align2.s1 - 1) > qconfig.MAX_INDEL_LENGTH):
+                    align1, align2 = align2, align1
+                if qconfig.check_for_fragmented_ref and check_is_reference_fragmented(align1, align2):
+                    distance_on_reference = (len(references[align1.ref]) - align1.e1) + (align2.s1 - 1)
+                    inconsistency = distance_on_reference
+                    strand1 = strand2
+                else:
+                    is_translocation = True
         aux_data = {"inconsistency": inconsistency, "distance_on_contig": distance_on_contig,
                     "misassembly_internal_overlap": misassembly_internal_overlap, "cyclic_moment": cyclic_moment,
                     "is_translocation": is_translocation, "is_scaffold_gap": False}
         # different chromosomes or large inconsistency (a gap or an overlap) or different strands
+        if align1.ref != align2.ref and not is_translocation:
+            return False, aux_data
         if (align1.ref != align2.ref and is_translocation) \
                 or abs(inconsistency) > smgap or (strand1 != strand2):
             return True, aux_data
