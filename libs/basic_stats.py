@@ -219,7 +219,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     if qconfig.draw_plots:
         import plotter
         ########################################################################import plotter
-        plotter.cumulative_plot(ref_fpath, contigs_fpaths, lists_of_lengths, output_dirpath + '/cumulative_plot', 'Cumulative length')
+        plotter.cumulative_plot(ref_fpath, contigs_fpaths, lists_of_lengths, output_dirpath + '/cumulative_plot', '')
     
         ########################################################################
         # Drawing GC content plot...

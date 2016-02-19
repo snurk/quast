@@ -180,9 +180,9 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
     except Exception: # ZeroDivisionError: ValueError:
         pass
 
-    ylabel = 'Cumulative length '
+    ylabel = 'Cumulative scaffold length '
     ylabel, mkfunc = y_formatter(ylabel, max_y)
-    matplotlib.pyplot.xlabel('Contig index', fontsize=axes_fontsize)
+    matplotlib.pyplot.xlabel('Scaffold index', fontsize=axes_fontsize)
     matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
 
     mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
