@@ -417,15 +417,16 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             if qconfig.is_combined_ref and \
                 not check_chr_for_refs(align1.ref, align2.ref):
                 is_translocation = True
-            else:
-                if (abs(align1.e1 - len(references[align1.ref])) > qconfig.MAX_INDEL_LENGTH) or ((align2.s1 - 1) > qconfig.MAX_INDEL_LENGTH):
-                    align1, align2 = align2, align1
-                if qconfig.check_for_fragmented_ref and check_is_reference_fragmented(align1, align2):
-                    distance_on_reference = (len(references[align1.ref]) - align1.e1) + (align2.s1 - 1)
-                    inconsistency = distance_on_reference
+            elif qconfig.check_for_fragmented_ref:
+                distance_on_reference = [min(abs(align.e1 - len(references[align.ref])),  abs(align.s1 - 1))
+                                         for align in [align1, align2]]
+                if all([d <= 400 for d in distance_on_reference]):
+                    inconsistency = sum(distance_on_reference)
                     strand1 = strand2
                 else:
                     is_translocation = True
+            else:
+                is_translocation = True
         aux_data = {"inconsistency": inconsistency, "distance_on_contig": distance_on_contig,
                     "misassembly_internal_overlap": misassembly_internal_overlap, "cyclic_moment": cyclic_moment,
                     "is_translocation": is_translocation, "is_scaffold_gap": False}
@@ -438,9 +439,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         else:
             return False, aux_data
 
-    def check_is_reference_fragmented(align1, align2):
-        is_fragmented = ((abs(align1.e1 - len(references[align1.ref])) <= qconfig.MAX_INDEL_LENGTH) and ((align2.s1 - 1) <= qconfig.MAX_INDEL_LENGTH))
-        return is_fragmented
 
     def check_is_scaffold_gap(distance_on_contig, inconsistency, contig_seq, align1, align2):
         if abs(inconsistency) <= qconfig.scaffolds_gap_threshold and align1.ref == align2.ref and is_gap_filled_ns(contig_seq, align1, align2):
