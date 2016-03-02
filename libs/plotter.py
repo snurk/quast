@@ -286,7 +286,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     except Exception:
         pass
 
-    ylabel = 'Contig length  '
+    ylabel = 'Scaffold length  '
     ylabel, mkfunc = y_formatter(ylabel, max_y)
     matplotlib.pyplot.xlabel('x', fontsize=axes_fontsize)
     matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
@@ -425,7 +425,7 @@ def genes_operons_plot(reference_value, contigs_fpaths, files_feature_in_contigs
             color=reference_color, lw=line_width, ls=reference_ls)
         max_y = max(reference_value, max_y)
 
-    matplotlib.pyplot.xlabel('Contig index', fontsize=axes_fontsize)
+    matplotlib.pyplot.xlabel('Scaffold index', fontsize=axes_fontsize)
     matplotlib.pyplot.ylabel('Cumulative # complete ' + title, fontsize=axes_fontsize)
     if with_title:
         matplotlib.pyplot.title('Cumulative # complete ' + title)
