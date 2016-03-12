@@ -205,6 +205,8 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
             report.add_field(reporting.Fields.REFGC, '%.2f' % reference_GC)
         elif reference_length:
             report.add_field(reporting.Fields.ESTREFLEN, int(reference_length))
+        if report.get_field(reporting.Fields.UNALIGNED) is None:
+            save_result_for_unaligned(report)
 
     import math
     qconfig.min_difference = math.ceil((largest_contig/1000)/600)  # divide on height of plot
@@ -236,3 +238,12 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
             plotter.Nx_plot(results_dir, num_contigs > qconfig.max_points, contigs_fpaths, lists_of_lengths, output_dirpath + '/NGx_plot', 'NGx', [reference_length for i in range(len(contigs_fpaths))])
 
     logger.info('Done.')
+
+def save_result_for_unaligned(report):
+        unaligned_ctgs = report.get_field(reporting.Fields.CONTIGS)
+        unaligned_length = report.get_field(reporting.Fields.TOTALLEN)
+        report.add_field(reporting.Fields.UNALIGNED, '%d + %d part' % (unaligned_ctgs, 0))
+        report.add_field(reporting.Fields.UNALIGNEDBASES, unaligned_length)
+
+        report.add_field(reporting.Fields.UNALIGNED_FULL_CNTGS, unaligned_ctgs)
+        report.add_field(reporting.Fields.UNALIGNED_FULL_LENGTH, unaligned_length)

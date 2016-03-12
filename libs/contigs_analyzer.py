@@ -1789,8 +1789,8 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
     for index, fname in enumerate(contigs_fpaths):
         if statuses[index] == NucmerStatus.OK:
             save_result(results[index])
-        elif statuses[index] == NucmerStatus.NOT_ALIGNED:
-            save_result_for_unaligned(results[index])
+        #elif statuses[index] == NucmerStatus.NOT_ALIGNED:
+        #    save_result_for_unaligned(results[index])
 
     nucmer_statuses = dict(zip(contigs_fpaths, statuses))
     aligned_lengths_per_fpath = dict(zip(contigs_fpaths, aligned_lengths))
