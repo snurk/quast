@@ -825,7 +825,7 @@ def draw_interspecies_translocations_plot(results, ref_names, target_ref, contig
     refs = [ref for ref in ref_names if ref != target_ref]
     values = []
     for ref in refs:
-        points_y = [results[i][target_ref][ref] for i in range(contigs_num)]
+        points_y = [results[i][target_ref][ref] for i in range(contigs_num) if results[i]]
         values.append((ref, sum(filter(None, points_y))/float(len(points_y))))
 
     values = sorted(values, key=lambda x: x[1])
@@ -873,6 +873,8 @@ def draw_interspecies_translocations_plot(results, ref_names, target_ref, contig
 
     contigs_labels = []
     for i in range(contigs_num):
+        if not results[i]:
+            continue
         points_x = [arr_x[j][i] for j in range(len(arr_x)) if arr_x[j][i] != 0]
         points_y = [arr_y_by_refs[j][i] for j in range(len(arr_y_by_refs))]
         if points_y and points_x:
@@ -906,6 +908,9 @@ def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
     import matplotlib.pyplot
     import matplotlib.ticker
     import math
+    if not results:
+        meta_logger.info('  Warning! Nothing aligned for ' + title + '...')
+        return
 
     refs_num = len(refs)
     fig = matplotlib.pyplot.figure()

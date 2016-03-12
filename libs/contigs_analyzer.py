@@ -1686,14 +1686,20 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
                         print >> open(misassembly_by_ref_fpath, 'a'), str(ref_num+1) + ' - ' + ref
                     logger.info('  Information about interspecies translocations by references for %s is saved to %s' %
                                 (assembly_name, misassembly_by_ref_fpath))
-
+            aligned_contigs_labels = []
+            for row in all_rows[1:]:
+                if row['values']:
+                    aligned_contigs_labels.append(row['metricName'])
+                else:
+                    all_rows.remove(row)
             for i in range(len(all_refs)):
                 cur_results = []
                 for row in all_rows[1:]:
-                    cur_results.append(row['values'][i])
+                    if row['values']:
+                        cur_results.append(row['values'][i])
                 misassemblies.append(cur_results)
             is_translocations_plot_fpath = os.path.join(output_dir, 'interspecies_translocations.' + qconfig.plot_extension)
-            plotter.draw_meta_summary_plot(output_dir, labels, all_refs, all_rows, misassemblies, is_translocations_plot_fpath,
+            plotter.draw_meta_summary_plot(output_dir, aligned_contigs_labels, all_refs, all_rows, misassemblies, is_translocations_plot_fpath,
                                            title='Intergenomic misassemblies', reverse=False, yaxis_title=None, print_all_refs=True)
 
 
