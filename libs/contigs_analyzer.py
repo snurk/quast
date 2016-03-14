@@ -19,6 +19,8 @@ from __future__ import with_statement
 import os
 import platform
 import datetime
+from collections import OrderedDict
+
 import fastaparser
 import shutil
 from libs import reporting, qconfig, qutils
@@ -38,7 +40,7 @@ else:
 def bin_fpath(fname):
     return os.path.join(mummer_dirpath, fname)
 
-ref_labels_by_chromosomes = {}
+ref_labels_by_chromosomes = OrderedDict()
 COMBINED_REF_FNAME = 'combined_reference.fasta'
 
 class Misassembly:
@@ -1641,7 +1643,8 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths):
 
         ref_misassemblies = [result['istranslocations_by_refs'] if result else [] for result in results]
         total_misassemblies_by_refs = [result['total_misassemblies_by_refs'] if result else [] for result in results]
-        all_refs = sorted(list(set([ref for ref in ref_labels_by_chromosomes.values()])))
+        added_refs = set()
+        all_refs = [added_refs.add(ref) or ref for ref in ref_labels_by_chromosomes.values() if ref not in added_refs]
         for i, fpath in enumerate(contigs_fpaths):
             assembly_name = qutils.name_from_fpath(fpath)
             misassemblies_by_ref_plot_fpath = os.path.join(output_dir, 'all_misassemblies_%s' % assembly_name)
