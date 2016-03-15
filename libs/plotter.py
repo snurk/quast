@@ -625,13 +625,13 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
         from libs.html_saver import html_saver
         html_saver.save_meta_summary(output_dirpath, json_points_x, json_points_y, title.replace(' ', '_'), labels, refs)
 
-    legend = []
-    for j in range(contigs_num):
-        legend.append(labels[j])
-    try:
-        ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
-    except Exception:
-        pass
+#    legend = []
+#    for j in range(contigs_num):
+#        legend.append(labels[j])
+#    try:
+#        ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
+#    except Exception:
+#        pass
     matplotlib.pyplot.tight_layout()
     matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
     logger.info('    saved to ' + plot_fpath)
@@ -648,7 +648,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
     import matplotlib.pyplot
     import matplotlib.ticker
     import math
-
+    
     refs_num = len(ref_names)
     refs = []
     fig = matplotlib.pyplot.figure()
