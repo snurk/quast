@@ -959,10 +959,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         if ctg_len - end:
                             print >> planta_out_f, '\t\tUnaligned bases: %d to %d (%d)' % (end + 1, ctg_len, ctg_len - end)
                         # check if both parts (aligned and unaligned) have significant length
-                        if (unaligned_bases >= qconfig.min_contig) and (ctg_len - unaligned_bases >= qconfig.min_contig):
+                        if (unaligned_bases >= qconfig.significant_part_size) and (ctg_len - unaligned_bases >= qconfig.significant_part_size):
                             partially_unaligned_with_significant_parts += 1
                             print >> planta_out_f, '\t\tThis contig has both significant aligned and unaligned parts ' \
-                                                   '(of length >= min-contig)!' + (' It can contain interspecies translocations' if qconfig.meta else '')
+                                                   '(of length >= %d)!' % (qconfig.significant_part_size) + (' It can contain interspecies translocations' if qconfig.meta else '')
                             if qconfig.meta:
                                 cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
                                 total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
@@ -1031,10 +1031,10 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         partially_unaligned_bases += ctg_len - aligned_bases_in_contig
                         print >> planta_out_f, '\t\tUnaligned bases: %d' % (ctg_len - aligned_bases_in_contig)
                         # check if both parts (aligned and unaligned) have significant length
-                        if (aligned_bases_in_contig >= qconfig.min_contig) and (ctg_len - aligned_bases_in_contig >= qconfig.min_contig):
+                        if (aligned_bases_in_contig >= qconfig.significant_part_size) and (ctg_len - aligned_bases_in_contig >= qconfig.significant_part_size):
                             partially_unaligned_with_significant_parts += 1
                             print >> planta_out_f, '\t\tThis contig has both significant aligned and unaligned parts ' \
-                                                   '(of length >= min-contig)!' + (' It can contain interspecies translocations' if qconfig.meta else '')
+                                                   '(of length >= %d)!' % (qconfig.significant_part_size) + (' It can contain interspecies translocations' if qconfig.meta else '')
                             if qconfig.meta:
                                 cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
                                 total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
@@ -1048,9 +1048,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                     total_indels_info += indels_info
                     if is_misassembled:
                         misassembled_contigs[contig] = len(seq)
-                    if qconfig.meta and (ctg_len - aligned_bases_in_contig >= qconfig.min_contig):
+                    if qconfig.meta and (ctg_len - aligned_bases_in_contig >= qconfig.significant_part_size):
                         print >> planta_out_f, '\t\tThis contig has significant unaligned parts ' \
-                                               '(of length >= min-contig)!' + (' It can contain interspecies translocations' if qconfig.meta else '')
+                                               '(of length >= %d)!' % (qconfig.significant_part_size) + (' It can contain interspecies translocations' if qconfig.meta else '')
                         contigs_with_istranslocations += 1
                         cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
                         total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
