@@ -38,7 +38,7 @@ long_options = "output-dir= save-json-to= genes= operons= reference= contig-thre
                "gene-thresholds= err-fpath= save-json gage eukaryote glimmer no-plots no-html no-check no-check-meta combined-ref no-gc help debug "\
                "ambiguity-usage= scaffolds threads= min-cluster= min-alignment= est-ref-size= use-all-alignments gene-finding "\
                "strict-NA meta labels= test help-hidden no-snps test-no-ref fast max-ref-number= extensive-mis-size= plots-format= " \
-               "fragmented= significant-part-size=".split()
+               "fragmented significant-part-size=".split()
 short_options = "o:G:O:R:t:m:J:jehda:c:ufl:Lx:i:s"
 
 # default values for options
@@ -250,9 +250,7 @@ def usage(show_hidden=False, meta=False):
         print >> sys.stderr, "Hidden options:"
         print >> sys.stderr, "-d  --debug                 Run in a debug mode"
         print >> sys.stderr, "-L                          Take assembly names from their parent directory names"
-        print >> sys.stderr, "    --fragmented    <int>   Reference genome may be fragmented into small pieces (e.g. scaffolded reference), "
-        print >> sys.stderr, "                            VALUE: min size of a fragment which is used for potential i/s translocation"
-        print >> sys.stderr, "                            detection (set 0 for unknown size and using threshold defined by --significant-part-size)."
+        print >> sys.stderr, "    --fragmented            Reference genome may be fragmented into small pieces (e.g. scaffolded reference)"
         print >> sys.stderr, "-c  --min-cluster   <int>   Nucmer's parameter: the minimum length of a cluster of matches [default: %s]" % min_cluster
         print >> sys.stderr, "-j  --save-json             Save the output also in the JSON format"
         print >> sys.stderr, "-J  --save-json-to <path>   Save the JSON output to a particular path"
