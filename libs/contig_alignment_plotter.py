@@ -687,8 +687,7 @@ def parse_nucmer_contig_report(report_fpath, sorted_ref_names, cumulative_ref_le
                     idy=idy, start_in_contig=start_in_contig, end_in_contig=end_in_contig, position_in_ref=position_in_ref, ref_name=ref_name)
                 misassembled_id_to_structure[contig_id].append(block)
 
-        if ref_blocks:
-            aligned_blocks.extend(ref_blocks)
+                aligned_blocks.append(block)
 
     for block in aligned_blocks:
         if block.name in misassembled_contigs_ids:
@@ -938,7 +937,7 @@ def js_data_gen(assemblies, contigs_fpaths, contig_report_fpath_pattern, chromos
                 data_str += 'coverage_data["{chr}"] = [ '.format(**locals())
                 for e in cov_data[chr]:
                     data_str += '{e},'.format(**locals())
-                data_str += data_str[:-1] + '];\n'
+                data_str = data_str[:-1] + '];\n'
 
             data_str += 'var not_covered = {};\n'
             data_str += 'not_covered["{chr}"] = [ '.format(**locals())

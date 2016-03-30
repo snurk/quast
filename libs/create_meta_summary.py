@@ -75,7 +75,7 @@ def do(html_fpath, output_dirpath, combined_output_dirpath, output_dirpath_per_r
             summary_txt_fpath = os.path.join(output_dirpath, 'TXT', metric.replace(' ', '_') + '.txt')
             summary_tex_fpath = os.path.join(output_dirpath, 'TEX', metric.replace(' ', '_') + '.tex')
             summary_tsv_fpath = os.path.join(output_dirpath, 'TSV', metric.replace(' ', '_') + '.tsv')
-            summary_png_fpath = os.path.join(output_dirpath, plots_dirname, metric.replace(' ', '_') + '.' + qconfig.plot_extension)
+            summary_png_fpath = os.path.join(output_dirpath, plots_dirname, metric.replace(' ', '_') + '.meta_summary.' + qconfig.plot_extension)
             results, all_rows, cur_ref_names = get_results_for_metric(ref_names, metric, contigs_num, labels, output_dirpath_per_ref, qconfig.transposed_report_prefix + '.tsv')
             if not results or not results[0]:
                 continue

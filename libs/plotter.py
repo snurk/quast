@@ -210,7 +210,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     draw_plots = True
     if matplotlib_error or not qconfig.draw_plots:
         draw_plots = False
-    if draw_plots:
+    if qconfig.draw_plots:
         logger.info('  Drawing ' + title + ' plot...')
         import matplotlib.pyplot
         import matplotlib.ticker
@@ -546,10 +546,11 @@ def histogram(contigs_fpaths, values, plot_fpath, title='', yaxis_title='', bott
 
 
 # metaQuast summary plots (per each metric separately)
-def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results, plot_fpath, title='', reverse=False, yaxis_title='',
+def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_rows, results, plot_fpath, title='', reverse=False, yaxis_title='',
                            print_all_refs=False):
-    if matplotlib_error:
-        return
+    draw_plots = True
+    if matplotlib_error or not qconfig.draw_plots:
+        draw_plots = False
     import math
     if draw_plots:
         meta_logger.info('  Drawing ' + title + ' metaQUAST summary plot...')
@@ -635,9 +636,10 @@ def draw_meta_summary_plot(output_dirpath, labels, ref_names, all_rows, results,
         matplotlib.pyplot.ylim([0, 5])
 
     if qconfig.html_report:
-        from libs.html_saver import html_saver
-        html_saver.save_meta_summary(html_fpath, output_dirpath, json_points_x, json_points_y,
-                                     title.replace(' ', '_'), labels, refs)
+	if html_fpath != "":
+	    from libs.html_saver import html_saver
+            html_saver.save_meta_summary(html_fpath, output_dirpath, json_points_x, json_points_y,
+                                         title.replace(' ', '_'), labels, refs)
     if draw_plots:
         matplotlib.pyplot.xlim([0, ref_num + 1])
         ymax = 0

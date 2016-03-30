@@ -53,8 +53,8 @@ def parallel_partition_contigs(asm, assemblies_by_ref, corrected_dirpath, alignm
     if os.path.exists(alignments_fpath_template % assembly_label):
         for line in open(alignments_fpath_template % assembly_label):
             values = line.split()
-            if values and values[0] in contigs_analyzer.ref_labels_by_chromosomes.values():
-                ref_name = values[0]
+            if values[0] in contigs_analyzer.ref_labels_by_chromosomes.keys():
+                ref_name = contigs_analyzer.ref_labels_by_chromosomes[values[0]]
                 ref_contigs_names = values[1:]
                 ref_contigs_fpath = os.path.join(
                     corrected_dirpath, assembly_label + '_to_' + ref_name[:40] + '.fasta')
@@ -218,7 +218,8 @@ def _correct_references(ref_fpaths, corrected_dirpath):
         else:
             corr_seq_fpath = qutils.unique_corrected_fpath(os.path.join(corrected_dirpath, seq_fname))
             corrected_ref_fpaths.append(corr_seq_fpath)
-        corr_seq_name = qutils.name_from_fpath(corr_seq_fpath) + '_' + qutils.correct_name(seq_name[:20])
+        corr_seq_name = qutils.name_from_fpath(corr_seq_fpath)
+        corr_seq_name += '_' + qutils.correct_name(seq_name[:20])
         if not qconfig.no_check:
             corr_seq = seq.upper()
             dic = {'M': 'N', 'K': 'N', 'R': 'N', 'Y': 'N', 'W': 'N', 'S': 'N', 'V': 'N', 'B': 'N', 'H': 'N', 'D': 'N'}
@@ -287,7 +288,7 @@ def remove_unaligned_downloaded_refs(genome_info_fpath, ref_fpaths, chromosomes_
             if chromosome[0] in refs_len:
                 aligned_len += int(refs_len[chromosome[0]][1])
                 all_len += int(refs_len[chromosome[0]][0])
-        if aligned_len > all_len * 0.5 and aligned_len > 0:
+        if aligned_len > all_len * 0.1 and aligned_len > 0:
             corr_refs.append(ref_fpath)
     return corr_refs
 
@@ -786,21 +787,4 @@ if __name__ == '__main__':
         _, exc_value, _ = sys.exc_info()
         logger.exception(exc_value)
         logger.error('exception caught!', exit_with_code=1, to_stderr=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
