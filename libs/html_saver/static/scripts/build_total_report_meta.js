@@ -1,5 +1,5 @@
 function fillOneRow(metric, mainMetrics, group_n, order, glossary, is_primary, rowName,
-                    report_n, assembliesNames, notAlignedContigs, notExtendedMetrics, isEmptyRows) {
+                    report_n, assembliesNames, notAlignedContigs, notExtendedMetrics, isEmptyRows, metricsNotForCombinedReference) {
     (function(group_n) {
         var id_group = '#group_' + group_n;
         $(function() {
@@ -14,8 +14,10 @@ function fillOneRow(metric, mainMetrics, group_n, order, glossary, is_primary, r
 
     var trClass = 'content-row';
     if (metric.isMain || $.inArray(metricName, mainMetrics) > -1) {
-        var numPlot = $.inArray(metricName, mainMetrics);
-        var iconPlots = '<img id="' + numPlot + '" class="icon_plot" style="vertical-align: bottom" onclick="setPlot($(this))"/>';
+        if (metricName.indexOf('gt=') == -1) {
+            var numPlot = $.inArray(metricName, mainMetrics);
+            var iconPlots = '<img id="' + numPlot + '" class="icon_plot" style="vertical-align: bottom" onclick="setPlot($(this))"/>';
+        }
         (function(group_n) {
             var id_group = '#group_' + group_n;
             $(function() {
@@ -46,8 +48,18 @@ function fillOneRow(metric, mainMetrics, group_n, order, glossary, is_primary, r
         '<span class="metric-name' +
           (is_primary ? ' primary' : ' secondary') + (not_extend || !is_primary ? '' : ' expandable collapsed') + '">' +
            initial_spaces_to_nbsp(addTooltipIfDefinitionExists(glossary, rowName.trunc(55)), metricName) +
-        (metric.isMain && is_primary ? ("&nbsp" + iconPlots) : '') +
+        (metric.isMain && is_primary && metricName.indexOf("gt;=") == -1 ? ("&nbsp" + iconPlots) : '') +
         '</span></td>';
+
+    tooltipForGenomeStatistics = 'Metrics that depend on the reference length are not calculated for the combined reference.';
+    tooltipForGCStatistics = 'GC content is not calculated for the combined reference.';
+    if (is_primary && $.inArray(metricName, metricsNotForCombinedReference) != -1) {
+        for (var val_n = 0; val_n < assembliesNames.length; val_n++) {
+            table += '<td><a class="tooltip-link" rel="tooltip" title="' +
+                (metricName.indexOf('GC') == -1 ? tooltipForGenomeStatistics : tooltipForGCStatistics)  + '"> ... </a></td>';
+        }
+        return table;
+    }
 
     if (report_n > -1) {
         for (var not_aligned_n = 0; not_aligned_n < notAlignedContigs[report_n].length; not_aligned_n++) {
@@ -139,6 +151,12 @@ function buildGenomeTable(reports, group_n, numColumns) {
     }
 
     tableGenome += '</table>';
+    tableGenome += '<br>';
+    tableGenome += '<hr>';
+    tableGenome +=
+            '<span class="metric-name">' +
+                '<a href="not_aligned/report.html">' + 'Not aligned contigs' + '</a>' +
+            '</span>';
 
     tableGenome += '</div>';
     return tableGenome;
@@ -152,7 +170,11 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
         '<span class="rhs">&nbsp;</span>bp, unless otherwise noted (e.g., "# contigs (>= 0 bp)" and "Total length (>= 0 bp)" include all contigs.)</p>');
     $('#per_ref_msg').html('<p>Rows show values for the whole assembly (column name) vs. combined reference (concatenation of input references).<br>' +
         'Clicking on a row with <span style="color: #CCC">+</span> sign will expand values for contigs aligned to each of input references separately.<br>' +
-        'Note that some metrics (e.g. # contigs) may not sum up, because one contig may be aligned to several references and thus, counted several times.</p>');
+        'Note that some metrics (e.g. # contigs) may not sum up, because one contig may be aligned to several references and thus, counted several times.<br>' +
+        'All metrics that depend on the reference length (such as NG50, LG50, etc), plus the GC % are not calculated for the combined reference.<br>' +
+        'The combined reference is just a concatenation of all available reference genomes of the species, presumably represented in the metagenomic dataset, ' +
+        'but not necessarily the real content.<br>So it might miss many correctly assembled species, ' +
+        'and therefore it doesn\'t make sense to apply the size and the GC content of the combined reference for assembly evaluation.</p>');
     $('#quast_name').html('MetaQUAST');
     $('#report_name').html('summary report');
     if (kronaPaths = readJson('krona')) {
@@ -167,7 +189,7 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
             }
             if (assembliesNames.length > 1)  $('#krona').append(
                     '&nbsp&nbsp&nbsp&nbsp<span class="metric-name">' +
-                    '<a href="Krona/summary_taxonomy_chart.html">Summary</a>' +
+                    '<a href="' + kronaPaths.paths[assembliesNames.length] + '">Summary</a>' +
                     '</span>&nbsp');
         }
     }
@@ -204,6 +226,22 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
         var group = report[group_n];
         var groupName = group[0];
         var metrics = group[1];
+        var metricsNames = [];
+        for (var metric_n = 0; metric_n < metrics.length; metric_n++)
+            metricsNames.push(metrics[metric_n].metricName);
+        var metricsNotForCombinedReference = ['GC (%)', 'NG50', 'NGA50', 'NG75', 'NGA75', 'LG50', 'LGA50', 'LG75', 'LGA75'];
+        for (var report_n = 0; report_n < reports.length; report_n++) {
+            var metrics_by_refs = reports[report_n].report[group_n][1];
+            for (var metric_n = 0; metric_n < metrics_by_refs.length; metric_n++) {
+                var metric_by_refs = metrics_by_refs[metric_n].metricName;
+                if ($.inArray(metric_by_refs, metricsNotForCombinedReference) != -1) {
+                    if ($.inArray(metric_by_refs, metricsNames) == -1) {
+                        metrics.push(metrics_by_refs[metric_n]);
+                        metricsNames.push(metric_by_refs);
+                    }
+                }
+            }
+        }
 
         var width = assembliesNames.length + 1;
 
@@ -221,7 +259,7 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
             var refGenes = referenceValues['Reference genes'];
             var refOperons = referenceValues['Reference operons'];
 
-            var numColumns = 0;
+            var numColumns = 1; // no GC in combined reference
 
             if (refName) {
                 $('#reference_name').find('.val').html(refName);
@@ -234,7 +272,6 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
             }
             if (refGC) {
                 $('#reference_gc').show().find('.val').html(toPrettyString(refGC));
-                numColumns++;
             }
             if (refGenes) {
                 $('#reference_genes').show().find('.val').html(toPrettyString(refGenes));
@@ -245,7 +282,7 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
                 numColumns++;
             }
 
-            $('#main_ref_genome').html(buildGenomeTable(reports, group_n, numColumns))
+            $('#main_ref_genome').html(buildGenomeTable(reports, group_n, numColumns));
             continue;
         }
 
@@ -288,7 +325,8 @@ function buildTotalReport(assembliesNames, report, order, date, minContig, gloss
                     }
                 }
             }
-            table += fillOneRow(metric, mainMetrics, group_n, order, glossary, true, metric.metricName, -1, assembliesNames, notAlignedContigs, notExtendedMetrics, isEmptyRows);
+            table += fillOneRow(metric, mainMetrics, group_n, order, glossary, true, metric.metricName, -1, assembliesNames,
+                notAlignedContigs, notExtendedMetrics, isEmptyRows, metricsNotForCombinedReference);
             for(report_n = 0; report_n < reports.length; report_n++ ) {  //  add information for each reference
                 var metrics_ref = reports[report_n].report[group_n][1];
                 for (var metric_ext_n = 0; metric_ext_n < metrics_ref.length; metric_ext_n++){
@@ -328,7 +366,7 @@ function toggleSecondary(caller) {
 
 function setPlot(icon) {
     num = icon.attr('id');
-    names = ['contigs', 'largest', 'totallen', 'n50', 'misassemblies', 'misassembled', 'mismatches', 'indels',
+    names = ['contigs', 'largest', 'totallen', 'misassemblies', 'misassembled', 'mismatches', 'indels',
             'ns', 'genome', 'duplication', 'nga50'];
     switchSpan = names[num] + '-switch';
     document.getElementById(switchSpan).click();

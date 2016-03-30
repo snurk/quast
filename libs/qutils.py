@@ -113,7 +113,7 @@ def unique_corrected_fpath(fpath):
 
 
 def rm_extentions_for_fasta_file(fname):
-    return splitext_for_fasta_file(fname)[0]
+    return correct_name(splitext_for_fasta_file(fname)[0])
 
 
 def splitext_for_fasta_file(fname):
@@ -213,3 +213,32 @@ def relpath(path, start=curdir):
     if not rel_list:
         return curdir
     return join(*rel_list)
+
+
+def get_path_to_program(program):
+    """
+    returns the path to an executable or None if it can't be found
+    """
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    for path in os.environ["PATH"].split(os.pathsep):
+        exe_file = os.path.join(path, program)
+        if is_exe(exe_file):
+            return exe_file
+    return None
+
+
+def is_non_empty_file(fpath):
+    return os.path.exists(fpath) and os.path.getsize(fpath) > 10
+
+
+def cat_files(in_fnames, out_fname):
+    if not isinstance(in_fnames, list):
+        in_fnames = [in_fnames]
+    with open(out_fname, 'w') as outfile:
+        for fname in in_fnames:
+            if os.path.exists(fname):
+                with open(fname) as infile:
+                    for line in infile:
+                        outfile.write(line)

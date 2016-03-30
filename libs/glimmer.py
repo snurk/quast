@@ -74,9 +74,6 @@ def glimmerHMM(tool_dir, fasta_fpath, out_fpath, gene_lengths, err_path, tmp_dir
             contigs[ind] = seq
 
     if not gffs:
-        logger.error(
-            'Glimmer failed running Glimmer for %s. ' + ('Run with the --debug option'
-            ' to see the command line.' if not qconfig.debug else '') % qutils.label_from_fpath(fasta_fpath))
         return None, None, None, None
 
     out_gff_path = merge_gffs(gffs, out_fpath + '_genes.gff')
@@ -128,7 +125,7 @@ def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath,
 
 def do(contigs_fpaths, gene_lengths, out_dirpath):
     logger.print_timestamp()
-    logger.info('Running GlimmerHMM...')
+    logger.main_info('Running GlimmerHMM...')
 
     tool_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'glimmer')
     tool_src_dirpath = os.path.join(tool_dirpath, 'src')
@@ -137,7 +134,7 @@ def do(contigs_fpaths, gene_lengths, out_dirpath):
 
     if not os.path.isfile(tool_exec_fpath):
         # making
-        logger.info("Compiling GlimmerHMM...")
+        logger.main_info("Compiling GlimmerHMM...")
         return_code = qutils.call_subprocess(
             ['make', '-C', tool_src_dirpath],
             stdout=open(os.path.join(tool_src_dirpath, 'make.log'), 'w'),
@@ -168,8 +165,12 @@ def do(contigs_fpaths, gene_lengths, out_dirpath):
             report.add_field(reporting.Fields.PREDICTED_GENES_UNIQUE, unique)
         if cnt is not None:
             report.add_field(reporting.Fields.PREDICTED_GENES, cnt)
+        if unique is None and cnt is None:
+            logger.error(
+                'Glimmer failed running Glimmer for %s. ' + ('Run with the --debug option'
+                ' to see the command line.' if not qconfig.debug else '') % qutils.label_from_fpath(contigs_fpath))
 
     if not qconfig.debug:
         shutil.rmtree(tmp_dirpath)
 
-    logger.info('Done.')
+    logger.main_info('Done.')

@@ -31,6 +31,7 @@ assemblies_lengths_fn = '/assemblies_lengths.json'
 in_contigs_suffix_fn  = '_in_contigs.json'
 gc_fn                 = '/gc.json'
 krona_fn                 = '/krona.json'
+icarus_fn                 = '/icarus.json'
 
 prefix_fn             = '/'
 suffix_fn             = '.json'
@@ -123,6 +124,10 @@ def save_coord(output_dirpath, coord_x, coord_y, name_coord, contigs_fpaths):
     })
 
 
+def save_colors(output_dirpath, colors):
+    return save(output_dirpath + prefix_fn + 'colors' + suffix_fn, colors)
+
+
 def save_meta_summary(output_dirpath, coord_x, coord_y, name_coord, labels, refs_names):
     coord_fn = prefix_fn + 'coord' + name_coord + suffix_fn
     return save(output_dirpath + coord_fn, {
@@ -169,6 +174,13 @@ def save_krona_paths(output_dirpath, krona_fpaths, labels):
         'assemblies': labels,
         'paths': krona_fpaths,
     })
+
+def save_icarus_links(output_dirpath, icarus_links):
+    return save(output_dirpath + icarus_fn, {
+        'links': icarus_links['links'],
+        'links_names': icarus_links['links_names'],
+    })
+
 
 
 

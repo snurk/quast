@@ -7,6 +7,7 @@
 
 from __future__ import with_statement
 import os
+import glob
 import shutil
 import tempfile
 
@@ -248,7 +249,7 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
         tool_dirname = 'genemark-es'
         gmhmm_p_function = gm_es
 
-    logger.info('Running %s...' % tool_name)
+    logger.main_info('Running %s...' % tool_name)
 
     tool_dirpath = os.path.join(qconfig.LIBS_LOCATION, tool_dirname, qconfig.platform_name)
     if not os.path.exists(tool_dirpath):
@@ -286,6 +287,8 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
                          if tool_name == 'GeneMark-ES' and os.path.getsize(fasta_path) < 2000000 else ''))
 
         if not qconfig.debug:
-            shutil.rmtree(tmp_dirpath)
+            for dirpath in glob.iglob(tmp_dirpath + '*'):
+                if os.path.isdir(dirpath):
+                    shutil.rmtree(dirpath)
 
-        logger.info('Done.')
+        logger.main_info('Done.')

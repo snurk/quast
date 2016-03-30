@@ -58,7 +58,7 @@ class QLogger(object):
         for handler in self._logger.handlers:
             handler.setLevel(logging.DEBUG)
 
-    def set_up_file_handler(self, output_dirpath):
+    def set_up_file_handler(self, output_dirpath, err_fpath=None):
         for handler in self._logger.handlers:
             if isinstance(handler, logging.FileHandler):
                 self._logger.removeHandler(handler)
@@ -66,8 +66,12 @@ class QLogger(object):
         self._log_fpath = os.path.join(output_dirpath, self._name + '.log')
         file_handler = logging.FileHandler(self._log_fpath, mode='w')
         file_handler.setLevel(logging.DEBUG)
-
         self._logger.addHandler(file_handler)
+
+        if err_fpath:
+            err_handler = logging.FileHandler(err_fpath, mode='w')
+            err_handler.setLevel(logging.ERROR)
+            self._logger.addHandler(err_handler)
 
     def start(self):
         if self._indent_val == 0 and not self._is_metaquast:
@@ -83,6 +87,8 @@ class QLogger(object):
     def finish_up(self, numbers=None, check_test=False):
         if not self._is_metaquast:
             self._logger.info('  Log saved to ' + self._log_fpath)
+            if qconfig.save_error:
+                self._logger.info('  Errors saved to ' + qconfig.error_log_fpath)
 
             finish_time = self.print_timestamp('Finished: ')
             self._logger.info('Elapsed time: ' + str(finish_time - self._start_time))
@@ -109,6 +115,13 @@ class QLogger(object):
         self._logger.debug(indent + message)
 
     def info(self, message='', indent=''):
+        if qconfig.silent:
+            self._logger.debug(indent + message)
+        else:
+            self._logger.info(indent + message)
+
+    # main_info always print in stdout
+    def main_info(self, message='', indent=''):
         self._logger.info(indent + message)
 
     def info_to_file(self, message='', indent=''):
@@ -168,7 +181,7 @@ class QLogger(object):
             exit(exit_code)
 
     def print_command_line(self, args, indent='',
-                           wrap_after=80, only_if_debug=False):
+                           wrap_after=80, only_if_debug=False, is_main=False):
         text = ''
         line = indent
 
@@ -190,22 +203,48 @@ class QLogger(object):
 
         if only_if_debug:
             self.debug(text)
+        elif is_main:
+            self.main_info(text)
         else:
             self.info(text)
+
+    def print_params(self, indent='',
+                           wrap_after=80, only_if_debug=False):
+        self._logger.info("Main parameters: ")
+        text = '  '
+        line = indent
+        params = {'Threads: ': qconfig.max_threads, 'eukaryotic: ': not qconfig.prokaryote, 'meta: ': qconfig.meta, 'scaffolds: ': qconfig.scaffolds,
+                  'minimum contig length: ': qconfig.min_contig, 'minimum alignment length (Nucmer): ': qconfig.min_alignment,
+                  'ambiguity: ': qconfig.ambiguity_usage, 'use all alignments: ': qconfig.use_all_alignments,
+                  'threshold for extensive misassembly size: ': qconfig.extensive_misassembly_threshold}
+        for i, param in enumerate(params):
+            if params[param]:
+                line += param + str(params[param]).lower()
+
+                if i == len(params) - 1:
+                    text += line
+
+                elif wrap_after is not None and len(line) > wrap_after:
+                    text += line + ', \\\n'
+                    line = ' ' * len(indent) + '  '
+
+                else:
+                    line += ', '
+
+        self._logger.info(text)
 
     def print_timestamp(self, message=''):
         now = datetime.now()
         current_time = now.strftime("%Y-%m-%d %H:%M:%S")
-        self.info('')
-        self.info(message + current_time)
+        self.main_info('')
+        self.main_info(message + current_time)
         return now
 
     def print_version(self, to_stderr=False):
-        version, build = qconfig.quast_version()
         if to_stderr:
-            print >> sys.stderr, "Version", str(version) + (", " + str(build) if build != "unknown" else "")
+            print >> sys.stderr, "Version: " + qconfig.quast_version()
         else:
-            self.info("Version " + str(version) + (", " + str(build) if build != "unknown" else ""))
+            self.info("Version: " + qconfig.quast_version())
 
     def print_system_info(self):
         self._logger.info("System information:")

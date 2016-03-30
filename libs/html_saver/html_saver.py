@@ -19,6 +19,21 @@ log = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 def get_real_path(relpath_in_html_saver):
     return os.path.join(qconfig.LIBS_LOCATION, 'html_saver', relpath_in_html_saver)
 
+html_colors = [
+    '#FF0000',  #red
+    '#0000FF',  #blue
+    '#008000',  #green
+    '#A22DCC',  #fushua
+    '#FFA500',  #orange
+    '#800000',  #maroon
+    '#00CCCC',  #aqua
+    '#B2DF8A',  #light green
+    '#333300',  #dark green
+    '#CCCC00',  #olive
+    '#000080',  #navy
+    '#008080',  #team
+    '#00FF00',  #lime
+]
 
 scripts_inserted = False
 
@@ -52,8 +67,8 @@ aux_files = [
 
 aux_meta_files = ['static/flot/jquery.flot.tickrotor.js', 'static/flot/jquery.flot.stack.js', 'static/scripts/draw_metasummary_plot.js', 'static/scripts/draw_meta_misassembl_plot.js',]
 
-def init(results_dirpath, is_meta=False):
 
+def init(html_fpath, is_meta=False):
     with open(template_fpath) as template_file:
         html = template_file.read()
         script_texts = []
@@ -74,7 +89,6 @@ def init(results_dirpath, is_meta=False):
         html = html.replace('{{ bootstrap }}', open(get_real_path('static/bootstrap/bootstrap.min.css')).read())
         html = html.replace('{{ common }}', open(get_real_path('static/common.css')).read())
         html = html.replace('{{ report }}', open(get_real_path('static/report.css')).read())
-        html_fpath = os.path.join(results_dirpath, report_fname)
         if os.path.exists(html_fpath):
             os.remove(html_fpath)
         with open(html_fpath, 'w') as f_html:
@@ -112,11 +126,12 @@ def init(results_dirpath, is_meta=False):
 #            f_html.write(html)
 
 
-def append(results_dirpath, json_fpath, keyword):
-    html_fpath = os.path.join(results_dirpath, report_fname)
+def append(results_dirpath, json_fpath, keyword, html_fpath=None):
+    if html_fpath is None:
+        html_fpath = os.path.join(results_dirpath, report_fname)
 
     if not os.path.isfile(html_fpath):
-        init(results_dirpath)
+        init(html_fpath)
 
     # reading JSON file
     with open(json_fpath) as f_json:
@@ -138,13 +153,14 @@ def append(results_dirpath, json_fpath, keyword):
 
 def init_meta_report(results_dirpath):
     html_fpath = os.path.join(results_dirpath, report_fname)
-    init(results_dirpath, True)
+    init(html_fpath, is_meta=True)
+    return html_fpath
 
 
 def create_meta_report(results_dirpath, json_texts):
     html_fpath = os.path.join(results_dirpath, report_fname)
     if not os.path.isfile(html_fpath):
-        init(results_dirpath, True)
+        init(html_fpath, is_meta=True)
 
     from libs import search_references_meta
     taxons_for_krona = search_references_meta.taxons_for_krona
@@ -152,7 +168,7 @@ def create_meta_report(results_dirpath, json_texts):
     if taxons_for_krona:
         meta_log.info('  Drawing interactive Krona plots...')
         krona_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'kronatools')
-        krona_res_dirpath = os.path.join(results_dirpath, 'Krona')
+        krona_res_dirpath = os.path.join(results_dirpath, qconfig.krona_dirname)
         simplejson_error = False
         try:
             import json
@@ -160,7 +176,7 @@ def create_meta_report(results_dirpath, json_texts):
             try:
                 import simplejson as json
             except ImportError:
-                log.warning('Can\'t draw Krona plots - please install python-simplejson')
+                log.warning('Can\'t draw Krona charts - please install python-simplejson')
                 simplejson_error = True
         if not simplejson_error:
             if not os.path.isdir(krona_res_dirpath):
@@ -201,15 +217,17 @@ def create_meta_report(results_dirpath, json_texts):
                 qutils.call_subprocess(
                 ['perl', '-I', krona_dirpath + '/lib', krona_dirpath + '/scripts/ImportText.pl', krona_txt_fpath, '-o', krona_fpath, '-a'],
                 stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
-                krona_fpaths.append(os.path.join('Krona', name + '_taxonomy_chart.html'))
-                meta_log.info('  Krona plot for ' + name + ' is saved to ' + krona_fpath)
+                krona_fpaths.append(os.path.join(qconfig.krona_dirname, name + '_taxonomy_chart.html'))
+                meta_log.main_info('  Krona chart for ' + name + ' is saved to ' + krona_fpath)
                 os.remove(krona_txt_fpath)
             if len(assemblies) > 1:
-                krona_fpath = os.path.join(krona_res_dirpath, 'summary_taxonomy_chart.html')
+                name = 'summary'
+                krona_fpath = os.path.join(krona_res_dirpath, name + '_taxonomy_chart.html')
                 qutils.call_subprocess(
                     ['perl', '-I', krona_dirpath + '/lib', krona_dirpath + '/scripts/ImportText.pl', krona_common_fpath, '-o', krona_fpath, '-a'],
                     stdout=open(os.devnull, 'w'), stderr=open(os.devnull, 'w'))
-                meta_log.info('  Summary Krona plot is saved to ' + krona_fpath)
+                meta_log.main_info('  Summary Krona chart is saved to ' + krona_fpath)
+                krona_fpaths.append(os.path.join(qconfig.krona_dirname, name + '_taxonomy_chart.html'))  # extra fpath!
             os.remove(krona_common_fpath)
             save_krona_paths(results_dirpath, krona_fpaths, assemblies)
 
@@ -221,7 +239,7 @@ def create_meta_report(results_dirpath, json_texts):
     html_text = re.sub(r'{{(\s+\S+\s+)}}', '{}', html_text)
     with open(html_fpath, 'w') as f_html:
         f_html.write(html_text)
-    meta_log.info('  Extended version of HTML-report (for all references and assemblies) is saved to ' + html_fpath)
+    meta_log.main_info('  Extended version of HTML-report (for all references and assemblies) is saved to ' + html_fpath)
 
 
 def save_total_report(results_dirpath, min_contig, ref_fpath):
@@ -237,21 +255,38 @@ def save_coord(results_dirpath, coord_x, coord_y, name_coord, contigs_fpaths):  
         append(results_dirpath, json_fpath, name_coord)
 
 
-def save_meta_summary(results_dirpath, coord_x, coord_y, name_coord, labels, refs):  # coordinates for Nx, NAx, NGx, NGAX
+def save_colors(results_dirpath, contigs_fpaths, dict_colors, meta=False):  # coordinates for Nx, NAx, NGx, NGAX
+    from libs import plotter
+    if meta:
+        html_fpath = os.path.join(results_dirpath, report_fname)
+        with open(html_fpath) as f_html:
+            html_text = f_html.read()
+        html_text = re.sub('{{ ' + 'colors' + ' }}', 'standard_colors', html_text)
+        with open(html_fpath, 'w') as f_html:
+            f_html.write(html_text)
+    else:
+        colors_and_ls = [dict_colors[qutils.label_from_fpath(contigs_fpath)] for contigs_fpath in contigs_fpaths]
+        colors = [color_and_ls[0] for color_and_ls in colors_and_ls]
+        colors_for_html = [html_colors[plotter.colors.index(color)] for color in colors]
+        json_fpath = json_saver.save_colors(results_dirpath, colors_for_html)
+        append(results_dirpath, json_fpath, 'colors')
+
+
+def save_meta_summary(html_fpath, results_dirpath, coord_x, coord_y, name_coord, labels, refs):
     name_coord = name_coord.replace('_(%)', '')
     name_coord = name_coord.replace('#', 'num')
     json_fpath = json_saver.save_meta_summary(results_dirpath, coord_x, coord_y, name_coord, labels, refs)
     if json_fpath:
-        append(results_dirpath, json_fpath, name_coord)
+        append(results_dirpath, json_fpath, name_coord, html_fpath)
 
 
-def save_meta_misassemblies(results_dirpath, coords, labels, refs):  # coordinates for Nx, NAx, NGx, NGAX
+def save_meta_misassemblies(html_fpath, results_dirpath, coords, labels, refs):
     name_coord = 'allMisassemblies'
     coords_x = [coord[0] if coord else None for coord in coords]
     coords_y = [coord[1] if coord else None for coord in coords]
     json_fpath = json_saver.save_meta_misassemblies(results_dirpath, coords_x, coords_y, name_coord, labels, refs)
     if json_fpath:
-        append(results_dirpath, json_fpath, name_coord)
+        append(results_dirpath, json_fpath, name_coord, html_fpath)
 
 
 def save_reference_length(results_dirpath, reference_length):
@@ -290,6 +325,11 @@ def save_GC_info(results_dirpath, contigs_fpaths, list_of_GC_distributions):
         append(results_dirpath, json_fpath, 'gcInfos')
 
 def save_krona_paths(results_dirpath, krona_fpaths, labels):
-    json_fpath = json_saver.save_krona_paths(results_dirpath,krona_fpaths, labels)
+    json_fpath = json_saver.save_krona_paths(results_dirpath, krona_fpaths, labels)
     if json_fpath:
         append(results_dirpath, json_fpath, 'krona')
+
+def save_icarus_links(results_dirpath, icarus_links):
+    json_fpath = json_saver.save_icarus_links(results_dirpath, icarus_links)
+    if json_fpath:
+        append(results_dirpath, json_fpath, 'icarus')

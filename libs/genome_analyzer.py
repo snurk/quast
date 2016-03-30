@@ -14,6 +14,7 @@ from libs.html_saver import json_saver
 
 from libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
+ref_lengths_by_contigs = {}
 
 
 # reading genes and operons
@@ -24,6 +25,8 @@ class FeatureContainer:
         self.region_list = []
         self.chr_names_dict = {}
 
+def get_ref_aligned_lengths():
+    return ref_lengths_by_contigs
 
 def chromosomes_names_dict(feature, regions, chr_names):
     """
@@ -94,6 +97,7 @@ def process_single_file(contigs_fpath, index, nucmer_path_dirpath, genome_stats_
     if not os.path.isfile(nucmer_fpath):
         logger.error('Nucmer\'s coords file (' + nucmer_fpath + ') not found! Try to restart QUAST.',
             indent='  ')
+        return None
 
     coordfile = open(nucmer_fpath, 'r')
     for line in coordfile:
@@ -133,6 +137,7 @@ def process_single_file(contigs_fpath, index, nucmer_path_dirpath, genome_stats_
         if chr_name not in genome_mapping:
             logger.error("Something went wrong and chromosome names in your coords file (" + nucmer_base_fpath + ") " \
                          "differ from the names in the reference. Try to remove the file and restart QUAST.")
+            return None
 
         aligned_blocks_by_contig_name[contig_name].append(AlignedBlock(seqname=chr_name, start=s1, end=e1))
         if s2 == 0 and e2 == 0:  # special case: circular genome, contig starts on the end of a chromosome and ends in the beginning
@@ -264,7 +269,7 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
         nucmer_path_dirpath = os.path.join(nucmer_path_dirpath, 'raw')
 
     logger.print_timestamp()
-    logger.info('Running Genome analyzer...')
+    logger.main_info('Running Genome analyzer...')
 
     if not os.path.isdir(genome_stats_dirpath):
         os.mkdir(genome_stats_dirpath)
@@ -326,16 +331,23 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
     full_found_operons = []
 
     # process all contig files
+    num_nf_errors = logger._num_nf_errors
     n_jobs = min(len(aligned_contigs_fpaths), qconfig.max_threads)
     from joblib import Parallel, delayed
     process_results = Parallel(n_jobs=n_jobs)(delayed(process_single_file)(
         contigs_fpath, index, nucmer_path_dirpath, genome_stats_dirpath,
         reference_chromosomes, genes_container, operons_container)
         for index, contigs_fpath in enumerate(aligned_contigs_fpaths))
+    num_nf_errors += len([res for res in process_results if res is None])
+    logger._num_nf_errors = num_nf_errors
+    process_results = [res for res in process_results if res]
+    if not process_results:
+        logger.main_info('Genome analyzer failed for all the assemblies.')
+        res_file.close()
+        return
 
     ref_lengths = [process_results[i][0] for i in range(len(process_results))]
     results_genes_operons_tuples = [process_results[i][1] for i in range(len(process_results))]
-    ref_lengths_by_contigs = {}
     for ref in reference_chromosomes:
         ref_lengths_by_contigs[ref] = [ref_lengths[i][ref] for i in range(len(ref_lengths))]
     res_file.write('reference chromosomes:\n')
@@ -435,7 +447,8 @@ def do(ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
         plotter.histogram(aligned_contigs_fpaths, genome_mapped, genome_stats_dirpath + '/genome_fraction_histogram',
             'Genome fraction, %', top_value=100)
 
-    logger.info('Done.')
+    logger.main_info('Done.')
+    return [genes_container, operons_container]
 
 
 class AlignedBlock():

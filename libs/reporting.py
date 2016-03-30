@@ -31,6 +31,9 @@ class Fields:
     LARGCONTIG = 'Largest contig'
     TOTALLEN = 'Total length'
     TOTALLENS__FOR_THRESHOLDS = ('Total length (>= %d bp)', tuple(qconfig.contig_thresholds))
+    TOTALLENS__FOR_1000_THRESHOLD = 'Total length (>= 1000 bp)'
+    TOTALLENS__FOR_10000_THRESHOLD = 'Total length (>= 10000 bp)'
+    TOTALLENS__FOR_50000_THRESHOLD = 'Total length (>= 50000 bp)'
     N50 = 'N50'
     N75 = 'N75'
     L50 = 'L50'
@@ -54,6 +57,8 @@ class Fields:
     MIS_SCAFFOLDS_GAP = '# scaffold gap size misassemblies'
     MIS_FRAGMENTED = '# misassemblies caused by fragmented reference'
     CONTIGS_WITH_ISTRANSLOCATIONS = '# possibly misassembled contigs'
+    ### structural variations
+    STRUCT_VARIATIONS = '# structural variations'
 
     # Unaligned
     UNALIGNED = '# unaligned contigs'
@@ -113,7 +118,8 @@ class Fields:
 
     ### content and order of metrics in MAIN REPORT (<quast_output_dir>/report.txt, .tex, .tsv):
     order = [NAME, CONTIGS__FOR_THRESHOLDS, TOTALLENS__FOR_THRESHOLDS, CONTIGS, LARGCONTIG, TOTALLEN, REFLEN, ESTREFLEN, GC, REFGC,
-             N50, NG50, N75, NG75, L50, LG50, L75, LG75, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISLOCAL, MIS_SCAFFOLDS_GAP, UNALIGNED, UNALIGNEDBASES, MAPPEDGENOME, DUPLICATION_RATIO,
+             N50, NG50, N75, NG75, L50, LG50, L75, LG75, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISLOCAL, MIS_SCAFFOLDS_GAP,
+             STRUCT_VARIATIONS, UNALIGNED, UNALIGNEDBASES, MAPPEDGENOME, DUPLICATION_RATIO,
              UNCALLED_PERCENT, SUBSERROR, INDELSERROR, GENES, OPERONS, PREDICTED_GENES_UNIQUE, PREDICTED_GENES,
              LARGALIGN, NA50, NGA50, NA75, NGA75, LA50, LGA50, LA75, LGA75, ]
 
@@ -121,7 +127,7 @@ class Fields:
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
                            MIS_ISTRANSLOCATIONS, CONTIGS_WITH_ISTRANSLOCATIONS,
                            MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES,
-                           MIS_LOCAL, MIS_SCAFFOLDS_GAP, MIS_FRAGMENTED, MISMATCHES,
+                           MIS_LOCAL, MIS_SCAFFOLDS_GAP, MIS_FRAGMENTED, STRUCT_VARIATIONS, MISMATCHES,
                            INDELS, MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES]
 
     # content and order of metrics in DETAILED UNALIGNED REPORT (<quast_output_dir>/contigs_reports/unaligned_report.txt, .tex, .tsv)
@@ -171,7 +177,7 @@ class Fields:
                            MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
                            MIS_ISTRANSLOCATIONS, CONTIGS_WITH_ISTRANSLOCATIONS,
                            MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES,
-                           MIS_LOCAL, MIS_SCAFFOLDS_GAP]),
+                           MIS_LOCAL, MIS_SCAFFOLDS_GAP, STRUCT_VARIATIONS]),
 
         ('Unaligned', [UNALIGNED_FULL_CNTGS, UNALIGNED_FULL_LENGTH, UNALIGNED_PART_CNTGS,
                        UNALIGNED_PART_WITH_MISASSEMBLY, UNALIGNED_PART_SIGNIFICANT_PARTS,
@@ -189,7 +195,8 @@ class Fields:
     ]
 
     # for "short" version of HTML report
-    main_metrics = [CONTIGS, LARGCONTIG, TOTALLEN, N50,
+    main_metrics = [CONTIGS, LARGCONTIG, TOTALLEN,
+                    TOTALLENS__FOR_1000_THRESHOLD, TOTALLENS__FOR_10000_THRESHOLD, TOTALLENS__FOR_50000_THRESHOLD,
                     MIS_ALL_EXTENSIVE, MIS_EXTENSIVE_BASES,
                     SUBSERROR, INDELSERROR, UNCALLED_PERCENT,
                     MAPPEDGENOME, DUPLICATION_RATIO, GENES, OPERONS, NGA50,
@@ -206,7 +213,7 @@ class Fields:
 
     quality_dict = {
         Quality.MORE_IS_BETTER:
-            [LARGCONTIG, TOTALLEN, TOTALLENS__FOR_THRESHOLDS, N50, NG50, N75, NG75, NA50, NGA50, NA75, NGA75, LARGALIGN,
+            [LARGCONTIG, TOTALLEN, TOTALLENS__FOR_THRESHOLDS, TOTALLENS__FOR_10000_THRESHOLD, N50, NG50, N75, NG75, NA50, NGA50, NA75, NGA75, LARGALIGN,
              MAPPEDGENOME, GENES, OPERONS, PREDICTED_GENES_UNIQUE, PREDICTED_GENES, AVGIDY],
         Quality.LESS_IS_BETTER:
             [CONTIGS, CONTIGS__FOR_THRESHOLDS, L50, LG50, L75, LG75,
@@ -217,7 +224,7 @@ class Fields:
              LA50, LGA50, LA75, LGA75, DUPLICATION_RATIO, INDELS, INDELSERROR, MISMATCHES, SUBSERROR,
              MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES],
         Quality.EQUAL:
-            [REFLEN, ESTREFLEN, GC, REFGC],
+            [REFLEN, ESTREFLEN, GC, REFGC, STRUCT_VARIATIONS],
         }
 
     #for name, metrics in filter(lambda (name, metrics): name in ['Misassemblies', 'Unaligned', 'Ambiguous'], grouped_order):
@@ -318,7 +325,7 @@ def table(order=Fields.order):
 
     table = []
 
-    def append_line(rows, field, are_multiple_tresholds=False, pattern=None, feature=None, i=None):
+    def append_line(rows, field, are_multiple_thresholds=False, pattern=None, feature=None, i=None):
         quality = get_quality(field)
         values = []
 
@@ -326,19 +333,19 @@ def table(order=Fields.order):
             report = get(assembly_fpath)
             value = report.get_field(field)
 
-            if are_multiple_tresholds:
+            if are_multiple_thresholds:
                 values.append(value[i] if (value and i < len(value)) else None)
             else:
                 values.append(value)
 
-        if filter(lambda v: v is not None, values):
+        if filter(lambda v: v is not None, values) or (field == 'NGA50' and not qconfig.is_combined_ref and report.get_field(Fields.REFLEN)):
             metric_name = field if (feature is None) else pattern % feature
             # ATTENTION! Contents numeric values, needed to be converted to strings.
             rows.append({
                 'metricName': metric_name,
                 'quality': quality,
                 'values': values,
-                'isMain': field in Fields.main_metrics,
+                'isMain': metric_name in Fields.main_metrics,
             })
 
     for group_name, metrics in order:

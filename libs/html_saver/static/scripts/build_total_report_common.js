@@ -5,9 +5,9 @@ String.prototype.trunc =
 
 
 function getColor (hue, lightness) {
-        lightness = lightness ? lightness : 92;
-        var rgb = hslToRgb(hue / 360, 0.8, lightness / 100);
-        return '#' + rgb[0].toString(16) + rgb[1].toString(16) + rgb[2].toString(16);
+    lightness = lightness ? lightness : 92;
+    var rgb = hslToRgb(hue / 360, 0.8, lightness / 100);
+    return '#' + rgb[0].toString(16) + rgb[1].toString(16) + rgb[2].toString(16);
 }
 
 function getMedian (x) {
@@ -162,4 +162,14 @@ function buildExtendedLinkClick() {
     return '<p id="extended_link"><a class="dotted-link" id="extended_report_link" onclick="extendedClick($(this))">Extended report</a></p>';
 }
 
-
+function appendIcarusLinks() {
+    if (icarusLinks = readJson('icarus')) {
+        if (icarusLinks.links != undefined) {
+            var links = '';
+            for (var link_n = 0; link_n < icarusLinks.links.length; link_n++) {
+                links += '<a href="' + icarusLinks.links[link_n] + '">' + icarusLinks.links_names[link_n] + '</a><br>'
+            }
+            $('#icarus').html(links);
+        }
+    }
+}

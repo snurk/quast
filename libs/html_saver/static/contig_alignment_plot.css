@@ -1,0 +1,487 @@
+body {
+    min-width: 800px;
+    max-width: 100%;
+    font-family: Lucida Grande, Verdana, Arial, sans-serif;
+}
+
+#chart {
+    float: left;
+}
+
+#menu {
+    float: right;
+    width: 240px;
+}
+
+.summary_table {
+    padding-left: 5px;
+    border-collapse: collapse;
+    font-size: 16px;
+    color: black;
+    margin-right: auto;
+}
+
+.summary_table th, td {
+    padding: 5px;
+    padding-left: 10px;
+    text-align: left;
+}
+
+.block {
+    color: white;
+    background: #444;
+    padding: 5px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.menu_block {
+    font-size: 16px;
+    color: white;
+    background: #444;
+    padding: 5px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.head {
+    margin-left: 10px;
+    padding: 5px;
+    border: 1px rgb(200, 200, 200) solid;
+    display: block;
+    word-wrap: break-word;
+}
+
+.head.main {
+    margin-left: 0;
+}
+
+.head_plus.collapsed::before {
+    float: left;
+    margin-top: 3px;
+    font-size: 12px;
+    content: '+ ';
+    color: #DDD;
+    cursor: pointer;
+}
+
+.head_plus.expanded::before {
+    float: left;
+    margin-top: 3px;
+    font-size: 12px;
+    content: '\2212\a0';  /* &minus&nbsp */
+    color: #DDD;
+    cursor: pointer;
+}
+
+.open {
+    padding-left: 10px;
+    display: block;
+}
+
+.close {
+    display: none;
+}
+
+span {
+    font-size: 10px;
+    text-align: left;
+}
+
+.title {
+    font-size: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.subtitle {
+    padding-bottom: 10px;
+    font-size: 14px;
+}
+
+a {
+    color: white;
+    text-decoration: underline;
+}
+
+.summary_table a {
+    text-decoration: none;
+    /*color: #0c4f72;*/
+    color: #0077B5;
+    border-bottom: 1px solid #487b95;
+    border-color: #487b95; /* #487b95 */
+    border-color: rgba(12, 79, 114, 0.2); /* #0c4f72; */ /* #a0d2eb; */ /*rgba(0, 88, cc, 0.3);*/
+}
+.summary_table a:visited {
+    text-decoration: none;
+    color: #8C66B2;
+    border-bottom: 1px solid #8c66b2;
+    border-color: #8c66b2;
+    border-color: rgba(102, 51, 153, 0.2);
+}
+.summary_table a:hover {
+    text-decoration: none;
+    color: #b33; /* #0088cc; */
+    border-bottom: 1px solid #ffcccc;
+    border-color: #ffcccc;
+    border-color: rgba(255, 0, 0, 0.2); /* #55b2e0; */ /*#005580;*/
+}
+
+.arrow {
+    stroke: #866D00;
+    stroke-width: 2;
+    fill: #866D00;
+}
+
+.arrow_selected {
+    stroke: #508600;
+    stroke-width: 2;
+    fill: #508600;
+}
+
+.main .arrow path {
+    fill: black;
+    stroke-width: 100;
+}
+
+.COV .y {
+    font: 12px sans-serif;
+}
+
+.COV .x path {
+    stroke: black;
+    stroke-width: 1px;
+}
+
+.COV .covered path {
+    fill: none;
+    stroke: rgb(240, 10, 10);
+    stroke-width: 3px;
+}
+
+.COV .notCovered path {
+    stroke: blue;
+    stroke-width: 5px;
+}
+
+.coverage text {
+    font: 16px sans-serif;
+}
+
+.coverage .x path, .x line, .y path, .y line {
+    fill: none;
+    stroke: black;
+    stroke-width: 1px;
+}
+
+.coverage .y text, .x text {
+    font: 12px sans-serif;
+}
+
+.coverage .covered {
+    stroke: rgb(240, 10, 10);
+    stroke-width: 3px;
+    fill: none;
+}
+
+.coverage .notCovered {
+    stroke: rgb(10, 10, 240);
+    stroke-width: 3px;
+    fill: none;
+}
+
+.chart {
+    shape-rendering: optimizeSpeed;
+}
+
+.mini text {
+    font: 9px sans-serif;
+}
+
+.main text {
+    font: 12px sans-serif;
+}
+
+.mainItem text {
+    fill: black;
+    stroke-width: 0;
+}
+
+.axis line, .axis path {
+    stroke: black;
+}
+
+path {
+    shape-rendering: optimizeSpeed;
+}
+
+.mainItem {
+    stroke-width: .2;
+    stroke: white;
+}
+
+.mainItem.end {
+    stroke-width: 0;
+}
+
+.main_labels rect {
+    fill: #fff;
+}
+
+.mainItem .S {
+    fill: white;
+}
+
+.mainItem.similar.odd {
+    fill: #377eb8;
+}
+
+.mainItem.similar {
+    fill: #576e88;
+}
+
+.mainItem.odd {
+    fill: #4daf4a;
+}
+
+.mainItem {
+    fill: #40cf40;
+}
+
+.mainItem.misassembled.similar.odd {
+    fill: #ff7500;
+}
+
+.mainItem.misassembled.light_color.similar.odd {
+    fill: #ffc200;
+}
+
+.mainItem.misassembled.similar {
+    fill: #e09110;
+}
+
+.mainItem.misassembled.light_color.similar {
+    fill: #ffd200;
+}
+
+.mainItem.misassembled.odd {
+    fill: #e41a1c;
+}
+
+.mainItem.misassembled.light_color.odd {
+    fill: #FF657A;
+}
+
+.mainItem.misassembled {
+    fill: #b82525;
+}
+
+.mainItem.misassembled.light_color {
+    fill: #FF6565;
+}
+
+.mainItem.disabled_misassembled {
+    fill: #8e8e8e;
+}
+
+.mainItem.disabled_misassembled.odd {
+    fill: #bbbbbb;
+}
+
+.mainItem.end.disabled_misassembled {
+    opacity: 0;
+}
+
+.mainItem.unknown.odd {
+    fill: #678B9C;
+}
+
+.mainItem.unknown {
+    fill: #7DA6B9;
+}
+
+.miniItem.similar.odd {
+    stroke-width: 10;
+    stroke: #377eb8;
+    fill: #377eb8;
+}
+
+.miniItem.similar {
+    stroke-width: 10;
+    stroke: #576e88;
+    fill: #576e88;
+}
+
+.miniItem.odd {
+    stroke-width: 10;
+    stroke: #4daf4a;
+    fill: #4daf4a;
+}
+
+.miniItem {
+    stroke-width: 10;
+    stroke: #40cf40;
+    fill: #40cf40;
+}
+
+.miniItem.misassembled.similar.odd {
+    stroke-width: 10;
+    stroke: #ff7500;
+    fill: #ff7500;
+}
+
+.miniItem.misassembled.light_color.similar.odd {
+    stroke-width: 10;
+    stroke: #ffc200;
+    fill: #ffc200;
+}
+
+.miniItem.misassembled.similar {
+    stroke-width: 10;
+    stroke: #e09110;
+    fill: #e09110;
+}
+
+.miniItem.misassembled.light_color.similar {
+    stroke-width: 10;
+    stroke: #ffd200;
+    fill: #ffd200;
+}
+
+.miniItem.misassembled.odd {
+    stroke-width: 10;
+    stroke: #e41a1c;
+    fill: #e41a1c;
+}
+
+.miniItem.misassembled.light_color.odd {
+    stroke-width: 10;
+    stroke: #FF657A;
+    fill: #FF657A;
+}
+
+.miniItem.misassembled {
+    stroke-width: 10;
+    stroke: #b82525;
+    fill: #b82525;
+}
+
+.miniItem.misassembled.light_color {
+    stroke-width: 10;
+    stroke: #FF6565;
+    fill: #FF6565;
+}
+
+.miniItem.disabled_misassembled {
+    stroke-width: 10;
+    stroke: #8e8e8e;
+    fill: #8e8e8e;
+}
+
+.miniItem.disabled_misassembled.odd {
+    stroke-width: 10;
+    stroke: #bbbbbb;
+    fill: #bbbbbb;
+}
+
+.miniItem.unknown.odd {
+    stroke-width: 10;
+    stroke: #678B9C;
+    fill: #678B9C;
+}
+
+.miniItem.unknown {
+    stroke-width: 10;
+    stroke: #40cf40;
+    fill: #678B9C;
+}
+
+.miniItems.text {
+    text-shadow: 1px 0 0 #000,
+                -1px 0 0 #000,
+                 0 1px 0 #000,
+                0 -1px 0 #000,
+                 1px 1px #000,
+             -1px -1px 0 #000,
+              1px -1px 0 #000,
+              -1px 1px 0 #000;
+}
+
+.annotation {
+    fill: #612B1C;
+}
+
+.annotation.odd {
+    fill: #49190C;
+}
+
+.feature_tip {
+  position: absolute;
+  text-align: center;
+  width: 100px;
+  padding: 2px;
+  font: 11px sans-serif;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  content: "\25BC";
+}
+
+.trackBtn {
+    rx: 20;
+    ry: 20;
+    stroke: black;
+    stroke-width: 1;
+    fill: white;
+}
+
+.trackBtnText {
+    font-size: 11px;
+}
+
+.trackBtn:hover {
+    stroke: red;
+    cursor: pointer;
+}
+
+.feature_tip {
+  position: absolute;
+  text-align: center;
+  width: 100px;
+  padding: 2px;
+  font: 11px sans-serif;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  content: "\25BC";
+}
+
+.brush .extent {
+    stroke: gray;
+    fill: yellow;
+    fill-opacity: .165;
+}
+
+.back_button {
+    float: left;
+    text-align: center;
+}
+
+.itemLabel {
+    font-size: 12px;
+}
+
+.reftitle {
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+}
+
+.moving_button {
+    -webkit-transition:all 200ms ease;
+   -moz-transition:all 200ms ease;
+    -ms-transition:all 200ms ease;
+     -o-transition:all 200ms ease;
+        transition:all 200ms ease;
+}

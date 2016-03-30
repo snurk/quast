@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>QUAST 3.1 manual</title>
+    <title>QUAST 3.2 manual</title>
     <style type="text/css">
         body {
             margin-top: 30px;
@@ -66,10 +66,11 @@
     </style>
 </head>
 <body>
-<h1>QUAST 3.1 manual</h1>
+<h1>QUAST 3.2 manual</h1>
 
 <p> QUAST stands for <u>QU</u>ality <u>AS</u>sessment <u>T</u>ool.
-    The tool evaluates genome assemblies by computing various metrics.
+    The tool evaluates genome assemblies by computing various metrics. This document provides instructions
+    for the general QUAST tool for genome assemblies, and MetaQUAST, the extension for metagenomic datasets.
     <br>
     <br>
     You can find all project news and the latest version of the tool
@@ -82,12 +83,16 @@
     In addition, MetaQUAST uses <a href="http://exon.gatech.edu/GeneMark/">MetaGeneMark</a>, <a href="http://sourceforge.net/p/krona/home/krona/">Krona tools</a>,
     <a href="http://blast.ncbi.nlm.nih.gov/Blast.cgi">BLAST</a>, and
     <a href="http://www.arb-silva.de/">SILVA</a> 16S rRNA database.
-    These tools are built in into the QUAST package which is ready for use by academic, non-profit institutions and U.S. Government agencies.
-    If you are not in one of these categories please refer to <a href="LICENSE">LICENSE</a> section 'Third-party tools incorporated into QUAST'
+    Starting from version 3.2, QUAST package also includes reads processing tools for finding structural variants between the reference genome and actual organism.
+    These tools are <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">Bowtie2</a>,
+    <a href="https://github.com/samtools/samtools">SAMtools</a>, and <a href="https://github.com/Illumina/manta">Manta</a>.
+    <br>
+    All tools above are built in into the QUAST package which is ready for use by academic, non-profit institutions and U.S. Government agencies.
+    If you are not in one of these categories please refer to <a href="LICENSE.txt">LICENSE</a> section 'Third-party tools incorporated into QUAST'
     for guidelines on how to complete the licensing process.
     <br>
     <br>
-    Version 3.1 of QUAST was released under GPL v2 on 25 August 2015. Note that some of build-in third-party tools are not under GPL v2. See <a href="LICENSE">LICENSE</a> for details.
+    Version 3.2 of QUAST was released under GPL v2 on 27 November 2015. Note that some of build-in third-party tools are not under GPL v2. See <a href="LICENSE.txt">LICENSE</a> for details.
 </p>
 
 <h2>Contents</h2>
@@ -128,18 +133,27 @@
     QUAST can be run on Linux or Mac OS.
 </p>
 <p>
-    It requires:
+    Its default pipeline requires:
 </p>
 <ul>
     <li>python 2 (2.5 or higher)</li>
     <li>perl 5.6.0 or higher</li>
-    <li>g++</li>
+    <li>gcc 4.7 or higher</li>
     <li>make</li>
     <li>sh</li>
     <li>csh</li>
     <li>sed</li>
     <li>awk</li>
     <li>ar</li>    
+</ul>
+<p>
+    In addition, QUAST submodules require:
+</p>
+<ul>
+    <li>Java JDK (tested with OpenJDK 6) for GAGE</li>
+    <li>Time::HiRes perl module for GeneMark-ES</li>
+    <li>Boost (tested with v1.56.0) for Manta</li>
+    <li>cmake (tested with v2.8.12) for Manta</li>
 </ul>
 All those tools are usually preinstalled on Linux.<br>
 Mac OS, however, initially misses <code>make</code>, <code>g++</code> and <code>ar</code>, so you will have to install 
@@ -148,7 +162,7 @@ Mac OS, however, initially misses <code>make</code>, <code>g++</code> and <code>
 <br>
 <br>
 It is also highly recommended to install the <a href="http://matplotlib.sourceforge.net/">Matplotlib</a> Python library for drawing plots. 
-We recommend to use Matplotlib version 1.0 or higher. Tested with Matplotlib v.1.3.1.
+We recommend to use Matplotlib version 1.1 or higher. Tested with Matplotlib v.1.3.1.
 <br>
 Installation can be done with Python <a href="http://www.pip-installer.org/">pip-installer</a>:
 <pre class="code">
@@ -163,11 +177,11 @@ Or on Ubuntu by typing:
     sudo apt-get install python-matplotlib
 </pre>
 <br>
-To download the <a href="https://downloads.sourceforge.net/project/quast/quast-3.1.tar.gz">QUAST source code tarball</a> and extract it, type:
+To download the <a href="https://downloads.sourceforge.net/project/quast/quast-3.2.tar.gz">QUAST source code tarball</a> and extract it, type:
 <pre class="code">
-    wget https://downloads.sourceforge.net/project/quast/quast-3.1.tar.gz
-    tar -xzf quast-3.1.tar.gz
-    cd quast-3.1
+    wget https://downloads.sourceforge.net/project/quast/quast-3.2.tar.gz
+    tar -xzf quast-3.2.tar.gz
+    cd quast-3.2
 </pre>
 
 <p>
@@ -176,6 +190,10 @@ Thus, there is no special installation command for QUAST.
 However, we recommend you to run:
 <pre class="code">
     python quast.py --test (if you plan to use quast.py)
+</pre>
+or/and
+<pre class="code">
+    python quast.py --test-sv  (if you plan to use quast.py or metaquast.py with SV calling)
 </pre>
 or/and
 <pre class="code">
@@ -189,15 +207,15 @@ These commands run all QUAST and MetaQUAST modules and check correctness
 of their work on your platform.
 <br><br>
 We also provide <code>./install.sh</code> and <code>./install_full.sh</code> scripts.
-If you plan to use metaquast.py without references, you should use <code>./install_full.sh</code>, which runs all three mentioned above commands
-and downloads necessary files (SILVA 16S rRNA gene database and BLAST). Otherwise, it is enough to use <code>./install.sh</code>,
-which runs only the first two commands.
+If you plan to use MetaQUAST without references or use SV calling, you should use <code>./install_full.sh</code>, which runs all four mentioned above commands,
+compiles tools for reads alignment and SV detection (SAMtools, Bowtie2, and Manta), and downloads necessary files (SILVA 16S rRNA gene database and BLAST). Otherwise, it is enough to use <code>./install.sh</code>,
+which runs only two simple --test commands.
 </p>
 
 <p>
-Note: you should place quast-3.1 directory in the final destination before
+Note: you should place quast-3.2 directory in the final destination before
 the first use (e.g. before run with --test). If you want to move QUAST to 
-some new place after several usages you should use a clean copy of quast-3.1.
+some new place after several usages you should use a clean copy of quast-3.2.
 This limitation is caused by auto-generation of absolute paths in compiled 
 modules of QUAST.
 </p>
@@ -407,7 +425,7 @@ Comma-separated list of contig length thresholds. Used in <span class='metric-re
 <span class='metric-ref'>total length (&ge; x)</span> metrics (see <a href="#sec3">section 3</a>). The default value is 0,1000.
 
 <div class='option'>
-    <code><b>--scaffolds</b></code> (or <code>-s</code>)
+    <a name='scaffolds'></a><code><b>--scaffolds</b></code> (or <code>-s</code>)
 </div>
 The assemblies are scaffolds (rather than contigs). QUAST will add split versions
 of assemblies to the comparison (named &lt;assembly_name&gt;_broken).
@@ -464,23 +482,50 @@ The default value is 1000. Note that the threshold should be greater than maximu
 File format for plots. Supported formats: emf, eps, pdf, png, ps, raw, rgba, svg, svgz.
 The default format is PDF.
 
+<div class='option'>
+<code><b>--memory-efficient</b></code>
 </div>
+Run Nucmer using one thread, separately per each assembly and each chromosome. This may significantly reduce memory consumption on large genomes.
+
+<div class='option'>
+<code><b>--silent</b></code>
+</div>
+Do not print detailed information about each step in standard output. This option does not affect <code>quast.log</code> file.
+</div>
+
 <br>
-Speedup options:
+Structural variant (SV) calling and processing (<b>experimental</b>, please use it with care until we finalize the feature):
+<div class='options'>
+
+<div class='option'>
+<code><b>--reads1</b></code> (or <code>-1</code>)
+</div>
+File with forward reads in FASTQ format (may be gzipped).
+
+<div class='option'>
+<code><b>--reads2</b></code> (or <code>-2</code>)
+</div>
+File with reverse reads in FASTQ format (may be gzipped).
+<p>Reads are used for SV detection: Reads are aligned to reference genome using bowtie2, then Manta SV calling tool is run on bowtie2 output.
+Found SVs are used for classifying QUAST misassemblies into true ones and fake ones (caused by structural differences between reference sequence and
+    sequenced organism). Fake misassemblies are excluded from <a href="#misassemblies"><code>#&nbsp;misassemblies</code></a> and reported as <a href="#sv"><code>#&nbsp;structural variants</code></a>.
+</div>
+
+<br>
+Speed-up options:
 <div class='options'>
 
 <div class='option'>
 <code><b>--no-check</b></code>
 </div>
-    Do not check and correct input FASTA files (both reference and assemblies).
+    <div style='margin-bottom: 6;'>Do not check and correct input FASTA files (both reference and assemblies).
     By default, QUAST corrects sequence names by replacing special characters
     (all symbols except latin letters, numbers, underscores, dots, and minus signs) with underscore ("_").
     QUAST also checks and corrects sequences itself. Lowercase letters are uppercased.
     Alternative nucleotide symbols (M, K, R, etc) are replaced with N. If non-ACGTN characters
-    are present after this modifications the whole FASTA file is skipped from further processing.
-    <br>
-    <b>Note</b>: Use this option at your own risk. Incorrect FASTA files may cause failing of
-    third-party tools incorporated to QUAST, i.e. GAGE, Nucmer, GeneMark*, GlimmerHMM.
+    are present after this modifications the whole FASTA file is skipped from further processing. </div>
+    <i>Caution</i>: use this option at your own risk. Incorrect FASTA files may cause failing of
+    third-party tools incorporated to QUAST, i.e. GAGE, Nucmer, GeneMark, GlimmerHMM.
     This option is useful for running QUAST without <code>-R</code> and <code>--gene-finding</code>
     (no third-party tools will be run) or if you are absolutely sure that your FASTA files are correct.
 
@@ -507,7 +552,7 @@ Do not compute GC% and do not produce GC-distribution plots (both in HTML report
 <div class='option'>
 <code><b>--fast</b></code>
 </div>
-A shortcut for using all of speedup options except --no-check.
+A shortcut for using all of speed-up options except --no-check.
 </div>
 
 <br>
@@ -536,9 +581,20 @@ Other:
 Run the tool on a data from the <code>test_data</code> folder and check correctness of the evaluation process. Output is saved in <code>quast_test_output</code>.
 
 <div class='option'>
+    <code><b>--test-sv</b></code>
+</div>
+Run the tool on a data from the <code>test_data</code> folder using the reads for SV detection. The tool will compile the required programs
+    (SAMtools, Bowtie2, and Manta Structural Variant Caller).
+
+<div class='option'>
     <code><b>-h</b></code> (or <code>--help</code>)
 </div>
 Print help.
+
+<div class='option'>
+    <code>-v</code> (or <code>--version</code>)<br>
+</div>
+Print version.
 </div>
 
 <a name="sec2.5"></a>
@@ -671,7 +727,7 @@ Note:
 <p><span class='metric-name'>L50 (L75, LG50, LG75)</span> is the number of contigs equal to or longer than N50 (N75, NG50, NG75)<br>
     In other words, L50, for example, is the minimal number of contigs that cover half the assembly.</p>
 
-<p><span class='metric-name'># misassemblies</span> is the number of positions in the contigs that satisfy one of the following criteria:<br>
+<p><a name='misassemblies'></a><span class='metric-name'># misassemblies</span> is the number of positions in the contigs that satisfy one of the following criteria:<br>
     <ul style='margin-top: -24px;'>
     <li>the left flanking sequence aligns over 1<span class="rhs">&nbsp;</span>kbp away from the right flanking sequence on the reference;
     <li>flanking sequences overlap on more than 1<span class="rhs">&nbsp;</span>kbp;
@@ -759,6 +815,8 @@ changed by <a href='#extensive_mis_size'><code>--extensive-mis-size</code></a>.<
 <p><span class='metric-name'>Inversion</span> is a misassembly event (breakpoint) where the flanking sequences align on
 opposite strands of the same chromosome. </p>
 
+<p><span class='metric-name'>Scaffold gap size misassemblies</span> is a misassembly event (breakpoint) where the flanking sequences combined in scaffold on the wrong distance (<a href='#scaffolds'><code>--scaffolds</code></a> only). These misassemblies are not included in the total number of misassemblies. </p>
+
 <p><span class='metric-name'># misassembled contigs</span> and <span class='metric-ref'>misassembled contigs length</span> are the same as the metrics from
     <a href="#sec3.1.1">section 3.1.1</a> and are counted among all contigs with any type of a misassembly event
     (relocation, translocation, interspecies translocation or inversion). </p>
@@ -767,6 +825,9 @@ opposite strands of the same chromosome. </p>
 
 <p><span class='metric-name'># local misassemblies</span> is the same as <span class='metric-ref'># local misassemblies</span> from
 <a href="#sec3.1.1">section 3.1.1</a>.
+</p>
+
+<p><a name='sv'></a><span class='metric-name'># structural variants</span> is the number of misassemblies matched with structural variations of genome. These misassemblies are not included in the total number of misassemblies.
 </p>
 
 <p><span class='metric-name'># mismatches</span> is the number of mismatches in all aligned bases.</p>
@@ -849,8 +910,10 @@ file consists of several sequences all of them are drawn on the single plot hori
 </div>
 <a name="sec3.3"></a>
 <h3>3.3 MetaQUAST output</h3>
-<p>All outputs are in separate directories inside the directory provided by <code>-o</code> (or in quast_results/latest).
-Also, plots and reports for each metric as well as combined HTML report are saved in <code>&lt;quast_output_dir&gt;/summary/</code>.
+<p>Output for combined reference is inside the directory provided by <code>-o</code> (or in quast_results/latest).
+    All outputs per each reference are in separate directories inside the directory <code>&lt;quast_output_dir&gt;/runs_per_reference</code>.
+Also, plots and reports for each metric are saved in <code>&lt;quast_output_dir&gt;/summary/</code>.
+    Combined HTML report is saved in <code>&lt;quast_output_dir&gt;/report.html</code>.
 
 <p><span class='metric-name'>Metric-level plots</span><br>
     These plots are created for each metric to show its values for all assemblies vs all references.
@@ -901,7 +964,8 @@ If you use MetaQUAST in your research, please include <i>Mikheenko et al., 2015<
 <div style='margin-top: 5px; padding-left: 30px; padding-top: 5px; padding-bottom: 5px; background-color: #EEE'>
 Alla Mikheenko, Vladislav Saveliev, Alexey Gurevich, <br>
 MetaQUAST: evaluation of metagenome assemblies, <br>
-Submitted to Bioinformatics (2015)
+Bioinformatics (2015). doi: <a href="http://dx.doi.org/10.1093/bioinformatics/btv697">10.1093/bioinformatics/btv697</a><br>
+First published online: November 26, 2015
 </div>
 
 <a name="sec6"></a><p>

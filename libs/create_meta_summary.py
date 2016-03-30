@@ -54,17 +54,17 @@ def get_results_for_metric(ref_names, metric, contigs_num, labels, output_dirpat
     return results, all_rows, cur_ref_names
 
 
-def get_labels(output_dirpath, report_fname):
-    results_fpath = os.path.join(output_dirpath, qconfig.combined_output_name, report_fname)
+def get_labels(combined_output_dirpath, report_fname):
+    results_fpath = os.path.join(combined_output_dirpath, report_fname)
     results_file = open(results_fpath, 'r')
     values = map(lambda s: s.strip(), results_file.readline().split('\t'))
     return values[1:]
 
 
-def do(output_dirpath, output_dirpath_per_ref, metrics, misassembl_metrics, ref_names):
+def do(html_fpath, output_dirpath, combined_output_dirpath, output_dirpath_per_ref, metrics, misassembl_metrics, ref_names):
     import plotter
 
-    labels = get_labels(output_dirpath, qconfig.report_prefix + '.tsv')
+    labels = get_labels(combined_output_dirpath, qconfig.report_prefix + '.tsv')
     contigs_num = len(labels)
     plots_dirname = qconfig.plot_extension.upper()
     for ext in ['TXT', plots_dirname, 'TEX', 'TSV']:
@@ -92,16 +92,16 @@ def do(output_dirpath, output_dirpath_per_ref, metrics, misassembl_metrics, ref_
                 print_file(transposed_table, len(transposed_table[0]['values']), summary_txt_fpath)
                 reporting.save_tsv(summary_tsv_fpath, transposed_table)
                 reporting.save_tex(summary_tex_fpath, transposed_table)
-                if qconfig.draw_plots:
-                    reverse = False
-                    if reporting.get_quality(metric) == reporting.Fields.Quality.MORE_IS_BETTER:
-                        reverse = True
-                    y_label = None
-                    if metric == reporting.Fields.TOTALLEN:
-                        y_label = 'Total length '
-                    elif metric in [reporting.Fields.LARGCONTIG, reporting.Fields.N50, reporting.Fields.NGA50, reporting.Fields.MIS_EXTENSIVE_BASES]:
-                        y_label = 'Contig length '
-                    plotter.draw_meta_summary_plot(output_dirpath, labels, cur_ref_names, all_rows, results, summary_png_fpath, title=metric, reverse=reverse, yaxis_title=y_label)
+                reverse = False
+                if reporting.get_quality(metric) == reporting.Fields.Quality.MORE_IS_BETTER:
+                    reverse = True
+                y_label = None
+                if metric == reporting.Fields.TOTALLEN:
+                    y_label = 'Total length '
+                elif metric in [reporting.Fields.LARGCONTIG, reporting.Fields.N50, reporting.Fields.NGA50, reporting.Fields.MIS_EXTENSIVE_BASES]:
+                    y_label = 'Contig length '
+                plotter.draw_meta_summary_plot(html_fpath, output_dirpath, labels, cur_ref_names, all_rows, results,
+                                               summary_png_fpath, title=metric, reverse=reverse, yaxis_title=y_label)
                 if metric == reporting.Fields.MISASSEMBL:
                     mis_results = []
                     report_fname = os.path.join('contigs_reports', qconfig.transposed_report_prefix + '_misassemblies' + '.tsv')
@@ -111,19 +111,21 @@ def do(output_dirpath, output_dirpath_per_ref, metrics, misassembl_metrics, ref_
                         results, all_rows, cur_ref_names = get_results_for_metric(cur_ref_names, misassembl_metric[len(reporting.Fields.TAB):], contigs_num, labels, output_dirpath_per_ref, report_fname)
                         if results:
                             mis_results.append(results)
-                    if mis_results and qconfig.draw_plots:
+                    if mis_results:
                         json_points = []
                         for contig_num in range(contigs_num):
                             plot_fpath = os.path.join(output_dirpath, plots_dirname, labels[contig_num] + '_misassemblies')
-                            json_points.append(plotter.draw_meta_summary_misassembl_plot(mis_results, cur_ref_names, contig_num, plot_fpath, title=labels[contig_num]))
+                            json_points.append(plotter.draw_meta_summary_misassembl_plot(mis_results, cur_ref_names,
+                                                                                         contig_num, plot_fpath,
+                                                                                         title=labels[contig_num]))
                         if qconfig.html_report:
                             from libs.html_saver import html_saver
                             if ref_names[-1] == qconfig.not_aligned_name:
                                 cur_ref_names = ref_names[:-1]
                             if json_points:
-                                html_saver.save_meta_misassemblies(output_dirpath, json_points, labels, cur_ref_names)
-    logger.info('')
-    logger.info('  Text versions of reports and plots for each metric (for all references and assemblies) are saved to ' + output_dirpath + '/')
+                                html_saver.save_meta_misassemblies(html_fpath, output_dirpath, json_points, labels, cur_ref_names)
+    logger.main_info('')
+    logger.main_info('  Text versions of reports and plots for each metric (for all references and assemblies) are saved to ' + output_dirpath + '/')
 
 
 def print_file(all_rows, ref_num, fpath):

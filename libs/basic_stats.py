@@ -81,7 +81,7 @@ def GC_content(contigs_fpath, skip=False):
 
 def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     logger.print_timestamp()
-    logger.info("Running Basic statistics processor...")
+    logger.main_info("Running Basic statistics processor...")
     
     if not os.path.isdir(output_dirpath):
         os.mkdir(output_dirpath)
@@ -143,7 +143,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     # saving lengths to JSON
     if json_output_dir:
         json_saver.save_contigs_lengths(json_output_dir, contigs_fpaths, corr_lists_of_lengths)
-        json_saver.save_tick_x(output_dirpath, multiplicator)
+        json_saver.save_tick_x(json_output_dir, multiplicator)
 
     if qconfig.html_report:
         from libs.html_saver import html_saver
@@ -184,12 +184,12 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
         
         report.add_field(reporting.Fields.N50, n50)
         report.add_field(reporting.Fields.L50, l50)
-        if reference_length:
+        if reference_length and not qconfig.is_combined_ref:
             report.add_field(reporting.Fields.NG50, ng50)
             report.add_field(reporting.Fields.LG50, lg50)
         report.add_field(reporting.Fields.N75, n75)
         report.add_field(reporting.Fields.L75, l75)
-        if reference_length:
+        if reference_length and not qconfig.is_combined_ref:
             report.add_field(reporting.Fields.NG75, ng75)
             report.add_field(reporting.Fields.LG75, lg75)
         report.add_field(reporting.Fields.CONTIGS, len(lengths_list))
@@ -197,12 +197,14 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
             report.add_field(reporting.Fields.LARGCONTIG, max(lengths_list))
             largest_contig = max(largest_contig, max(lengths_list))
             report.add_field(reporting.Fields.TOTALLEN, total_length)
-            report.add_field(reporting.Fields.GC, ('%.2f' % total_GC if total_GC is not None else None))
+            if not qconfig.is_combined_ref:
+                report.add_field(reporting.Fields.GC, ('%.2f' % total_GC if total_GC is not None else None))
             report.add_field(reporting.Fields.UNCALLED, number_of_Ns)
             report.add_field(reporting.Fields.UNCALLED_PERCENT, ('%.2f' % (float(number_of_Ns) * 100000.0 / float(total_length))))
         if ref_fpath:
             report.add_field(reporting.Fields.REFLEN, int(reference_length))
-            report.add_field(reporting.Fields.REFGC, '%.2f' % reference_GC)
+            if not qconfig.is_combined_ref:
+                report.add_field(reporting.Fields.REFGC, '%.2f' % reference_GC)
         elif reference_length:
             report.add_field(reporting.Fields.ESTREFLEN, int(reference_length))
         if report.get_field(reporting.Fields.UNALIGNED) is None:
@@ -214,12 +216,19 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, json_output_dir, results_dir):
     if json_output_dir:
         json_saver.save_GC_info(json_output_dir, contigs_fpaths, list_of_GC_distributions)
 
-    if qconfig.html_report:
+    if qconfig.html_report and not qconfig.is_combined_ref:
         from libs.html_saver import html_saver
         html_saver.save_GC_info(results_dir, contigs_fpaths, list_of_GC_distributions)
 
+    import plotter
+    ########################################################################
+    # Drawing Nx and NGx plots...
+    plotter.Nx_plot(results_dir, num_contigs > qconfig.max_points, contigs_fpaths, lists_of_lengths, output_dirpath + '/Nx_plot', 'Nx', [], json_output_dir=json_output_dir)
+    if reference_length and not qconfig.is_combined_ref:
+        plotter.Nx_plot(results_dir, num_contigs > qconfig.max_points, contigs_fpaths, lists_of_lengths, output_dirpath + '/NGx_plot', 'NGx',
+                        [reference_length for i in range(len(contigs_fpaths))], json_output_dir=json_output_dir)
+
     if qconfig.draw_plots:
-        import plotter
         ########################################################################import plotter
         plotter.cumulative_plot(ref_fpath, contigs_fpaths, lists_of_lengths, output_dirpath + '/cumulative_plot', '')
     
@@ -247,3 +256,4 @@ def save_result_for_unaligned(report):
 
         report.add_field(reporting.Fields.UNALIGNED_FULL_CNTGS, unaligned_ctgs)
         report.add_field(reporting.Fields.UNALIGNED_FULL_LENGTH, unaligned_length)
+

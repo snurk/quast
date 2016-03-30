@@ -17,7 +17,7 @@ import re
 from libs import qconfig
 qconfig.check_python_version()
 
-from libs import qutils, fastaparser
+from libs import qutils, fastaparser, reads_analyzer
 from libs.qutils import assert_file_exists
 
 from libs.log import get_logger
@@ -110,6 +110,8 @@ def correct_fasta(original_fpath, corrected_fpath, min_contig,
             qconfig.splitted_ref = []  # important for MetaQUAST which runs QUAST multiple times
             _, fasta_ext = os.path.splitext(corrected_fpath)
             split_ref_dirpath = os.path.join(os.path.dirname(corrected_fpath), 'split_ref')
+            if os.path.exists(split_ref_dirpath):
+                shutil.rmtree(split_ref_dirpath, ignore_errors=True)
             os.makedirs(split_ref_dirpath)
             max_len = min(ref_len/qconfig.max_threads, qconfig.MAX_REFERENCE_LENGTH)
             cur_part_len = 0
@@ -177,7 +179,7 @@ def _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels):
             corrected_dirpath, labels) for i, contigs_fpath in enumerate(contigs_fpaths))
     logs = [corrected_info[i][2] for i in range(len(corrected_info))]
     for log in logs:
-        logger.info('\n'.join(log))
+        logger.main_info('\n'.join(log))
     corr_fpaths = [corrected_info[i][0] for i in range(len(corrected_info))]
     for i, (contigs_fpath, corr_fpath) in enumerate(corr_fpaths):
         if qconfig.no_check_meta:
@@ -275,12 +277,11 @@ def _correct_reference(ref_fpath, corrected_dirpath):
     name, fasta_ext = qutils.splitext_for_fasta_file(ref_fname)
     corr_fpath = qutils.unique_corrected_fpath(
         os.path.join(corrected_dirpath, name + fasta_ext))
-    if not qconfig.is_combined_ref:
-        if not correct_fasta(ref_fpath, corr_fpath, qconfig.min_contig, is_reference=True):
-            ref_fpath = ''
-        else:
-            logger.info('  %s ==> %s' % (ref_fpath, qutils.name_from_fpath(corr_fpath)))
-            ref_fpath = corr_fpath
+    if not correct_fasta(ref_fpath, corr_fpath, qconfig.min_contig, is_reference=True):
+        ref_fpath = ''
+    else:
+        logger.main_info('  %s ==> %s' % (ref_fpath, qutils.name_from_fpath(corr_fpath)))
+        ref_fpath = corr_fpath
 
     return ref_fpath
 
@@ -408,25 +409,28 @@ def main(args):
         sys.exit(2)
 
     for opt, arg in options[:]:
-        if opt in ('-d', '--debug'):
-            options.remove((opt, arg))
-            qconfig.debug = True
-            logger.set_up_console_handler(debug=True)
 
-        if opt == '--test':
+        if opt == '--test' or opt == '--test-sv':
             options.remove((opt, arg))
             options += [('-o', 'quast_test_output'),
-                        ('-R', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reference.fasta.gz')),   # for compiling MUMmer
+                        ('-R', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reference.fasta.gz')),  # for compiling MUMmer
                         ('-O', os.path.join(qconfig.QUAST_HOME, 'test_data', 'operons.gff')),
                         ('-G', os.path.join(qconfig.QUAST_HOME, 'test_data', 'genes.gff')),
-                        ('--gage', ''), # for compiling GAGE Java classes
-                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')] # for compiling GlimmerHMM
+                        ('--gage', ''),  # for compiling GAGE Java classes
+                        ('--gene-finding', ''), ('--eukaryote', ''), ('--glimmer', '')]  # for compiling GlimmerHMM
+            if opt == '--test-sv':
+                options += [('-1', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reads1.fastq.gz')),
+                            ('-2', os.path.join(qconfig.QUAST_HOME, 'test_data', 'reads2.fastq.gz'))]
             contigs_fpaths += [os.path.join(qconfig.QUAST_HOME, 'test_data', 'contigs_1.fasta'),
                                os.path.join(qconfig.QUAST_HOME, 'test_data', 'contigs_2.fasta')]
             qconfig.test = True
 
         if opt.startswith('--help') or opt == '-h':
-            qconfig.usage(opt == "--help-hidden")
+            qconfig.usage(opt == "--help-hidden", short=False)
+            sys.exit(0)
+
+        elif opt.startswith('--version') or opt == '-v':
+            qconfig.print_version()
             sys.exit(0)
 
     if not contigs_fpaths:
@@ -444,10 +448,17 @@ def main(args):
     ref_fpath = ''
     genes_fpaths = []
     operons_fpaths = []
+    bed_fpath = None
+    reads_fpath_f = ''
+    reads_fpath_r = ''
 
     # Yes, this is a code duplicating. But OptionParser is deprecated since version 2.7.
     for opt, arg in options:
-        if opt in ('-o', "--output-dir"):
+        if opt in ('-d', '--debug'):
+            qconfig.debug = True
+            logger.set_up_console_handler(debug=True)
+
+        elif opt in ('-o', "--output-dir"):
             output_dirpath = os.path.abspath(arg)
             qconfig.make_latest_symlink = False
             if ' ' in output_dirpath:
@@ -499,7 +510,7 @@ def main(args):
 
         elif opt == '--err-fpath':  # for web-quast
             qconfig.save_error = True
-            qconfig.error_log_fname = arg
+            qconfig.error_log_fpath = arg
 
         elif opt in ('-s', "--scaffolds"):
             qconfig.scaffolds = True
@@ -542,6 +553,7 @@ def main(args):
 
         elif opt == '--no-html':
             qconfig.html_report = False
+            qconfig.create_contig_alignment_html = False
 
         elif opt == '--no-check':
             qconfig.no_check = True
@@ -555,6 +567,7 @@ def main(args):
             qconfig.show_snps = False
             qconfig.draw_plots = False
             qconfig.html_report = False
+            qconfig.create_contig_alignment_html = False
 
         elif opt == '--plots-format':
             if arg.lower() in qconfig.supported_plot_extensions:
@@ -570,6 +583,9 @@ def main(args):
             qconfig.no_check = True
             qconfig.no_check_meta = True
 
+        elif opt == '--references-list':
+            pass
+
         elif opt in ('-l', '--labels'):
             labels = parse_labels(arg, contigs_fpaths)
 
@@ -581,6 +597,20 @@ def main(args):
 
         elif opt == '--combined-ref':
             qconfig.is_combined_ref = True
+
+        elif opt == '--memory-efficient':
+            qconfig.memory_efficient = True
+
+        elif opt == '--silent':
+            qconfig.silent = True
+
+        elif opt in ('-1', '--reads1'):
+            reads_fpath_f = arg
+        elif opt in ('-2', '--reads2'):
+            reads_fpath_r = arg
+        elif opt == '--bed-file':
+            bed_fpath = arg
+
         else:
             logger.error('Unknown option: %s. Use -h for help.' % (opt + ' ' + arg), to_stderr=True, exit_with_code=2)
 
@@ -594,15 +624,15 @@ def main(args):
 
     corrected_dirpath = os.path.join(output_dirpath, qconfig.corrected_dirname)
 
-    logger.set_up_file_handler(output_dirpath)
+    logger.set_up_file_handler(output_dirpath, qconfig.error_log_fpath if qconfig.save_error else None)
     args = [os.path.realpath(__file__)]
     for k, v in options: args.extend([k, v])
     args.extend(contigs_fpaths)
-    logger.print_command_line(args, wrap_after=None)
+    logger.print_command_line(args, wrap_after=None, is_main=True)
     logger.start()
 
     if existing_alignments:
-        logger.info()
+        logger.main_info()
         logger.notice("Output directory already exists. Existing Nucmer alignments can be used.")
         qutils.remove_reports(output_dirpath)
 
@@ -617,6 +647,9 @@ def main(args):
 
     qconfig.set_max_threads(logger)
 
+    logger.main_info()
+    logger.print_params()
+
     ########################################################################
     from libs import reporting
     reload(reporting)
@@ -630,15 +663,15 @@ def main(args):
 
     # PROCESSING REFERENCE
     if ref_fpath:
-        logger.info()
-        logger.info('Reference:')
+        logger.main_info()
+        logger.main_info('Reference:')
         ref_fpath = _correct_reference(ref_fpath, corrected_dirpath)
     else:
         ref_fpath = ''
 
     # PROCESSING CONTIGS
-    logger.info()
-    logger.info('Contigs:')
+    logger.main_info()
+    logger.main_info('Contigs:')
 
     contigs_fpaths, old_contigs_fpaths = _correct_contigs(contigs_fpaths, corrected_dirpath, reporting, labels)
     for contigs_fpath in contigs_fpaths:
@@ -646,6 +679,16 @@ def main(args):
         report.add_field(reporting.Fields.NAME, qutils.label_from_fpath(contigs_fpath))
 
     qconfig.assemblies_num = len(contigs_fpaths)
+
+    reads_fpaths = []
+    if reads_fpath_f:
+        reads_fpaths.append(reads_fpath_f)
+    if reads_fpath_r:
+        reads_fpaths.append(reads_fpath_r)
+    if reads_fpaths:
+        bed_fpath = reads_analyzer.do(ref_fpath, contigs_fpaths, reads_fpaths, None,
+                                      os.path.join(output_dirpath, qconfig.variation_dirname),
+                                      external_logger=logger)
 
     if not contigs_fpaths:
         logger.error("None of the assembly files contains correct contigs. "
@@ -667,6 +710,7 @@ def main(args):
     # Where all pdfs will be saved
     all_pdf_fpath = os.path.join(output_dirpath, qconfig.plots_fname)
     all_pdf_file = None
+
     if qconfig.draw_plots or qconfig.html_report:
         from libs import plotter  # Do not remove this line! It would lead to a warning in matplotlib.
         try:
@@ -695,7 +739,7 @@ def main(args):
         ########################################################################
         from libs import contigs_analyzer
         nucmer_statuses, aligned_lengths_per_fpath = contigs_analyzer.do(
-            ref_fpath, contigs_fpaths, qconfig.prokaryote, os.path.join(output_dirpath, 'contigs_reports'), old_contigs_fpaths)
+            ref_fpath, contigs_fpaths, qconfig.prokaryote, os.path.join(output_dirpath, 'contigs_reports'), old_contigs_fpaths, bed_fpath)
         for contigs_fpath in contigs_fpaths:
             if nucmer_statuses[contigs_fpath] == contigs_analyzer.NucmerStatus.OK:
                 aligned_contigs_fpaths.append(contigs_fpath)
@@ -721,7 +765,7 @@ def main(args):
         ### GENOME_ANALYZER
         ########################################################################
         from libs import genome_analyzer
-        genome_analyzer.do(
+        features_containers = genome_analyzer.do(
             ref_fpath, aligned_contigs_fpaths, output_dirpath, json_output_dirpath,
             genes_fpaths, operons_fpaths, detailed_contigs_reports_dirpath, os.path.join(output_dirpath, 'genome_stats'))
 
@@ -741,7 +785,7 @@ def main(args):
                         qconfig.meta)
             
     else:
-        logger.info("")
+        logger.main_info("")
         logger.notice("Genes are not predicted by default. Use --gene-finding option to enable it.")
     ########################################################################
     reports_fpaths, transposed_reports_fpaths = reporting.save_total(output_dirpath)
@@ -751,53 +795,54 @@ def main(args):
     ########################################################################
     if qconfig.draw_plots:
         logger.print_timestamp()
-        logger.info('Drawing large plots...')
-        logger.info('This may take a while: press Ctrl-C to skip this step..')
+        logger.main_info('Drawing large plots...')
+        logger.main_info('This may take a while: press Ctrl-C to skip this step..')
         try:
-            if detailed_contigs_reports_dirpath and qconfig.show_snps:
-                contig_report_fpath_pattern = os.path.join(detailed_contigs_reports_dirpath, 'contigs_report_%s.stdout')
+            if detailed_contigs_reports_dirpath:
+                report_for_icarus_fpath_pattern = os.path.join(detailed_contigs_reports_dirpath, qconfig.icarus_report_fname_pattern)
             else:
-                contig_report_fpath_pattern = None
-            number_of_steps = sum([int(bool(value)) for value in [contig_report_fpath_pattern, all_pdf_file]])
-            if contig_report_fpath_pattern:
+                report_for_icarus_fpath_pattern = None
+            number_of_steps = sum([int(bool(value)) for value in [report_for_icarus_fpath_pattern, all_pdf_file]])
+            if report_for_icarus_fpath_pattern:
                 ########################################################################
                 ### VISUALIZE CONTIG ALIGNMENT
                 ########################################################################
-                logger.info('  1 of %d: Creating contig alignment plot...' % number_of_steps)
+                logger.main_info('  1 of %d: Creating contig alignment plot...' % number_of_steps)
                 from libs import contig_alignment_plotter
                 contig_alignment_plot_fpath = contig_alignment_plotter.do(
-                    contigs_fpaths, contig_report_fpath_pattern,
-                    output_dirpath, ref_fpath, similar=True)
+                    contigs_fpaths, report_for_icarus_fpath_pattern,
+                    output_dirpath, ref_fpath, similar=True, features=features_containers)
 
             if all_pdf_file:
                 # full report in PDF format: all tables and plots
-                logger.info('  %d of %d: Creating PDF with all tables and plots...' % (number_of_steps, number_of_steps))
+                logger.main_info('  %d of %d: Creating PDF with all tables and plots...' % (number_of_steps, number_of_steps))
                 plotter.fill_all_pdf_file(all_pdf_file)
-            logger.info('Done')
+            logger.main_info('Done')
         except KeyboardInterrupt:
-            logger.info('..step skipped!')
+            logger.main_info('..step skipped!')
             os.remove(all_pdf_fpath)
 
     ########################################################################
     ### TOTAL REPORT
     ########################################################################
     logger.print_timestamp()
-    logger.info('RESULTS:')
-    logger.info('  Text versions of total report are saved to ' + reports_fpaths)
-    logger.info('  Text versions of transposed total report are saved to ' + transposed_reports_fpaths)
+    logger.main_info('RESULTS:')
+    logger.main_info('  Text versions of total report are saved to ' + reports_fpaths)
+    logger.main_info('  Text versions of transposed total report are saved to ' + transposed_reports_fpaths)
 
     if json_output_dirpath:
         json_saver.save_total_report(json_output_dirpath, qconfig.min_contig, ref_fpath)
 
     if qconfig.html_report:
         from libs.html_saver import html_saver
+        html_saver.save_colors(output_dirpath, contigs_fpaths, plotter.dict_color_and_ls)
         html_saver.save_total_report(output_dirpath, qconfig.min_contig, ref_fpath)
 
     if os.path.isfile(all_pdf_fpath):
-        logger.info('  PDF version (tables and plots) saved to ' + all_pdf_fpath)
+        logger.main_info('  PDF version (tables and plots) saved to ' + all_pdf_fpath)
 
     if contig_alignment_plot_fpath:
-        logger.info('  Contig alignment plot: %s' % contig_alignment_plot_fpath)
+        logger.main_info('  Contig alignment plot: %s' % contig_alignment_plot_fpath)
 
     _cleanup(corrected_dirpath)
     logger.finish_up(check_test=qconfig.test)
