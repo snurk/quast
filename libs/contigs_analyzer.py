@@ -19,11 +19,8 @@ from __future__ import with_statement
 import os
 import platform
 import datetime
-<<<<<<< HEAD
 from collections import OrderedDict
-=======
 from itertools import repeat
->>>>>>> master
 
 import fastaparser
 import shutil
@@ -427,7 +424,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             if strand1 != strand2:
                 return True, aux_data
             else:
-        # check for fake translocations (if reference is fragmented)
+                return False, aux_data
         is_translocation = False
         if align1.ref != align2.ref:
             if qconfig.is_combined_ref and \
