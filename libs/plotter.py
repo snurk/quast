@@ -189,9 +189,8 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
 
     #matplotlib.pyplot.ylim([0, int(float(max_y) * 1.1)])
 
-    plot_fpath1 += plots_file_ext
-    plot_fpath2 += ".legend."
-    plot_fpath2 += plots_file_ext
+    plot_fpath1 = plot_fpath + plots_file_ext
+    plot_fpath2 = plot_fpath + ".legend." + plots_file_ext 
 
     matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
 
@@ -305,9 +304,8 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     ax.yaxis.set_major_locator(yLocator)
     ax.xaxis.set_major_locator(xLocator)
 
-    plot_fpath1 += plots_file_ext
-    plot_fpath2 += ".legend."
-    plot_fpath2 += plots_file_ext
+    plot_fpath1 = plot_fpath + plots_file_ext
+    plot_fpath2 = plot_fpath + ".legend." + plots_file_ext 
 
     matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
 
