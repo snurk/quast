@@ -170,16 +170,6 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
     box = ax.get_position()
     ax.set_position([box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8])
 
-    legend_list = map(qutils.label_from_fpath, contigs_fpaths)
-    if reference:
-        legend_list += ['Reference']
-
-    # Put a legend below current axis
-    try: # for matplotlib <= 2009-12-09
-        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<4 else 4)
-    except Exception: # ZeroDivisionError: ValueError:
-        pass
 
     ylabel = 'Cumulative scaffold length '
     ylabel, mkfunc = y_formatter(ylabel, max_y)
@@ -199,9 +189,25 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
 
     #matplotlib.pyplot.ylim([0, int(float(max_y) * 1.1)])
 
-    plot_fpath += plots_file_ext
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
-    logger.info('    saved to ' + plot_fpath)
+    plot_fpath1 += plots_file_ext
+    plot_fpath2 += ".legend."
+    plot_fpath2 += plots_file_ext
+
+    matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
+
+    legend_list = map(qutils.label_from_fpath, contigs_fpaths)
+    if reference:
+        legend_list += ['Reference']
+
+    # Put a legend below current axis
+    try: # for matplotlib <= 2009-12-09
+        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
+            shadow=True, ncol=n_columns if n_columns<4 else 4)
+    except Exception: # ZeroDivisionError: ValueError:
+        pass
+
+    matplotlib.pyplot.savefig(plot_fpath2, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath2)
     pdf_plots_figures.append(figure)
 
 
@@ -284,15 +290,6 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     box = ax.get_position()
     ax.set_position([box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8])
 
-    legend_list = map(qutils.label_from_fpath, contigs_fpaths)
-
-    # Put a legend below current axis
-    try: # for matplotlib <= 2009-12-09
-        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<4 else 4)
-    except Exception:
-        pass
-
     ylabel = 'Scaffold length  '
     ylabel, mkfunc = y_formatter(ylabel, max_y)
     matplotlib.pyplot.xlabel('x', fontsize=axes_fontsize)
@@ -308,9 +305,25 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     ax.yaxis.set_major_locator(yLocator)
     ax.xaxis.set_major_locator(xLocator)
 
-    plot_fpath += plots_file_ext
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
-    logger.info('    saved to ' + plot_fpath)
+    plot_fpath1 += plots_file_ext
+    plot_fpath2 += ".legend."
+    plot_fpath2 += plots_file_ext
+
+    matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
+
+
+    legend_list = map(qutils.label_from_fpath, contigs_fpaths)
+
+    # Put a legend below current axis
+    try: # for matplotlib <= 2009-12-09
+        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
+            shadow=True, ncol=n_columns if n_columns<4 else 4)
+    except Exception:
+        pass
+
+
+    matplotlib.pyplot.savefig(plot_fpath2, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath2)
     pdf_plots_figures.append(figure)
 
 
