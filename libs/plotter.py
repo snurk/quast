@@ -30,7 +30,7 @@ secondary_line_style = 'dashed' # used only if --scaffolds option is set
 n_columns = 4  # number of columns
 with_grid = True
 with_title = True
-axes_fontsize = 'large' # fontsize of axes labels and ticks
+axes_fontsize = 'xx-large' # fontsize of axes labels and ticks
 
 # Special case: reference line params
 reference_color = '#000000'
