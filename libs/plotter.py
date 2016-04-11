@@ -708,6 +708,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
             for i in range(len(misassemblies)):
                 json_points_x.append(arr_x[j])
                 json_points_y.append(0)
+\
 
     matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
     legend_n = set(legend_n)
@@ -902,7 +903,7 @@ def draw_interspecies_translocations_plot(results, ref_names, target_ref, contig
         matplotlib.pyplot.ylim([0, 5])
     else:
         matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
-    matplotlib.pyplot.ylabel('# misassemblies', fontsize=axes_fontsize)
+    matplotlib.pyplot.ylabel('Intragenomic misassemblies', fontsize=axes_fontsize)
     legend = ax.legend(contigs_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True, numpoints=1)
 
     matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
@@ -964,7 +965,7 @@ def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
         matplotlib.pyplot.ylim([0, 5])
     else:
         matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
-    matplotlib.pyplot.ylabel('# misassemblies', fontsize=axes_fontsize)
+    matplotlib.pyplot.ylabel('Intragenomic misassemblies', fontsize=axes_fontsize)
 
     legend = ax.legend(misassemblies, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True)
     for num_line in range(len(legend.legendHandles)):
