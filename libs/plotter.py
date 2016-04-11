@@ -62,6 +62,8 @@ matplotlib_error = False
 try:
     import matplotlib
     matplotlib.use('Agg')  # non-GUI backend
+    matplotlib.rcParams['xtick.labelsize'] = axes_fontsize
+    matplotlib.rcParams['ytick.labelsize'] = axes_fontsize
     if matplotlib.__version__.startswith('0') or matplotlib.__version__.startswith('1.0'):
         logger.warning('Can\'t draw plots: matplotlib version is old! Please use matplotlib version 1.1 or higher.')
         matplotlib_error = True
