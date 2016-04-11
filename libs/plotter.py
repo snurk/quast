@@ -708,7 +708,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
             for i in range(len(misassemblies)):
                 json_points_x.append(arr_x[j])
                 json_points_y.append(0)
-\
+
 
     matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
     legend_n = set(legend_n)
