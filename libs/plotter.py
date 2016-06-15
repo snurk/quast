@@ -30,7 +30,7 @@ secondary_line_style = 'dashed' # used only if --scaffolds option is set
 n_columns = 4  # number of columns
 with_grid = True
 with_title = True
-axes_fontsize = 'large' # fontsize of axes labels and ticks
+axes_fontsize = 'xx-large' # fontsize of axes labels and ticks
 
 # Special case: reference line params
 reference_color = '#000000'
@@ -60,6 +60,8 @@ if qconfig.draw_plots:
     try:
         import matplotlib
         matplotlib.use('Agg')  # non-GUI backend
+        matplotlib.rcParams['xtick.labelsize'] = axes_fontsize
+        matplotlib.rcParams['ytick.labelsize'] = axes_fontsize
         if matplotlib.__version__.startswith('0') or matplotlib.__version__.startswith('1.0'):
             logger.info('')
             logger.warning('Can\'t draw plots: matplotlib version is old! Please use matplotlib version 1.1 or higher.')
@@ -78,23 +80,21 @@ pdf_tables_figures = []
 dict_color_and_ls = {}
 ####################################################################################
 
+preset_colors = {'metaSPAdes':'#E31A1C', 'IDBA-UD':'#1F78B4', 'MEGAHIT':'#33A02C', 'Ray-Meta':'#6A3D9A', 'GOLD_ASSEMBLY':'#FF7F00'}
 
 def save_colors_and_ls(fpaths, labels=None):
     if not labels:
         labels = [qutils.label_from_fpath(fpath) for fpath in fpaths]
     if not dict_color_and_ls:
-        color_id = 0
-        for i, fpath in enumerate(fpaths):
-            ls = primary_line_style
-            label = labels[i]
-            # contigs and scaffolds should be equally colored but scaffolds should be dashed
-            if fpath and fpath in qconfig.dict_of_broken_scaffolds:
-                color = dict_color_and_ls[qutils.label_from_fpath(qconfig.dict_of_broken_scaffolds[fpath])][0]
-                ls = secondary_line_style
+        next_color_id = len(preset_colors)
+        ls = primary_line_style
+        for fpath in fpaths:
+            label = qutils.label_from_fpath(fpath)
+            if label in preset_colors:
+                dict_color_and_ls[label] = (preset_colors[label], ls)
             else:
-                 color = colors[color_id % len(colors)]
-                 color_id += 1
-            dict_color_and_ls[label] = (color, ls)
+                dict_color_and_ls[label] = (colors[next_color_id % len(colors)], ls)
+                next_color_id += 1
 
 
 def get_color_and_ls(fpath, label=None):
@@ -179,16 +179,10 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
     if reference:
         legend_list += ['Reference']
 
-    # Put a legend below current axis
-    try: # for matplotlib <= 2009-12-09
-        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<3 else 3)
-    except Exception: # ZeroDivisionError: ValueError:
-        pass
 
-    ylabel = 'Cumulative length '
+    ylabel = 'Cumulative scaffold length '
     ylabel, mkfunc = y_formatter(ylabel, max_y)
-    matplotlib.pyplot.xlabel('Contig index', fontsize=axes_fontsize)
+    matplotlib.pyplot.xlabel('Scaffold index', fontsize=axes_fontsize)
     matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
 
     mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
@@ -203,10 +197,21 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
     #ax.set_yscale('log')
 
     #matplotlib.pyplot.ylim([0, int(float(max_y) * 1.1)])
+    plot_fpath1 = plot_fpath + '.' + qconfig.plot_extension
+    plot_fpath2 = plot_fpath + '.' + qconfig.plot_extension
+    matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
 
-    plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
-    logger.info('    saved to ' + plot_fpath)
+
+    # Put a legend below current axis
+    try: # for matplotlib <= 2009-12-09
+        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
+            shadow=True, ncol=n_columns if n_columns<3 else 3)
+    except Exception: # ZeroDivisionError: ValueError:
+        pass
+
+
+    matplotlib.pyplot.savefig(plot_fpath2, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath2)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
 
@@ -292,14 +297,8 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
 
     legend_list = map(qutils.label_from_fpath, contigs_fpaths)
 
-    # Put a legend below current axis
-    try: # for matplotlib <= 2009-12-09
-        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
-            shadow=True, ncol=n_columns if n_columns<3 else 3)
-    except Exception:
-        pass
 
-    ylabel = 'Contig length  '
+    ylabel = 'Scaffold length  '
     ylabel, mkfunc = y_formatter(ylabel, max_y)
     matplotlib.pyplot.xlabel('x', fontsize=axes_fontsize)
     matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
@@ -313,10 +312,21 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     xLocator, yLocator = get_locators()
     ax.yaxis.set_major_locator(yLocator)
     ax.xaxis.set_major_locator(xLocator)
+    
+    plot_fpath1 = plot_fpath + '.' + qconfig.plot_extension
+    plot_fpath2 = plot_fpath + ".legend." + qconfig.plot_extension     
+    matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
 
-    plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
-    logger.info('    saved to ' + plot_fpath)
+    # Put a legend below current axis
+    try: # for matplotlib <= 2009-12-09
+        ax.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,
+            shadow=True, ncol=n_columns if n_columns<3 else 3)
+    except Exception:
+        pass
+
+    matplotlib.pyplot.savefig(plot_fpath2, bbox_inches='tight')
+
+    logger.info('    saved to ' + plot_fpath2)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
 
@@ -603,7 +613,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             values.append(sum(filter(None, points_y))/len(points_y))
             refs.append(ref_names[i])
 
-    sorted_values = sorted(itertools.izip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
+    #sorted_values = sorted(itertools.izip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
     values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
     if draw_plots:
         matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
@@ -837,6 +847,94 @@ def draw_misassembl_plot(reports, plot_fpath, title='', yaxis_title=''):
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
 
+
+def draw_interspecies_translocations_plot(results, ref_names, target_ref, contigs_fpaths, plot_fpath, title=''):
+    if matplotlib_error:
+        return
+    if len(ref_names) <= 1:
+        return
+    import matplotlib.pyplot
+    import matplotlib.ticker
+    import math
+
+    contigs_num = len(contigs_fpaths)
+    refs = [ref for ref in ref_names if ref != target_ref]
+    values = []
+    for ref in refs:
+        points_y = [results[i][target_ref][ref] for i in range(contigs_num) if results[i]]
+        values.append((ref, sum(filter(None, points_y))/float(len(points_y))))
+
+    values = sorted(values, key=lambda x: x[1])
+    if values[-1][1] == 0:
+        return
+
+    sorted_refs = [res[0] for res in values]
+    refs_num = len(sorted_refs)
+    fig = matplotlib.pyplot.figure()
+    matplotlib.pyplot.title(target_ref)
+    ax = fig.add_subplot(111)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
+    ax.yaxis.grid(with_grid)
+    legend_n = []
+
+    bar_width = 0.3
+    ymax = 0
+    main_arr_x = range(1, (refs_num + 1))
+    if contigs_num > 1:
+        main_arr_x = [x*contigs_num/1.5 for x in main_arr_x]
+    arr_x = []
+    arr_y = []
+    for j, ref in enumerate(sorted_refs):
+        arr_x.append([0 for x in range(contigs_num)])
+        arr_y.append([0 for x in range(contigs_num)])
+        ymax_j = 0
+        for i in range(contigs_num):
+            result = results[i][target_ref][ref]
+            if result != '-':
+                arr_y[j][i] = float(result)
+                arr_x[j][i] = main_arr_x[j] + bar_width * 1.5 * (i - (contigs_num * 0.5))
+                legend_n.append(ref)
+                ymax_j = max(float(result), ymax_j)
+        ymax = max(ymax, ymax_j)
+
+    values = []
+    arr_y_by_refs = []
+    for i in range(refs_num):
+        points_y = [arr_y[i][j] for j in range(contigs_num)]
+        significant_points_y = [points_y[k] for k in range(len(points_y)) if points_y[k] is not None]
+        if significant_points_y:
+            arr_y_by_refs.append(points_y)
+            values.append(sum(filter(None, points_y))/len(points_y))
+
+    contigs_labels = []
+    for i in range(contigs_num):
+        if not results[i]:
+            continue
+        points_x = [arr_x[j][i] for j in range(len(arr_x)) if arr_x[j][i] != 0]
+        points_y = [arr_y_by_refs[j][i] for j in range(len(arr_y_by_refs))]
+        if points_y and points_x:
+            color, ls = get_color_and_ls(contigs_fpaths[i])
+            contigs_labels.append(qutils.label_from_fpath(contigs_fpaths[i]))
+            ax.plot(points_x, points_y, 'o:', color=color, ls=ls)
+
+    matplotlib.pyplot.xticks(main_arr_x, sorted_refs, size='small', rotation='vertical')
+    matplotlib.pyplot.xlim([0, main_arr_x[-1]+1])
+
+    if ymax == 0:
+        matplotlib.pyplot.ylim([0, 5])
+    else:
+        matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
+    matplotlib.pyplot.ylabel('Intergenomic misassemblies', fontsize=axes_fontsize)
+    legend = ax.legend(contigs_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True, numpoints=1)
+
+    matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
+    matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
+    plot_fpath += plots_file_ext
+    matplotlib.pyplot.tight_layout()
+    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath)
+    return
 
 def draw_report_table(report_name, extra_info, table_to_draw, column_widths):
     if matplotlib_error:
