@@ -300,7 +300,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
 
     ylabel = 'Scaffold length  '
     ylabel, mkfunc = y_formatter(ylabel, max_y)
-    matplotlib.pyplot.xlabel('x', fontsize=axes_fontsize)
+    matplotlib.pyplot.xlabel("", fontsize=axes_fontsize)
     matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
 
     mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
