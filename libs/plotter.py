@@ -930,7 +930,72 @@ def draw_interspecies_translocations_plot(results, ref_names, target_ref, contig
 
     matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
     matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
-    plot_fpath += plots_file_ext
+    plot_fpath += '.' + qconfig.plot_extension
+    matplotlib.pyplot.tight_layout()
+    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath)
+    return
+
+def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
+    if matplotlib_error:
+        return
+
+    meta_logger.info('  Drawing metaQUAST summary misassemblies plot for ' + title + '...')
+    import matplotlib.pyplot
+    import matplotlib.ticker
+    import math
+    if not results:
+        meta_logger.info('  Warning! Nothing aligned for ' + title + '...')
+        return
+
+    refs_num = len(refs)
+    fig = matplotlib.pyplot.figure()
+    ax = fig.add_subplot(111)
+    matplotlib.pyplot.title(title)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
+    ax.yaxis.grid(with_grid)
+    misassemblies = [reporting.Fields.MIS_RELOCATION, reporting.Fields.MIS_TRANSLOCATION, reporting.Fields.MIS_INVERTION,
+                           reporting.Fields.MIS_ISTRANSLOCATIONS, reporting.Fields.TAB + reporting.Fields.CONTIGS_WITH_ISTRANSLOCATIONS]
+
+    sorted_results = []
+    for ref in refs:
+        sorted_results.append((ref, sum(results[ref])))
+    sorted_results = sorted(sorted_results, key=lambda x: x[1])
+    sorted_refs = [res[0] for res in sorted_results]
+    legend_n = []
+    ymax = 0
+    arr_x = range(1, refs_num + 1)
+    bar_width = 0.3
+    to_plot = {}
+    for type_misassembly in range(len(misassemblies)):
+        for j, ref in enumerate(sorted_refs):
+            if type_misassembly == 0:
+                to_plot[ref] = []
+            result = results[ref][type_misassembly] if results[ref][type_misassembly] else None
+            if result and result != '-':
+                to_plot[ref].append(float(result))
+                ax.bar(arr_x[j], to_plot[ref][-1], width=bar_width, color=colors[type_misassembly], bottom=sum(to_plot[ref][:-1]))
+                legend_n.append(type_misassembly)
+                ymax = max(ymax, float(sum(to_plot[ref])))
+
+    matplotlib.pyplot.xticks(range(1, len(sorted_refs) + 1), sorted_refs, size='small', rotation='vertical')
+
+    matplotlib.pyplot.xlim([0, refs_num + 1])
+
+    if ymax == 0:
+        matplotlib.pyplot.ylim([0, 5])
+    else:
+        matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
+    matplotlib.pyplot.ylabel('Intragenomic misassemblies', fontsize=axes_fontsize)
+
+    legend = ax.legend(misassemblies, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True)
+    for num_line in range(len(legend.legendHandles)):
+        legend.legendHandles[num_line].set_color(colors[num_line])
+
+    matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
+    matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
+    plot_fpath += '.' + qconfig.plot_extension
     matplotlib.pyplot.tight_layout()
     matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
     logger.info('    saved to ' + plot_fpath)

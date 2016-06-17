@@ -48,7 +48,7 @@ class Misassembly:
     INTERSPECTRANSLOCATION = 4  #for --meta, if translocation occurs between chromosomes of different references
     SCAFFOLD_GAP = 5
     FRAGMENTED = 6
-
+    POTENTIALLY_IS_TRANSLOCATIONS = 7
 
 class StructuralVariations(object):
     def __init__(self):
@@ -1833,7 +1833,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
                                 row['values'].append(None)
                             else:
                                 row['values'].append(ref_misassemblies[i][ref][k])
-                        all_rows[-1]['values'].append(max(0, sum([r for r in row['values'] if r])  + total_misassemblies_by_refs[0][k][4] ))
+                        all_rows[-1]['values'].append(max(0, sum([r for r in row['values'] if r])  + total_misassemblies_by_refs[0][k][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] ))
                         cur_rows.append(row)
                     misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs_%s.info' % assembly_name)
                     print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecies translocations by references: \n'
@@ -1858,7 +1858,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
                 misassemblies.append(cur_results)
             is_translocations_plot_fpath = os.path.join(output_dir, 'interspecies_translocations.' + qconfig.plot_extension)
             plotter.draw_meta_summary_plot(output_dir, aligned_contigs_labels, all_refs, all_rows, misassemblies, is_translocations_plot_fpath,
-                                           title='Intergenomic misassemblies', reverse=False, yaxis_title=None, print_all_refs=True)
+                                           title='Intergenomic misassemblies', reverse=False, yaxis_title=None)
 
     def save_result(result):
         report = reporting.get(fname)
