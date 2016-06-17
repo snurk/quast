@@ -198,7 +198,7 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
 
     #matplotlib.pyplot.ylim([0, int(float(max_y) * 1.1)])
     plot_fpath1 = plot_fpath + '.' + qconfig.plot_extension
-    plot_fpath2 = plot_fpath + '.' + qconfig.plot_extension
+    plot_fpath2 = plot_fpath + '.legend.' + qconfig.plot_extension
     matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
 
 
@@ -614,7 +614,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             refs.append(ref_names[i])
 
     #sorted_values = sorted(itertools.izip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
-    values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
+    #values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
     if draw_plots:
         matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
     json_points_x = []
@@ -628,7 +628,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         json_points_x.append(points_x)
         json_points_y.append(points_y)
 
-    if qconfig.html_report:
+    if qconfig.html_report and html_fpath != "":
         from libs.html_saver import html_saver
         html_saver.save_meta_summary(html_fpath, output_dirpath, json_points_x, json_points_y,
                                      title.replace(' ', '_'), labels, refs)
