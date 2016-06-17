@@ -567,6 +567,7 @@ def histogram(contigs_fpaths, values, plot_fpath, title='', yaxis_title='', bott
 
 # metaQuast summary plots (per each metric separately)
 def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_rows, results, plot_fpath, title='', reverse=False, yaxis_title=''):
+
     draw_plots = True
     if matplotlib_error or not qconfig.draw_plots:
         draw_plots = False
@@ -586,6 +587,13 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
     ref_num = len(ref_names)
     contigs_num = len(labels)
 
+    fig = matplotlib.pyplot.figure(figsize=(12, 9))
+    ax = fig.add_subplot(111)
+    matplotlib.pyplot.title(title)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
+    ax.yaxis.grid(with_grid)
+    print_all_refs = True
     arr_x = []
     arr_y = []
     values = []
@@ -599,6 +607,8 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             to_plot_x.append(arr[i])
             if results[i][j] and results[i][j] != '-':
                 to_plot_y.append(float(results[i][j]))
+            elif print_all_refs and results[i][j] != '-':
+                to_plot_y.append(0)
             else:
                 to_plot_y.append(None)
         arr_x.append(to_plot_x)
@@ -613,25 +623,45 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             values.append(sum(filter(None, points_y))/len(points_y))
             refs.append(ref_names[i])
 
-    #sorted_values = sorted(itertools.izip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
+    sorted_values = sorted(itertools.izip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
     #values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
-    if draw_plots:
-        matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
+    matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
     json_points_x = []
     json_points_y = []
     for j in range(contigs_num):
         points_x = [arr_x[j][i] for i in range(len(arr_y_by_refs))]
         points_y = [arr_y_by_refs[i][j] for i in range(len(arr_y_by_refs))]
-        if draw_plots:
-            color, ls = get_color_and_ls(None, labels[j])
-            ax.plot(points_x, points_y, 'o:', color=color, ls=ls)
+        color, ls = get_color_and_ls(None, labels[j])
+        ax.plot(points_x, points_y, 'ro:', color=color, ls=ls)
         json_points_x.append(points_x)
         json_points_y.append(points_y)
 
-    if qconfig.html_report and html_fpath != "":
-        from libs.html_saver import html_saver
-        html_saver.save_meta_summary(html_fpath, output_dirpath, json_points_x, json_points_y,
-                                     title.replace(' ', '_'), labels, refs)
+    matplotlib.pyplot.xlim([0, len(refs) + 1])
+    ymax = 0
+    for i in range(ref_num):
+        for j in range(contigs_num):
+            if all_rows[j + 1]['values'][i] is not None and all_rows[j + 1]['values'][i] != '-':
+                ymax = max(ymax, float(all_rows[j + 1]['values'][i]))
+    if ymax == 0:
+        matplotlib.pyplot.ylim([0, 5])
+    else:
+        matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.05)])
+
+    if yaxis_title:
+        ylabel = yaxis_title
+        ylabel, mkfunc = y_formatter(ylabel, ymax)
+        matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
+        mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
+        ax.yaxis.set_major_formatter(mkformatter)
+
+    if ymax == 0:
+        matplotlib.pyplot.ylim([0, 5])
+
+    if qconfig.html_report:
+	if html_fpath != "":
+	    from libs.html_saver import html_saver
+            html_saver.save_meta_summary(html_fpath, output_dirpath, json_points_x, json_points_y,
+                                         title.replace(' ', '_'), labels, refs)
     if draw_plots:
         matplotlib.pyplot.xlim([0, ref_num + 1])
         ymax = 0
@@ -644,27 +674,16 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         else:
             matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.05)])
 
-        if yaxis_title:
-            ylabel = yaxis_title
-            ylabel, mkfunc = y_formatter(ylabel, ymax)
-            matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
-            mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
-            ax.yaxis.set_major_formatter(mkformatter)
-
-        if ymax == 0:
-            matplotlib.pyplot.ylim([0, 5])
-
-        legend = []
-        for j in range(contigs_num):
-            legend.append(labels[j])
-        try:
-            ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
-        except Exception:
-            pass
-        matplotlib.pyplot.tight_layout()
-        matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
-        logger.info('    saved to ' + plot_fpath)
-        matplotlib.pyplot.close()
+#    legend = []
+#    for j in range(contigs_num):
+#        legend.append(labels[j])
+#    try:
+#        ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
+#    except Exception:
+#        pass
+    matplotlib.pyplot.tight_layout()
+    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    logger.info('    saved to ' + plot_fpath)
 
 
 # metaQuast misassemblies by types plots (all references for 1 assembly)
