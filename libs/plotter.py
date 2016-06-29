@@ -658,8 +658,8 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         matplotlib.pyplot.ylim([0, 5])
 
     if qconfig.html_report:
-	if html_fpath != "":
-	    from libs.html_saver import html_saver
+        if html_fpath != "":
+            from libs.html_saver import html_saver
             html_saver.save_meta_summary(html_fpath, output_dirpath, json_points_x, json_points_y,
                                          title.replace(' ', '_'), labels, refs)
     if draw_plots:
@@ -881,10 +881,11 @@ def draw_interspecies_translocations_plot(results, ref_names, target_ref, contig
     values = []
     for ref in refs:
         points_y = [results[i][target_ref][ref] for i in range(contigs_num) if results[i]]
-        values.append((ref, sum(filter(None, points_y))/float(len(points_y))))
+        if points_y:
+            values.append((ref, sum(filter(None, points_y))/float(len(points_y))))
 
     values = sorted(values, key=lambda x: x[1])
-    if values[-1][1] == 0:
+    if not values or values[-1][1] == 0:
         return
 
     sorted_refs = [res[0] for res in values]
