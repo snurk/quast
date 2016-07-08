@@ -48,7 +48,8 @@ class Misassembly:
     INTERSPECTRANSLOCATION = 4  #for --meta, if translocation occurs between chromosomes of different references
     SCAFFOLD_GAP = 5
     FRAGMENTED = 6
-    POTENTIALLY_IS_TRANSLOCATIONS = 7
+    POTENTIALLY_MIS_CONTIGS = 7
+    POTENTIALLY_MISASSEMBLIES = 8
 
 class StructuralVariations(object):
     def __init__(self):
@@ -587,26 +588,42 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
             return False
         return gap_in_contig.count('N')/len(gap_in_contig) > 0.95
 
-    def check_for_potential_translocation(cur_ref, seq, ctg_len, sorted_aligns):
-        count_ns = 0
-        unaligned_len = 0
-        prev_start = 0
-        for align in sorted_aligns:
-            if align.start() > prev_start + 1:
-                unaligned_part = seq[prev_start + 1: align.start()]
-                unaligned_len += len(unaligned_part)
-                count_ns += unaligned_part.count('N')
-            prev_start = align.end()
-        if ctg_len > sorted_aligns[-1].end() + 1:
-            unaligned_part = seq[sorted_aligns[-1].end() + 1: ctg_len]
-            unaligned_len += len(unaligned_part)
-            count_ns += unaligned_part.count('N')
-        if count_ns / float(unaligned_len) >= 0.95 or unaligned_len - count_ns < qconfig.significant_part_size:
-            return 0
+    def calculate_unaligned_part(seq, align, region_misassemblies):
+        unaligned_part = seq
+        unaligned_len = len(unaligned_part)
+        count_ns = unaligned_part.count('N')
+        possible_misassembly = 0
+        if count_ns / float(unaligned_len) < 0.95 and unaligned_len - count_ns >= qconfig.significant_part_size:
+            cur_ref = ref_labels_by_chromosomes[align.ref]
+            total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_MISASSEMBLIES] += 1
+            region_misassemblies.append(Misassembly.POTENTIALLY_MISASSEMBLIES)
+            possible_misassembly = 1
+        return possible_misassembly, unaligned_len, count_ns
 
-        total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] += 1
+    def check_for_potential_translocation(seq, ctg_len, sorted_aligns, region_misassemblies):
+        total_count_ns = 0
+        total_unaligned_len = 0
+        prev_end = 1
+        misassemblies_count = 0
+        for align in sorted_aligns:
+            if align.start() > prev_end + 1:
+                possible_misassembly, unaligned_len, count_ns = calculate_unaligned_part(seq[prev_end + 1: align.start()],
+                                                                                         align, region_misassemblies)
+                misassemblies_count += possible_misassembly
+                total_unaligned_len += unaligned_len
+                total_count_ns += count_ns
+            prev_end = align.end()
+        if ctg_len > prev_end + 1:
+            possible_misassembly, unaligned_len, count_ns = calculate_unaligned_part(seq[prev_end + 1: ctg_len], sorted_aligns[-1], region_misassemblies)
+            misassemblies_count += possible_misassembly
+            total_unaligned_len += unaligned_len
+            total_count_ns += count_ns
+        if not misassemblies_count:
+            return
+
+        # total_misassemblies_by_refs[cur_ref][Misassembly.POTENTIALLY_MIS_CONTIGS] += 1
+        region_misassemblies.append(Misassembly.POTENTIALLY_MIS_CONTIGS)
         print >> planta_out_f, '\t\tIt can contain interspecies translocations'
-        return 1
 
     def process_misassembled_contig(sorted_aligns, cyclic, aligned_lengths, region_misassemblies, reg_lens, ref_aligns,
                                     ref_features, contig_seq, references_misassemblies, region_struct_variations, misassemblies_matched_sv, total_misassemblies_by_refs):
@@ -840,7 +857,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     partially_unaligned_with_misassembly = 0
     partially_unaligned_with_significant_parts = 0
     misassembly_internal_overlap = 0
-    contigs_with_istranslocations = 0
 
     region_misassemblies = []
     misassembled_contigs = {}
@@ -849,7 +865,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         references_misassemblies[ref] = dict((key, 0) for key in ref_labels_by_chromosomes.values())
     total_misassemblies_by_refs = {}
     for ref in ref_labels_by_chromosomes.values():
-        total_misassemblies_by_refs[ref] = [0] * (Misassembly.POTENTIALLY_IS_TRANSLOCATIONS+1)
+        total_misassemblies_by_refs[ref] = [0] * (Misassembly.POTENTIALLY_MISASSEMBLIES + 1)
 
 
     aligned_lengths = []
@@ -1162,8 +1178,8 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                             print >> planta_out_f, '\t\tThis contig has both significant aligned and unaligned parts ' \
                                                    '(of length >= %d)!' % (qconfig.significant_part_size)
                             if qconfig.meta and ref_labels_by_chromosomes:
-                                cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
-                                contigs_with_istranslocations += check_for_potential_translocation(cur_ref, seq, ctg_len, real_aligns)
+                                check_for_potential_translocation(seq, ctg_len, real_aligns, region_misassemblies)
+
                     ref_aligns.setdefault(the_only_align.ref, []).append(the_only_align)
                 else:
                     #Sort real alignments by position on the contig
@@ -1234,8 +1250,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                             print >> planta_out_f, '\t\tThis contig has both significant aligned and unaligned parts ' \
                                                    '(of length >= %d)!' % (qconfig.significant_part_size)
                             if qconfig.meta and ref_labels_by_chromosomes:
-                                cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
-                                contigs_with_istranslocations += check_for_potential_translocation(cur_ref, seq, ctg_len, sorted_aligns)
+                                check_for_potential_translocation(seq, ctg_len, sorted_aligns, region_misassemblies)
                         continue
 
                     ### processing misassemblies
@@ -1250,8 +1265,7 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
                         print >> planta_out_f, '\t\tThis contig has significant unaligned parts ' \
                                                '(of length >= %d)!' % (qconfig.significant_part_size)
                         if qconfig.meta and ref_labels_by_chromosomes:
-                            cur_ref = ref_labels_by_chromosomes[sorted_aligns[0].ref]
-                            contigs_with_istranslocations += check_for_potential_translocation(cur_ref, seq, ctg_len, sorted_aligns)
+                            check_for_potential_translocation(seq, ctg_len, sorted_aligns, region_misassemblies)
         else:
             #No aligns to this contig
             print >> planta_out_f, '\t\tThis contig is unaligned. (%d bp)' % ctg_len
@@ -1605,8 +1619,9 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
     if qconfig.is_combined_ref:
         print >> planta_out_f, '\t\tInterspecies translocations: %d' % region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION)
     print >> planta_out_f, '\t\tInversions: %d' % region_misassemblies.count(Misassembly.INVERSION)
-    if qconfig.is_combined_ref:
-        print >> planta_out_f, '\tPotentially Misassembled Contigs (i/s translocations): %d' % contigs_with_istranslocations
+    if qconfig.meta:
+        print >> planta_out_f, '\tPotentially Misassembled Contigs (i/s translocations): %d' % region_misassemblies.count(Misassembly.POTENTIALLY_MIS_CONTIGS)
+        print >> planta_out_f, '\tPotential Misassemblies (i/s translocations): %d' % region_misassemblies.count(Misassembly.POTENTIALLY_MISASSEMBLIES)
     if qconfig.scaffolds and contigs_fpath not in qconfig.dict_of_broken_scaffolds:
         print >> planta_out_f, '\tScaffold gap misassemblies: %d' % region_misassemblies.count(Misassembly.SCAFFOLD_GAP)
     if bed_fpath:
@@ -1706,7 +1721,6 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
               'total_aligned_bases': total_aligned_bases,
               'partially_unaligned_with_misassembly': partially_unaligned_with_misassembly,
               'partially_unaligned_with_significant_parts': partially_unaligned_with_significant_parts,
-              'contigs_with_istranslocations': contigs_with_istranslocations,
               'istranslocations_by_refs': references_misassemblies, 
               'total_misassemblies_by_refs': total_misassemblies_by_refs}
 
@@ -1856,7 +1870,8 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
                                 row['values'].append(None)
                             else:
                                 row['values'].append(ref_misassemblies[i][ref][k])
-                        all_rows[-1]['values'].append(max(0, sum([r for r in row['values'] if r])  + total_misassemblies_by_refs[0][k][Misassembly.POTENTIALLY_IS_TRANSLOCATIONS] ))
+                        all_rows[-1]['values'].append(max(0, sum([r for r in row['values'] if r]) +
+                                                          total_misassemblies_by_refs[0][k][Misassembly.POTENTIALLY_MISASSEMBLIES] ))
                         cur_rows.append(row)
                     misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs_%s.info' % assembly_name)
                     print >> open(misassembly_by_ref_fpath, 'w'), 'Number of interspecies translocations by references: \n'
@@ -1904,7 +1919,6 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
         total_aligned_bases = result['total_aligned_bases']
         partially_unaligned_with_misassembly = result['partially_unaligned_with_misassembly']
         partially_unaligned_with_significant_parts = result['partially_unaligned_with_significant_parts']
-        contigs_with_istranslocations = result['contigs_with_istranslocations']
 
         report.add_field(reporting.Fields.AVGIDY, '%.3f' % avg_idy)
         report.add_field(reporting.Fields.MISLOCAL, region_misassemblies.count(Misassembly.LOCAL))
@@ -1944,7 +1958,8 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
         if qconfig.is_combined_ref:
             report.add_field(reporting.Fields.MIS_ISTRANSLOCATIONS, region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION))
         if qconfig.meta:
-            report.add_field(reporting.Fields.CONTIGS_WITH_ISTRANSLOCATIONS, contigs_with_istranslocations)
+            report.add_field(reporting.Fields.POTENTIALLY_MIS_CONTIGS, region_misassemblies.count(Misassembly.POTENTIALLY_MIS_CONTIGS))
+            report.add_field(reporting.Fields.POTENTIALLY_MISASSEMBLIES, region_misassemblies.count(Misassembly.POTENTIALLY_MISASSEMBLIES))
         if qconfig.scaffolds and fname not in qconfig.dict_of_broken_scaffolds:
             report.add_field(reporting.Fields.MIS_SCAFFOLDS_GAP, region_misassemblies.count(Misassembly.SCAFFOLD_GAP))
         if qconfig.check_for_fragmented_ref:

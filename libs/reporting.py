@@ -56,7 +56,8 @@ class Fields:
     MIS_LOCAL = '# local misassemblies'
     MIS_SCAFFOLDS_GAP = '# scaffold gap size misassemblies'
     MIS_FRAGMENTED = '# misassemblies caused by fragmented reference'
-    CONTIGS_WITH_ISTRANSLOCATIONS = '# possibly misassembled contigs'
+    POTENTIALLY_MIS_CONTIGS = '# possibly misassembled contigs'
+    POTENTIALLY_MISASSEMBLIES = '# possibly misassemblies'
     ### structural variations
     STRUCT_VARIATIONS = '# structural variations'
 
@@ -125,7 +126,7 @@ class Fields:
 
     # content and order of metrics in DETAILED MISASSEMBLIES REPORT (<quast_output_dir>/contigs_reports/misassemblies_report.txt, .tex, .tsv)
     misassemblies_order = [NAME, MIS_ALL_EXTENSIVE, MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
-                           MIS_ISTRANSLOCATIONS, CONTIGS_WITH_ISTRANSLOCATIONS,
+                           MIS_ISTRANSLOCATIONS, POTENTIALLY_MIS_CONTIGS, POTENTIALLY_MISASSEMBLIES,
                            MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES,
                            MIS_LOCAL, MIS_SCAFFOLDS_GAP, MIS_FRAGMENTED, STRUCT_VARIATIONS, MISMATCHES,
                            INDELS, MIS_SHORT_INDELS, MIS_LONG_INDELS, INDELSBASES]
@@ -175,7 +176,7 @@ class Fields:
 
         ('Misassemblies', [MIS_ALL_EXTENSIVE,
                            MIS_RELOCATION, MIS_TRANSLOCATION, MIS_INVERTION,
-                           MIS_ISTRANSLOCATIONS, CONTIGS_WITH_ISTRANSLOCATIONS,
+                           MIS_ISTRANSLOCATIONS, POTENTIALLY_MIS_CONTIGS, POTENTIALLY_MISASSEMBLIES,
                            MIS_EXTENSIVE_CONTIGS, MIS_EXTENSIVE_BASES,
                            MIS_LOCAL, MIS_SCAFFOLDS_GAP, STRUCT_VARIATIONS]),
 
@@ -218,7 +219,7 @@ class Fields:
         Quality.LESS_IS_BETTER:
             [CONTIGS, CONTIGS__FOR_THRESHOLDS, L50, LG50, L75, LG75,
              MISLOCAL, MISASSEMBL, MISCONTIGS, MISCONTIGSBASES, MISINTERNALOVERLAP,
-             CONTIGS_WITH_ISTRANSLOCATIONS,
+             POTENTIALLY_MIS_CONTIGS, POTENTIALLY_MISASSEMBLIES,
              UNALIGNED, UNALIGNEDBASES, AMBIGUOUS, AMBIGUOUSEXTRABASES,
              UNCALLED, UNCALLED_PERCENT,
              LA50, LGA50, LA75, LGA75, DUPLICATION_RATIO, INDELS, INDELSERROR, MISMATCHES, SUBSERROR,

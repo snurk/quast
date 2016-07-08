@@ -12,6 +12,10 @@
 # Feel free to add more colors
 #colors = ['#E41A1C', '#377EB8', '#4DAF4A', '#984EA3', '#FF7F00', '#A65628', '#F781BF', '#FFFF33']  ## 8-color palette
 #red, blue, green, magenta, orange, maroon, aqua, light green, light purple, olive, navy, team, lime
+from collections import defaultdict
+
+from libs.contigs_analyzer import Misassembly
+
 colors = ['#E31A1C', '#1F78B4', '#33A02C', '#6A3D9A', '#FF7F00', '#800000', '#A6CEE3', '#B2DF8A','#333300', '#CCCC00',
           '#000080', '#008080', '#00FF00'] # 14-color palette
 
@@ -975,8 +979,10 @@ def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
     ax.yaxis.grid(with_grid)
-    misassemblies = [reporting.Fields.MIS_RELOCATION, reporting.Fields.MIS_TRANSLOCATION, reporting.Fields.MIS_INVERTION,
-                           reporting.Fields.MIS_ISTRANSLOCATIONS, reporting.Fields.TAB + reporting.Fields.CONTIGS_WITH_ISTRANSLOCATIONS]
+    misassemblies_labels = [reporting.Fields.MIS_RELOCATION, reporting.Fields.MIS_TRANSLOCATION, reporting.Fields.MIS_INVERTION,
+                           reporting.Fields.MIS_ISTRANSLOCATIONS, reporting.Fields.TAB + reporting.Fields.POTENTIALLY_MISASSEMBLIES]
+    misassemblies = [Misassembly.RELOCATION, Misassembly.TRANSLOCATION, Misassembly.INVERSION, Misassembly.INTERSPECTRANSLOCATION,
+                     Misassembly.POTENTIALLY_MISASSEMBLIES]
 
     sorted_results = []
     for ref in refs:
@@ -987,11 +993,9 @@ def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
     ymax = 0
     arr_x = range(1, refs_num + 1)
     bar_width = 0.3
-    to_plot = {}
-    for type_misassembly in range(len(misassemblies)):
+    to_plot = defaultdict(list)
+    for type_misassembly in misassemblies:
         for j, ref in enumerate(sorted_refs):
-            if type_misassembly == 0:
-                to_plot[ref] = []
             result = results[ref][type_misassembly] if results[ref][type_misassembly] else None
             if result and result != '-':
                 to_plot[ref].append(float(result))
@@ -1009,7 +1013,7 @@ def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
         matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
     matplotlib.pyplot.ylabel('Intragenomic misassemblies', fontsize=axes_fontsize)
 
-    legend = ax.legend(misassemblies, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True)
+    legend = ax.legend(misassemblies_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True)
     for num_line in range(len(legend.legendHandles)):
         legend.legendHandles[num_line].set_color(colors[num_line])
 
