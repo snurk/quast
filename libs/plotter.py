@@ -989,19 +989,22 @@ def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
         sorted_results.append((ref, sum(results[ref])))
     sorted_results = sorted(sorted_results, key=lambda x: x[1])
     sorted_refs = [res[0] for res in sorted_results]
-    legend_n = []
+    legend_labels = []
     ymax = 0
     arr_x = range(1, refs_num + 1)
     bar_width = 0.3
     to_plot = defaultdict(list)
-    for type_misassembly in misassemblies:
+    for i, type_misassembly in enumerate(misassemblies):
+        use_misassembly = False
         for j, ref in enumerate(sorted_refs):
             result = results[ref][type_misassembly] if results[ref][type_misassembly] else None
             if result and result != '-':
                 to_plot[ref].append(float(result))
-                ax.bar(arr_x[j], to_plot[ref][-1], width=bar_width, color=colors[type_misassembly], bottom=sum(to_plot[ref][:-1]))
-                legend_n.append(type_misassembly)
+                ax.bar(arr_x[j], to_plot[ref][-1], width=bar_width, color=colors[i], bottom=sum(to_plot[ref][:-1]))
                 ymax = max(ymax, float(sum(to_plot[ref])))
+                use_misassembly = True
+        if use_misassembly:
+            legend_labels.append(misassemblies_labels[i])
 
     matplotlib.pyplot.xticks(range(1, len(sorted_refs) + 1), sorted_refs, size='small', rotation='vertical')
 
@@ -1013,9 +1016,10 @@ def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):
         matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
     matplotlib.pyplot.ylabel('Intragenomic misassemblies', fontsize=axes_fontsize)
 
-    legend = ax.legend(misassemblies_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True)
+    legend = ax.legend(legend_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True)
     for num_line in range(len(legend.legendHandles)):
-        legend.legendHandles[num_line].set_color(colors[num_line])
+        line_color = colors[misassemblies_labels.index(legend_labels[num_line])]
+        legend.legendHandles[num_line].set_color(line_color)
 
     matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
     matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
