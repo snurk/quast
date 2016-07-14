@@ -628,7 +628,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             refs.append(ref_names[i])
 
     sorted_values = sorted(itertools.izip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
-    #values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
+    values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
     matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
     json_points_x = []
     json_points_y = []
