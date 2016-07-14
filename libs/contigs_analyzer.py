@@ -21,6 +21,10 @@ import os
 import copy
 import platform
 import datetime
+try:
+   from collections import OrderedDict
+except ImportError:
+   from site_packages.ordered_dict import OrderedDict
 from itertools import repeat
 from os.path import isfile, join
 
@@ -36,7 +40,7 @@ from qutils import correct_name
 def bin_fpath(fname):
     return join(ca_utils.contig_aligner_dirpath, fname)
 
-ref_labels_by_chromosomes = {}
+ref_labels_by_chromosomes = OrderedDict()
 COMBINED_REF_FNAME = 'combined_reference.fasta'
 
 
