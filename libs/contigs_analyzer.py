@@ -1620,9 +1620,11 @@ def plantakolya(cyclic, index, contigs_fpath, nucmer_fpath, output_dirpath, ref_
         print >> planta_out_f, 'Founded SNPs were written into', used_snps_fpath
     print >> planta_out_f, '\nResults:'
 
+    extensive_misassemblies = region_misassemblies.count(Misassembly.RELOCATION) + region_misassemblies.count(Misassembly.INVERSION) + \
+                              region_misassemblies.count(Misassembly.TRANSLOCATION) + region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION)
+
     print >> planta_out_f, '\tLocal Misassemblies: %d' % region_misassemblies.count(Misassembly.LOCAL)
-    print >> planta_out_f, '\tMisassemblies: %d' % (len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL)
-                                                    - region_misassemblies.count(Misassembly.SCAFFOLD_GAP) - region_misassemblies.count(Misassembly.FRAGMENTED))
+    print >> planta_out_f, '\tMisassemblies: %d' % extensive_misassemblies
     print >> planta_out_f, '\t\tRelocations: %d' % region_misassemblies.count(Misassembly.RELOCATION)
     print >> planta_out_f, '\t\tTranslocations: %d' % region_misassemblies.count(Misassembly.TRANSLOCATION)
     if qconfig.is_combined_ref:
@@ -1928,11 +1930,11 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
         total_aligned_bases = result['total_aligned_bases']
         partially_unaligned_with_misassembly = result['partially_unaligned_with_misassembly']
         partially_unaligned_with_significant_parts = result['partially_unaligned_with_significant_parts']
+        extensive_misassemblies = region_misassemblies.count(Misassembly.RELOCATION) + region_misassemblies.count(Misassembly.INVERSION) + \
+                                  region_misassemblies.count(Misassembly.TRANSLOCATION) + region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION)
 
         report.add_field(reporting.Fields.AVGIDY, '%.3f' % avg_idy)
-        report.add_field(reporting.Fields.MISLOCAL, region_misassemblies.count(Misassembly.LOCAL))
-        report.add_field(reporting.Fields.MISASSEMBL, len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL)
-                         - region_misassemblies.count(Misassembly.SCAFFOLD_GAP) - region_misassemblies.count(Misassembly.FRAGMENTED))
+        report.add_field(reporting.Fields.MISLOCAL, extensive_misassemblies)
         report.add_field(reporting.Fields.MISCONTIGS, len(misassembled_contigs))
         report.add_field(reporting.Fields.MISCONTIGSBASES, misassembled_bases)
         report.add_field(reporting.Fields.MISINTERNALOVERLAP, misassembly_internal_overlap)
@@ -1956,8 +1958,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
                                                                      * 100000.0 / float(total_aligned_bases)))
 
         # for misassemblies report:
-        report.add_field(reporting.Fields.MIS_ALL_EXTENSIVE, len(region_misassemblies) - region_misassemblies.count(Misassembly.LOCAL)
-                         - region_misassemblies.count(Misassembly.SCAFFOLD_GAP) - region_misassemblies.count(Misassembly.FRAGMENTED))
+        report.add_field(reporting.Fields.MIS_ALL_EXTENSIVE, extensive_misassemblies)
         report.add_field(reporting.Fields.MIS_RELOCATION, region_misassemblies.count(Misassembly.RELOCATION))
         report.add_field(reporting.Fields.MIS_TRANSLOCATION, region_misassemblies.count(Misassembly.TRANSLOCATION))
         report.add_field(reporting.Fields.MIS_INVERTION, region_misassemblies.count(Misassembly.INVERSION))
