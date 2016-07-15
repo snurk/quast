@@ -1934,7 +1934,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
                                   region_misassemblies.count(Misassembly.TRANSLOCATION) + region_misassemblies.count(Misassembly.INTERSPECTRANSLOCATION)
 
         report.add_field(reporting.Fields.AVGIDY, '%.3f' % avg_idy)
-        report.add_field(reporting.Fields.MISLOCAL, extensive_misassemblies)
+        report.add_field(reporting.Fields.MISLOCAL, region_misassemblies.count(Misassembly.LOCAL))
         report.add_field(reporting.Fields.MISCONTIGS, len(misassembled_contigs))
         report.add_field(reporting.Fields.MISCONTIGSBASES, misassembled_bases)
         report.add_field(reporting.Fields.MISINTERNALOVERLAP, misassembly_internal_overlap)
