@@ -1848,6 +1848,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
         total_misassemblies_by_refs = [result['total_misassemblies_by_refs'] if result else [] for result in results]
         added_refs = set()
         all_refs = [added_refs.add(ref) or ref for ref in ref_labels_by_chromosomes.values() if ref not in added_refs]
+
         for i, fpath in enumerate(contigs_fpaths):
             assembly_name = qutils.name_from_fpath(fpath)
             misassemblies_by_ref_plot_fpath = os.path.join(output_dir, 'all_misassemblies_%s' % assembly_name)
@@ -1907,7 +1908,7 @@ def do(reference, contigs_fpaths, cyclic, output_dir, old_contigs_fpaths, bed_fp
                 misassemblies.append(cur_results)
             is_translocations_plot_fpath = os.path.join(output_dir, 'interspecies_translocations.' + qconfig.plot_extension)
             plotter.draw_meta_summary_plot("", output_dir, aligned_contigs_labels, all_refs, all_rows, misassemblies, is_translocations_plot_fpath,
-                                           title='Intergenomic misassemblies', reverse=False, yaxis_title=None)
+                                           title='# intergenomic misassemblies', reverse=False, yaxis_title=None)
 
     def save_result(result):
         report = reporting.get(fname)

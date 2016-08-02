@@ -23,7 +23,7 @@ colors = ['#E31A1C', '#1F78B4', '#33A02C', '#6A3D9A', '#FF7F00', '#800000', '#A6
 font = {'family': 'sans-serif',
         'style': 'normal',
         'weight': 'medium',
-        'size': 10}
+        'size': 16}
 
 # Line params
 line_width = 2.0
@@ -34,7 +34,7 @@ secondary_line_style = 'dashed' # used only if --scaffolds option is set
 n_columns = 4  # number of columns
 with_grid = True
 with_title = True
-axes_fontsize = 'xx-large' # fontsize of axes labels and ticks
+axes_fontsize = 'large'#'xx-large' # fontsize of axes labels and ticks
 
 # Special case: reference line params
 reference_color = '#000000'
@@ -629,7 +629,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
 
     # sorted_values = sorted(itertools.izip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
     # values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
-    matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
+    matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='medium', rotation='vertical')
     json_points_x = []
     json_points_y = []
     for j in range(contigs_num):
@@ -872,92 +872,92 @@ def draw_misassembl_plot(reports, plot_fpath, title='', yaxis_title=''):
 
 
 def draw_interspecies_translocations_plot(results, ref_names, target_ref, contigs_fpaths, plot_fpath, title=''):
-    if matplotlib_error:
-        return
-    if len(ref_names) <= 1:
-        return
-    import matplotlib.pyplot
-    import matplotlib.ticker
-    import math
-
-    contigs_num = len(contigs_fpaths)
-    refs = [ref for ref in ref_names if ref != target_ref]
-    values = []
-    for ref in refs:
-        points_y = [results[i][target_ref][ref] for i in range(contigs_num) if results[i]]
-        if points_y:
-            values.append((ref, sum(filter(None, points_y))/float(len(points_y))))
-
-    values = sorted(values, key=lambda x: x[1])
-    if not values or values[-1][1] == 0:
-        return
-
-    sorted_refs = [res[0] for res in values]
-    refs_num = len(sorted_refs)
-    fig = matplotlib.pyplot.figure()
-    matplotlib.pyplot.title(target_ref)
-    ax = fig.add_subplot(111)
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
-    ax.yaxis.grid(with_grid)
-    legend_n = []
-
-    bar_width = 0.3
-    ymax = 0
-    main_arr_x = range(1, (refs_num + 1))
-    if contigs_num > 1:
-        main_arr_x = [x*contigs_num/1.5 for x in main_arr_x]
-    arr_x = []
-    arr_y = []
-    for j, ref in enumerate(sorted_refs):
-        arr_x.append([0 for x in range(contigs_num)])
-        arr_y.append([0 for x in range(contigs_num)])
-        ymax_j = 0
-        for i in range(contigs_num):
-            result = results[i][target_ref][ref]
-            if result != '-':
-                arr_y[j][i] = float(result)
-                arr_x[j][i] = main_arr_x[j] + bar_width * 1.5 * (i - (contigs_num * 0.5))
-                legend_n.append(ref)
-                ymax_j = max(float(result), ymax_j)
-        ymax = max(ymax, ymax_j)
-
-    values = []
-    arr_y_by_refs = []
-    for i in range(refs_num):
-        points_y = [arr_y[i][j] for j in range(contigs_num)]
-        significant_points_y = [points_y[k] for k in range(len(points_y)) if points_y[k] is not None]
-        if significant_points_y:
-            arr_y_by_refs.append(points_y)
-            values.append(sum(filter(None, points_y))/len(points_y))
-
-    contigs_labels = []
-    for i in range(contigs_num):
-        if not results[i]:
-            continue
-        points_x = [arr_x[j][i] for j in range(len(arr_x)) if arr_x[j][i] != 0]
-        points_y = [arr_y_by_refs[j][i] for j in range(len(arr_y_by_refs))]
-        if points_y and points_x:
-            color, ls = get_color_and_ls(contigs_fpaths[i])
-            contigs_labels.append(qutils.label_from_fpath(contigs_fpaths[i]))
-            ax.plot(points_x, points_y, 'o:', color=color, ls=ls)
-
-    matplotlib.pyplot.xticks(main_arr_x, sorted_refs, size='small', rotation='vertical')
-    matplotlib.pyplot.xlim([0, main_arr_x[-1]+1])
-
-    if ymax == 0:
-        matplotlib.pyplot.ylim([0, 5])
-    else:
-        matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
-    matplotlib.pyplot.ylabel('Intergenomic misassemblies', fontsize=axes_fontsize)
-    legend = ax.legend(contigs_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True, numpoints=1)
-
-    matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
-    matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
-    plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.tight_layout()
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
-    logger.info('    saved to ' + plot_fpath)
+#    if matplotlib_error:
+#        return
+#    if len(ref_names) <= 1:
+#        return
+#    import matplotlib.pyplot
+#    import matplotlib.ticker
+#    import math
+#
+#    contigs_num = len(contigs_fpaths)
+#    refs = [ref for ref in ref_names if ref != target_ref]
+#    values = []
+#    for ref in refs:
+#        points_y = [results[i][target_ref][ref] for i in range(contigs_num) if results[i]]
+#        if points_y:
+#            values.append((ref, sum(filter(None, points_y))/float(len(points_y))))
+#
+#    values = sorted(values, key=lambda x: x[1])
+#    if not values or values[-1][1] == 0:
+#        return
+#
+#    sorted_refs = [res[0] for res in values]
+#    refs_num = len(sorted_refs)
+#    fig = matplotlib.pyplot.figure()
+#    matplotlib.pyplot.title(target_ref)
+#    ax = fig.add_subplot(111)
+#    box = ax.get_position()
+#    ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
+#    ax.yaxis.grid(with_grid)
+#    legend_n = []
+#
+#    bar_width = 0.3
+#    ymax = 0
+#    main_arr_x = range(1, (refs_num + 1))
+#    if contigs_num > 1:
+#        main_arr_x = [x*contigs_num/1.5 for x in main_arr_x]
+#    arr_x = []
+#    arr_y = []
+#    for j, ref in enumerate(sorted_refs):
+#        arr_x.append([0 for x in range(contigs_num)])
+#        arr_y.append([0 for x in range(contigs_num)])
+#        ymax_j = 0
+#        for i in range(contigs_num):
+#            result = results[i][target_ref][ref]
+#            if result != '-':
+#                arr_y[j][i] = float(result)
+#                arr_x[j][i] = main_arr_x[j] + bar_width * 1.5 * (i - (contigs_num * 0.5))
+#                legend_n.append(ref)
+#                ymax_j = max(float(result), ymax_j)
+#        ymax = max(ymax, ymax_j)
+#
+#    values = []
+#    arr_y_by_refs = []
+#    for i in range(refs_num):
+#        points_y = [arr_y[i][j] for j in range(contigs_num)]
+#        significant_points_y = [points_y[k] for k in range(len(points_y)) if points_y[k] is not None]
+#        if significant_points_y:
+#            arr_y_by_refs.append(points_y)
+#            values.append(sum(filter(None, points_y))/len(points_y))
+#
+#    contigs_labels = []
+#    for i in range(contigs_num):
+#        if not results[i]:
+#            continue
+#        points_x = [arr_x[j][i] for j in range(len(arr_x)) if arr_x[j][i] != 0]
+#        points_y = [arr_y_by_refs[j][i] for j in range(len(arr_y_by_refs))]
+#        if points_y and points_x:
+#            color, ls = get_color_and_ls(contigs_fpaths[i])
+#            contigs_labels.append(qutils.label_from_fpath(contigs_fpaths[i]))
+#            ax.plot(points_x, points_y, 'o:', color=color, ls=ls)
+#
+#    matplotlib.pyplot.xticks(main_arr_x, sorted_refs, size='medium', rotation='vertical')
+#    matplotlib.pyplot.xlim([0, main_arr_x[-1]+1])
+#
+#    if ymax == 0:
+#        matplotlib.pyplot.ylim([0, 5])
+#    else:
+#        matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.1)])
+#    matplotlib.pyplot.ylabel('Intergenomic misassemblies', fontsize=axes_fontsize)
+#    legend = ax.legend(contigs_labels, loc='center left', bbox_to_anchor=(1.0, 0.5), fancybox=True, numpoints=1)
+#
+#    matplotlib.pyplot.tick_params(axis='x',which='both',top='off')
+#    matplotlib.pyplot.tick_params(axis='y',which='both',right='off')
+#    plot_fpath += '.' + qconfig.plot_extension
+#    matplotlib.pyplot.tight_layout()
+#    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+#    logger.info('    saved to ' + plot_fpath)
     return
 
 def draw_all_misassemblies_plot(results, refs, plot_fpath, title=''):

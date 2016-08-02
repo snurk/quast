@@ -99,9 +99,12 @@ def do(html_fpath, output_dirpath, combined_output_dirpath, output_dirpath_per_r
                 if metric == reporting.Fields.TOTALLEN:
                     y_label = 'Total length '
                 elif metric in [reporting.Fields.LARGCONTIG, reporting.Fields.N50, reporting.Fields.NGA50, reporting.Fields.MIS_EXTENSIVE_BASES]:
-                    y_label = 'Contig length '
+                    y_label = 'Scaffold length '
+                ttl=metric
+                if metric == '# misassemblies':
+                    ttl = '# intragenomic misassemblies'
                 plotter.draw_meta_summary_plot(html_fpath, output_dirpath, labels, cur_ref_names, all_rows, results,
-                                               summary_png_fpath, title=metric, reverse=reverse, yaxis_title=y_label)
+                                               summary_png_fpath, title=ttl, reverse=reverse, yaxis_title=y_label)
                 if metric == reporting.Fields.MISASSEMBL:
                     mis_results = []
                     report_fname = os.path.join('contigs_reports', qconfig.transposed_report_prefix + '_misassemblies' + '.tsv')
