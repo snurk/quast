@@ -249,7 +249,7 @@ def save_combined_ref_stats(results, contigs_fpaths, ref_labels_by_chromosomes, 
         is_translocations_plot_fpath = os.path.join(output_dir, 'interspecies_translocations.' + qconfig.plot_extension)
         plotter.draw_meta_summary_plot('', output_dir, aligned_contigs_labels, all_refs, misassemblies_by_refs_rows,
                                        misassemblies,
-                                       is_translocations_plot_fpath, title='Intergenomic misassemblies', reverse=False,
+                                       is_translocations_plot_fpath, title='# intergenomic misassemblies', reverse=False,
                                        yaxis_title=None, print_all_refs=True)
 
 
