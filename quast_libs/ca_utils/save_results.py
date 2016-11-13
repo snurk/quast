@@ -195,7 +195,7 @@ def save_result_for_unaligned(result, report):
 def save_combined_ref_stats(results, contigs_fpaths, ref_labels_by_chromosomes, output_dir, logger):
     ref_misassemblies = [result['istranslocations_by_refs'] if result else [] for result in results]
     potential_misassemblies_by_refs = [result['potential_misassemblies_by_refs'] if result else [] for result in results]
-    all_refs = sorted(list(set([ref for ref in ref_labels_by_chromosomes.values()])))
+    all_refs = list(set([ref for ref in ref_labels_by_chromosomes.values()]))
     misassemblies_by_refs_rows = []
     row = {'metricName': 'References', 'values': all_refs}
     misassemblies_by_refs_rows.append(row)
