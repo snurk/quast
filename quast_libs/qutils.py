@@ -266,12 +266,12 @@ def parallel_correct_contigs(file_counter, contigs_fpath, corrected_dirpath, lab
 
     # if option --scaffolds is specified QUAST adds split version of assemblies to the comparison
     if qconfig.scaffolds and not qconfig.is_combined_ref and corr_fpath:
-        broken_scaffold_fpath, logs = broke_scaffolds(file_counter, labels, corr_fpath, corrected_dirpath, logs)
-        if broken_scaffold_fpath:
-            lengths = get_lengths_from_fasta(broken_scaffold_fpath, label + '_broken')
-            if lengths and (qconfig.no_check_meta or correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig)):
-                broken_scaffold_fpaths.append((broken_scaffold_fpath, lengths))
-                qconfig.dict_of_broken_scaffolds[broken_scaffold_fpath] = corr_fpath
+        # broken_scaffold_fpath, logs = broke_scaffolds(file_counter, labels, corr_fpath, corrected_dirpath, logs)
+        # if broken_scaffold_fpath:
+        #     lengths = get_lengths_from_fasta(broken_scaffold_fpath, label + '_broken')
+        #     if lengths and (qconfig.no_check_meta or correct_fasta(contigs_fpath, corr_fpath, qconfig.min_contig)):
+        #         broken_scaffold_fpaths.append((broken_scaffold_fpath, lengths))
+        #         qconfig.dict_of_broken_scaffolds[broken_scaffold_fpath] = corr_fpath
 
     return old_contigs_fpaths, corr_fpaths, broken_scaffold_fpaths, logs
 
