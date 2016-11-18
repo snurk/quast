@@ -206,9 +206,6 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
     #matplotlib.pyplot.ylim([0, int(float(max_y) * 1.1)])
 
 
-
-    plot_fpath += '.' + qconfig.plot_extension
-
     plot_fpath1 = plot_fpath + '.' + qconfig.plot_extension
     plot_fpath2 = plot_fpath + '.legend.' + qconfig.plot_extension
     matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
@@ -316,7 +313,6 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     ax.yaxis.set_major_locator(yLocator)
     ax.xaxis.set_major_locator(xLocator)
 
-    plot_fpath += '.' + qconfig.plot_extension
 
     plot_fpath1 = plot_fpath + '.' + qconfig.plot_extension
     plot_fpath2 = plot_fpath + '.legend.' + qconfig.plot_extension
@@ -747,7 +743,8 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         for j in range(contigs_num):
             legend.append(labels[j])
         try:
-            ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
+            print()
+            #ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
         except Exception:
             pass
         matplotlib.pyplot.tight_layout()
