@@ -67,7 +67,7 @@ def NG50_and_LG50(numlist, reference_length, percentage = 50.0):
             ng50 = l
             return ng50, lg50
 
-    return None, None
+    return 0, None
 
 
 def N50_and_L50(numlist, percentage = 50.0):
