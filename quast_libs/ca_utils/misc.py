@@ -14,6 +14,7 @@ import gzip
 import platform
 import os
 import shutil
+from collections import OrderedDict
 from itertools import repeat
 from os.path import isfile, isdir, join
 
@@ -22,7 +23,7 @@ from quast_libs.qutils import compile_tool, val_to_str, check_prev_compilation_f
 
 contig_aligner = None
 contig_aligner_dirpath = None
-ref_labels_by_chromosomes = {}
+ref_labels_by_chromosomes = OrderedDict()
 intergenomic_misassemblies_by_asm = {}
 e_mem_failed_compilation_flag = join(qconfig.LIBS_LOCATION, 'E-MEM-osx', 'make.failed')
 

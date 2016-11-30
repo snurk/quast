@@ -11,7 +11,65 @@ from collections import defaultdict
 from quast_libs import qconfig, qutils, reporting
 from quast_libs.ca_utils.analyze_misassemblies import Misassembly
 from quast_libs.ca_utils.misc import print_file, intergenomic_misassemblies_by_asm, ref_labels_by_chromosomes
+import collections
 
+class OrderedSet(collections.MutableSet):
+
+    def __init__(self, iterable=None):
+        self.end = end = []
+        end += [None, end, end]         # sentinel node for doubly linked list
+        self.map = {}                   # key --> [key, prev, next]
+        if iterable is not None:
+            self |= iterable
+
+    def __len__(self):
+        return len(self.map)
+
+    def __contains__(self, key):
+        return key in self.map
+
+    def add(self, key):
+        if key not in self.map:
+            end = self.end
+            curr = end[1]
+            curr[2] = end[1] = self.map[key] = [key, curr, end]
+
+    def discard(self, key):
+        if key in self.map:
+            key, prev, next = self.map.pop(key)
+            prev[2] = next
+            next[1] = prev
+
+    def __iter__(self):
+        end = self.end
+        curr = end[2]
+        while curr is not end:
+            yield curr[0]
+            curr = curr[2]
+
+    def __reversed__(self):
+        end = self.end
+        curr = end[1]
+        while curr is not end:
+            yield curr[0]
+            curr = curr[1]
+
+    def pop(self, last=True):
+        if not self:
+            raise KeyError('set is empty')
+        key = self.end[1][0] if last else self.end[2][0]
+        self.discard(key)
+        return key
+
+    def __repr__(self):
+        if not self:
+            return '%s()' % (self.__class__.__name__,)
+        return '%s(%r)' % (self.__class__.__name__, list(self))
+
+    def __eq__(self, other):
+        if isinstance(other, OrderedSet):
+            return len(self) == len(other) and list(self) == list(other)
+        return set(self) == set(other)
 
 def print_results(contigs_fpath, log_out_f, used_snps_fpath, total_indels_info, result):
     gaps = result['gaps']
@@ -229,7 +287,7 @@ def save_result_for_unaligned(result, report):
 def save_combined_ref_stats(results, contigs_fpaths, ref_labels_by_chromosomes, output_dir, logger):
     istranslocations_by_asm = [result['istranslocations_by_refs'] if result else None for result in results]
     misassemblies_by_asm = [result['misassemblies_by_ref'] if result else None for result in results]
-    all_refs = list(set([ref for ref in ref_labels_by_chromosomes.values()]))
+    all_refs = list(OrderedSet([ref for ref in ref_labels_by_chromosomes.values()]))
     misassemblies_by_refs_rows = []
     row = {'metricName': 'References', 'values': all_refs}
     misassemblies_by_refs_rows.append(row)
