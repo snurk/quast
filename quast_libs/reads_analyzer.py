@@ -53,7 +53,7 @@ class QuastDeletion(object):
     '''
 
     MAX_CONFIDENCE_INTERVAL = 150
-    MIN_GAP = qconfig.extensive_misassembly_threshold - 2 * MAX_CONFIDENCE_INTERVAL
+    MIN_GAP =150 
 
     def __init__(self, ref, prev_good=None, prev_bad=None, next_bad=None, next_good=None, next_bad_end=None):
         self.ref, self.prev_good, self.prev_bad, self.next_bad, self.next_good, self.next_bad_end = \
