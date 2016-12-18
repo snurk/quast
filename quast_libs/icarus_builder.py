@@ -18,7 +18,7 @@ from quast_libs.html_saver import html_saver
 from quast_libs.icarus_utils import Alignment, get_html_name, format_long_numbers, get_misassembly_for_alignment, parse_misassembly_info
 
 
-def get_assemblies_data(contigs_fpaths, stdout_pattern, nx_marks):
+def get_assemblies_data(contigs_fpaths, icarus_dirpath, stdout_pattern, nx_marks):
     assemblies_n50 = defaultdict(dict)
     assemblies_data = ''
     assemblies_data += 'var assemblies_links = {};\n'
@@ -28,24 +28,25 @@ def get_assemblies_data(contigs_fpaths, stdout_pattern, nx_marks):
     assemblies_data += 'var assemblies_n50 = {};\n'
     assemblies_contig_size_data = ''
     for contigs_fpath in contigs_fpaths:
-        label = qconfig.assembly_labels_by_fpath[contigs_fpath]
+        assembly_label = qutils.label_from_fpath(contigs_fpath)
         report = reporting.get(contigs_fpath)
         l = report.get_field(reporting.Fields.TOTALLEN)
         contigs = report.get_field(reporting.Fields.CONTIGS)
         n50 = report.get_field(reporting.Fields.N50)
         if stdout_pattern:
             contig_stdout_fpath = stdout_pattern % qutils.label_from_fpath_for_fname(contigs_fpath) + '.stdout'
-            assemblies_data += 'assemblies_links["' + label + '"] = "' + contig_stdout_fpath + '";\n'
-        assemblies_contig_size_data += 'assemblies_len["' + label + '"] = ' + str(l) + ';\n'
-        assemblies_contig_size_data += 'assemblies_contigs["' + label + '"] = ' + str(contigs) + ';\n'
-        assemblies_contig_size_data += 'assemblies_n50["' + label + '"] = "' + str(n50) + '";\n'
+            contig_stdout_fpath = qutils.relpath(contig_stdout_fpath, icarus_dirpath)
+            assemblies_data += 'assemblies_links["' + assembly_label + '"] = "' + contig_stdout_fpath + '";\n'
+        assemblies_contig_size_data += 'assemblies_len["' + assembly_label + '"] = ' + str(l) + ';\n'
+        assemblies_contig_size_data += 'assemblies_contigs["' + assembly_label + '"] = ' + str(contigs) + ';\n'
+        assemblies_contig_size_data += 'assemblies_n50["' + assembly_label + '"] = "' + str(n50) + '";\n'
         for nx in nx_marks:
-            assemblies_n50[label][nx] = report.get_field(nx)
+            assemblies_n50[assembly_label][nx] = report.get_field(nx)
     return assemblies_data, assemblies_contig_size_data, assemblies_n50
 
 
-def add_contig_structure_data(data_str, alignment_name, structure, ref_contigs, chr_full_names, contig_names_by_refs,
-                              used_chromosomes, links_to_chromosomes):
+def add_contig_structure_data(data_str, structure, ref_contigs, chr_full_names, contig_names_by_refs,
+                              used_chromosomes, links_to_chromosomes, chr_names_by_id):
     for el in structure:
         if isinstance(el, Alignment):
             if el.ref_name in ref_contigs:
@@ -61,10 +62,10 @@ def add_contig_structure_data(data_str, alignment_name, structure, ref_contigs, 
                                                 get_html_name(other_ref_name, chr_full_names) + '";')
             corr_el_start = el.start
             corr_el_end = el.end
-            data_str.append('{contig: "' + alignment_name + '",corr_start: ' + str(corr_el_start) + ',corr_end: ' +
+            data_str.append('{corr_start: ' + str(corr_el_start) + ',corr_end: ' +
                             str(corr_el_end) + ',start:' + str(el.unshifted_start) + ',end:' + str(el.unshifted_end) +
                             ',start_in_contig:' + str(el.start_in_contig) + ',end_in_contig:' +
-                            str(el.end_in_contig) + ',IDY:' + el.idy + ',chr: "' + el.ref_name + '"},')
+                            str(el.end_in_contig) + ',IDY:' + el.idy + ',chr: "' + chr_names_by_id[el.ref_name] + '"},')
         elif type(el) == str:
             ms_description, ms_type = parse_misassembly_info(el)
             data_str.append('{contig_type: "M", mstype: "' + ms_type + '", msg: "' + ms_description + '"},')
@@ -72,7 +73,7 @@ def add_contig_structure_data(data_str, alignment_name, structure, ref_contigs, 
 
 
 def get_contigs_structure(assemblies_contigs, chr_to_aligned_blocks, contigs_by_assemblies, ref_contigs, chr_full_names,
-                          contig_names_by_refs, structures_by_labels, used_chromosomes, links_to_chromosomes):
+                          contig_names_by_refs, structures_by_labels, used_chromosomes, links_to_chromosomes, chr_names_by_id):
     contigs_data_str = []
     contigs_data_str.append('var contig_lengths = {};')
     contigs_data_str.append('var contig_structures = {};')
@@ -86,15 +87,15 @@ def get_contigs_structure(assemblies_contigs, chr_to_aligned_blocks, contigs_by_
             contigs_data_str.append('contig_lengths["' + assembly + '"]["' + contig.name + '"] = ' + str(contig.size) + ';')
             data_str = ['contig_structures["' + assembly + '"]["' + contig.name + '"] = [ ']
             contig_structure = structures_by_labels[assembly][contig.name]
-            data_str = add_contig_structure_data(data_str, contig.name, contig_structure, ref_contigs,
-                                                 chr_full_names, contig_names_by_refs, used_chromosomes, links_to_chromosomes)
+            data_str = add_contig_structure_data(data_str, contig_structure, ref_contigs, chr_full_names,
+                                                 contig_names_by_refs, used_chromosomes, links_to_chromosomes, chr_names_by_id)
             data_str.append('];')
             contigs_data_str.extend(data_str)
     contigs_data_str = '\n'.join(contigs_data_str)
     return contigs_data_str
 
 
-def prepare_alignment_data_for_one_ref(chr, chr_full_names, ref_contigs, data_str, chr_to_aligned_blocks,
+def prepare_alignment_data_for_one_ref(chr, chr_full_names, chr_names_by_id, ref_contigs, data_str, chr_to_aligned_blocks,
                                        structures_by_labels, contigs_by_assemblies, ambiguity_alignments_by_labels=None,
                                        contig_names_by_refs=None, output_dir_path=None, cov_data_str=None, physical_cov_data_str=None):
     html_name = get_html_name(chr, chr_full_names)
@@ -131,14 +132,14 @@ def prepare_alignment_data_for_one_ref(chr, chr_full_names, ref_contigs, data_st
                     if prev_end > alignment.start:
                         for prev_align in prev_alignments:
                             if alignment.name != prev_align.name and prev_align.end - alignment.start > 100:
-                                overlapped_contigs[prev_align].append('{contig: "' + alignment.name + '",corr_start: ' + str(alignment.start) +
-                                    ',corr_end: ' + str(alignment.end) + ',start:' + str(alignment.unshifted_start) + ',end:' + str(alignment.unshifted_end) +
-                                    ',start_in_contig:' + str(alignment.start_in_contig) + ',end_in_contig:' +
-                                    str(alignment.end_in_contig) + ',chr: "' + alignment.ref_name + '"}')
-                                overlapped_contigs[alignment].append('{contig: "' + prev_align.name + '",corr_start: ' + str(prev_align.start) +
-                                    ',corr_end: ' + str(prev_align.end) + ',start:' + str(prev_align.unshifted_start) + ',end:' + str(prev_align.unshifted_end) +
-                                    ',start_in_contig:' + str(prev_align.start_in_contig) + ',end_in_contig:' +
-                                    str(prev_align.end_in_contig) + ',chr: "' + prev_align.ref_name + '"}')
+                                overlapped_contigs[prev_align].append('{contig:"' + alignment.name + '",corr_start: ' + str(alignment.start) +
+                                    ',corr_end: ' + str(alignment.end) + ',start:' + str(alignment.unshifted_start) +
+                                    ',end:' + str(alignment.unshifted_end) + ',start_in_contig:' + str(alignment.start_in_contig) +
+                                    ',end_in_contig:' + str(alignment.end_in_contig) + ',chr: "' + chr_names_by_id[alignment.ref_name] + '"}')
+                                overlapped_contigs[alignment].append('{contig:"' + prev_align.name + '",corr_start: ' + str(prev_align.start) +
+                                    ',corr_end: ' + str(prev_align.end) + ',start:' + str(prev_align.unshifted_start) +
+                                    ',end:' + str(prev_align.unshifted_end) + ',start_in_contig:' + str(prev_align.start_in_contig) +
+                                    ',end_in_contig:' + str(prev_align.end_in_contig) + ',chr: "' + chr_names_by_id[prev_align.ref_name] + '"}')
                         prev_alignments.append(alignment)
                     else:
                         prev_alignments = [alignment]
@@ -187,9 +188,9 @@ def prepare_alignment_data_for_one_ref(chr, chr_full_names, ref_contigs, data_st
                         data_str.append(',genes:[' + ','.join(genes) + ']')
                     if ambiguity_alignments_by_labels and qconfig.ambiguity_usage == 'all':
                         data_str.append(',ambiguous_alignments:[ ')
-                        data_str = add_contig_structure_data(data_str, alignment.name, ambiguity_alignments_by_labels[alignment.label][alignment.name],
+                        data_str = add_contig_structure_data(data_str, ambiguity_alignments_by_labels[alignment.label][alignment.name],
                                                              ref_contigs, chr_full_names, contig_names_by_refs,
-                                                             used_chromosomes, links_to_chromosomes)
+                                                             used_chromosomes, links_to_chromosomes, chr_names_by_id)
                         data_str[-1] = data_str[-1][:-1] + '],'
                     data_str[-1] = data_str[-1] + '},'
 
@@ -204,15 +205,12 @@ def prepare_alignment_data_for_one_ref(chr, chr_full_names, ref_contigs, data_st
         additional_assemblies_data += 'assemblies_misassemblies["' + assembly + '"] = "' + str(ext_misassemblies) + '+' + \
                                       str(local_misassemblies) + '";\n'
 
-    if contig_names_by_refs:
-        data_str.append(''.join(links_to_chromosomes))
     if cov_data_str:
         # adding coverage data
         data_str.extend(cov_data_str)
     if physical_cov_data_str:
         data_str.extend(physical_cov_data_str)
 
-    data_str = '\n'.join(data_str)
 
     misassemblies_types = ['relocation', 'translocation', 'inversion', 'interspecies translocation', 'local']
     if not qconfig.is_combined_ref:
@@ -231,7 +229,11 @@ def prepare_alignment_data_for_one_ref(chr, chr_full_names, ref_contigs, data_st
         ms_selectors.append((ms_type, ms_name, str(ms_count)))
 
     contigs_structure_str = get_contigs_structure(assemblies_contigs, chr_to_aligned_blocks, contigs_by_assemblies, ref_contigs, chr_full_names,
-                                                   contig_names_by_refs, structures_by_labels, used_chromosomes, links_to_chromosomes)
+                                                   contig_names_by_refs, structures_by_labels, used_chromosomes, links_to_chromosomes, chr_names_by_id)
+
+    if contig_names_by_refs:
+        data_str.append(''.join(links_to_chromosomes))
+    data_str = '\n'.join(data_str)
     return alignment_viewer_fpath, data_str, contigs_structure_str, additional_assemblies_data, ms_selectors, num_misassemblies, aligned_assemblies
 
 
@@ -315,7 +317,7 @@ def get_contigs_data(contigs_by_assemblies, nx_marks, assemblies_n50, structures
             remained_contigs_name = str(len(contigs) - last_contig_num) + ' hidden contigs shorter than ' + str(contig_threshold) + \
                                     ' bp (total length: ' + format_long_numbers(remained_len) + ' bp)'
             contigs_sizes_str.append(('{name:"' + remained_contigs_name + '", size:' + str(remained_len) +
-                                     ', contig_type:"small_contigs"' + (',genes:[' + ','.join(remained_genes) + ']},'
+                                     ', contig_type:"short_contigs"' + (',genes:[' + ','.join(remained_genes) + ']},'
                                       if qconfig.gene_finding else '},')))
         if not_used_nx and last_contig_num < len(contigs):
             for i, alignment in enumerate(contigs[last_contig_num:]):

@@ -665,7 +665,7 @@ int main (int argc, char *argv[])
     /*
      * Check if e-mem if being run from QUAST 
      */
-    sprintf(commonData::nucmer_path, "%s/%d_tmp", commonData::pfx_path.c_str(), getpid());
+    sprintf(commonData::nucmer_path, "%s/%d_tmp", commonData::pfx_path.empty() ? "." : commonData::pfx_path.c_str(), getpid());
 
     tmpFilesInfo arrayTmpFile(IS_MATCH_BOTH_DEF(options)?(2*NUM_TMP_FILES+2):NUM_TMP_FILES+2);
     arrayTmpFile.openFiles(ios::out|ios::binary, IS_MATCH_BOTH_DEF(options)?(2*NUM_TMP_FILES+2):NUM_TMP_FILES+2);

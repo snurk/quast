@@ -19,7 +19,7 @@ from quast_libs.genemark import add_genes_to_fasta
 from quast_libs.genes_parser import Gene
 
 from quast_libs.log import get_logger
-from quast_libs.qutils import is_python_2
+from quast_libs.qutils import is_python2
 
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
@@ -110,12 +110,13 @@ def glimmerHMM(tool_dir, fasta_fpath, out_fpath, gene_lengths, err_path, tmp_dir
 
 
 def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath, tmp_dirpath):
-    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
+    assembly_label = qutils.label_from_fpath(contigs_fpath)
+    corr_assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     logger.info('  ' + qutils.index_to_str(index) + assembly_label)
 
-    out_fpath = os.path.join(out_dirpath, assembly_label + '_glimmer')
-    err_fpath = os.path.join(out_dirpath, assembly_label + '_glimmer.stderr')
+    out_fpath = os.path.join(out_dirpath, corr_assembly_label + '_glimmer')
+    err_fpath = os.path.join(out_dirpath, corr_assembly_label + '_glimmer.stderr')
 
     #out_gff_path, out_fasta_path, unique, total, cnt = glimmerHMM(tool_dir,
     #    fasta_path, out_path, gene_lengths, err_path)
@@ -130,7 +131,7 @@ def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath,
     return genes, unique, cnt
 
 
-def compile_glimmer(only_clean=False):
+def compile_glimmer(logger, only_clean=False):
     tool_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'glimmer')
     tool_src_dirpath = os.path.join(tool_dirpath, 'src')
     tool_exec_fpath = os.path.join(tool_dirpath, 'glimmerhmm')
@@ -161,7 +162,7 @@ def do(contigs_fpaths, gene_lengths, out_dirpath):
 
     tool_dirpath = os.path.join(qconfig.LIBS_LOCATION, 'glimmer')
     tmp_dirpath = os.path.join(out_dirpath, 'tmp')
-    tool_exec_fpath = compile_glimmer()
+    tool_exec_fpath = compile_glimmer(logger)
     if not tool_exec_fpath:
         return
 
@@ -171,7 +172,7 @@ def do(contigs_fpaths, gene_lengths, out_dirpath):
         os.makedirs(tmp_dirpath)
 
     n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
-    if is_python_2():
+    if is_python2():
         from joblib import Parallel, delayed
     else:
         from joblib3 import Parallel, delayed

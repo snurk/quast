@@ -57,9 +57,9 @@ def parse_nucmer_contig_report(report_fpath, ref_names, cumulative_ref_lengths):
                     split_line[ref_col], split_line[contig_col], split_line[idy_col], split_line[ambig_col], split_line[best_col]
                 unshifted_start, unshifted_end, start_in_contig, end_in_contig = int(unshifted_start), int(unshifted_end),\
                                                                                  int(start_in_contig), int(end_in_contig)
-                cur_shift = cumulative_ref_lengths[ref_names.index(ref_name)]
-                start = unshifted_start + cur_shift
-                end = unshifted_end + cur_shift
+                cur_shift = cumulative_ref_lengths[ref_names.index(ref_name)] or 1
+                start = unshifted_start + cur_shift - 1
+                end = unshifted_end + cur_shift - 1
 
                 is_rc = ((start - end) * (start_in_contig - end_in_contig)) < 0
                 position_in_ref = unshifted_start
@@ -92,6 +92,7 @@ def parse_cov_fpath(cov_fpath, chr_names, chr_full_names, contig_names_by_refs):
     cov_data = defaultdict(list)
     #not_covered = defaultdict(list)
     max_depth = defaultdict(int)
+    chr_contigs = []
     with open(cov_fpath, 'r') as coverage:
         contig_to_chr = dict()
         index_to_chr = dict()
@@ -104,16 +105,18 @@ def parse_cov_fpath(cov_fpath, chr_names, chr_full_names, contig_names_by_refs):
                 contigs = [chr]
             for contig in contigs:
                 contig_to_chr[contig] = chr
+            chr_contigs.extend(contigs)
+        chr_name = None
         for index, line in enumerate(coverage):
             fs = line.split()
             if line.startswith('#'):
                 chr_name = fs[0][1:]
                 index_to_chr[fs[1]] = chr_name
-            else:
-                name = contig_to_chr[index_to_chr[fs[0]]]
+            elif chr_name in chr_contigs:
+                chrom = contig_to_chr[index_to_chr[fs[0]]]
                 depth = int(float(fs[1]))
-                max_depth[chr] = max(depth, max_depth[chr])
-                cov_data[name].append(depth)
+                max_depth[chrom] = max(depth, max_depth[chrom])
+                cov_data[chrom].append(depth)
             # if c[2] == '0':
             #     not_covered[name].append(c[1])
     return cov_data, None, max_depth

@@ -299,7 +299,7 @@ THE SOFTWARE.
             })
             .attr('height', miniItemHeight)
             .attr('opacity', function (block) {
-                if (block.contig_type == 'small_contigs')
+                if (block.contig_type == 'short_contigs')
                     return paleContigsOpacity;
                 return 1;
             });
@@ -382,7 +382,7 @@ THE SOFTWARE.
                 chrName = chrContigs[i];
                 chrLen = chromosomes_len[chrName];
                 separatedLines.push({name: chrName, corr_start: currentLen, corr_end: currentLen + chrLen,
-                               y1: 0, len: chrLen});
+                               y1: 1, len: chrLen});
                 currentLen += chrLen;
             }
         }
@@ -580,23 +580,36 @@ THE SOFTWARE.
                 }
             }
             var nonOverlappingLaneId = 0;
+            var blockSize = block.corr_end - block.corr_start;
+            var minOverlap = Math.min(500, blockSize * 0.1);
             if (!isContigSizePlot) {
                 for (var nonOverlappingLaneId = 0; nonOverlappingLaneId < lastPosInLanes.length; nonOverlappingLaneId++){
-                    if (lastPosInLanes[nonOverlappingLaneId] - block.corr_start < 500)
+                    if (lastPosInLanes[nonOverlappingLaneId] - block.corr_start < Math.min(minOverlap, lastBlockSizesInLanes[nonOverlappingLaneId] * 0.1))
                         break;
                 }
                 block.nonOverlappingLane = nonOverlappingLaneId;
-                if (nonOverlappingLaneId >= lastPosInLanes.length)
+                if (nonOverlappingLaneId >= lastPosInLanes.length) {
                     lastPosInLanes.push(block.corr_end);
-                else
-                    lastPosInLanes[nonOverlappingLaneId] = Math.max(block.corr_end, lastPosInLanes[nonOverlappingLaneId]);
+                    lastBlockSizesInLanes.push(blockSize);
+                }
+                else {
+                    if (block.corr_end > lastPosInLanes[nonOverlappingLaneId]) {
+                        lastPosInLanes[nonOverlappingLaneId] = block.corr_end;
+                        lastBlockSizesInLanes[nonOverlappingLaneId] = blockSize;
+                    }
+                    else {
+                        lastPosInLanes[nonOverlappingLaneId] = lastPosInLanes[nonOverlappingLaneId];
+                    }
+                }
             }
             block.triangles = Array();
             itemId++;
             numItems++;
             var structure = getBlockStructure(block);
             if (block.genes) {
-                var corr_start = (structure && structure.length > 0) ? structure[0].corr_start : block.corr_start;
+                var corr_start = block.corr_start;
+                if (block.contig_type != 'ambiguous' && structure && structure.length > 0)
+                    corr_start =  structure[0].corr_start;
                 for (var gene_n = 0; gene_n < block.genes.length; gene_n++) {
                     if (!block.genes[gene_n].corr_start) {
                         block.genes[gene_n].corr_start = Math.max(block.genes[gene_n].start + corr_start, block.corr_start);
@@ -635,6 +648,7 @@ THE SOFTWARE.
             var currentLen = 0;
             var numItems = 0;
             var lastPosInLanes = [];
+            var lastBlockSizesInLanes = [];
             var laneItems = [];
             for (var i = 0; i < lane.length; i++) {
                 var block = lane[i];
@@ -793,7 +807,7 @@ THE SOFTWARE.
         if (INTERLACE_BLOCKS_COLOR) c += ((numItem - countSupplementary) % 2 == 0 ? " odd" : "");
         var text = '';
         if (isContigSizePlot) {
-            if (block.contig_type == "small_contigs") c += " disabled";
+            if (block.contig_type == "short_contigs") c += " disabled";
             else if (block.contig_type == "unaligned") c += " unaligned";
             else if (block.contig_type == "misassembled") c += " misassembled";
             else if (block.contig_type == "ambiguous") c += " ambiguous";

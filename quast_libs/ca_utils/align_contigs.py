@@ -13,10 +13,11 @@ import sys
 
 from quast_libs import options_parser
 from quast_libs import qconfig, qutils
-from quast_libs.ca_utils.misc import bin_fpath, is_emem_aligner, compile_aligner, e_mem_failed_compilation_flag
+from quast_libs.ca_utils.misc import bin_fpath, is_emem_aligner, compile_aligner, e_mem_failed_compilation_flag, \
+    create_nucmer_output_dir, clean_tmp_files, get_installed_emem
 
 from quast_libs.log import get_logger
-from quast_libs.qutils import is_python_2
+from quast_libs.qutils import is_python2
 
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
@@ -52,11 +53,14 @@ def check_emem_functionality(logger):
     if not is_emem_aligner():
         return True
     logger.debug('Checking correctness of E-MEM compilation...')
-    return_code = run_nucmer(qconfig.output_dirpath, options_parser.test_reference, options_parser.test_contigs_fpaths[0],
+    nucmer_output_dirpath = create_nucmer_output_dir(qconfig.output_dirpath)
+    nucmer_fpath = join(nucmer_output_dirpath, 'test')
+    return_code = run_nucmer(nucmer_fpath, options_parser.test_contigs_fpaths[0], options_parser.test_contigs_fpaths[1],
                              '/dev/null', '/dev/null', 0, emem_threads=1)
     if return_code != 0:
         logger.main_info('E-MEM does not work properly. QUAST will try to recompile contig aligner software.')
         open(e_mem_failed_compilation_flag, 'w').close()
+    clean_tmp_files(nucmer_fpath)
     return compile_aligner(logger)
 
 
@@ -67,6 +71,10 @@ def run_nucmer(prefix, ref_fpath, contigs_fpath, log_out_fpath, log_err_fpath, i
                       '-p', prefix]
     if is_emem_aligner():
         nucmer_cmdline += ['-t', str(emem_threads)]
+        installed_emem_fpath = get_installed_emem()
+        if installed_emem_fpath:
+            nucmer_cmdline += ['--emem', installed_emem_fpath]
+
     nucmer_cmdline += [ref_fpath, contigs_fpath]
     return_code = qutils.call_subprocess(nucmer_cmdline, stdout=open(log_out_fpath, 'a'), stderr=open(log_err_fpath, 'a'),
                                          indent='  ' + qutils.index_to_str(index))
@@ -134,7 +142,7 @@ def align_contigs(nucmer_fpath, ref_fpath, contigs_fpath, old_contigs_fpath, ind
                                      ' (' + str(n_jobs) + ' threads)')
 
             # processing each chromosome separately (if we can)
-            if is_python_2():
+            if is_python2():
                 from joblib import Parallel, delayed
             else:
                 from joblib3 import Parallel, delayed

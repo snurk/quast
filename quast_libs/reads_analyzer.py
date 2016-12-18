@@ -13,11 +13,12 @@ import shutil
 import shlex
 from collections import defaultdict
 
-from quast_libs import qconfig, qutils, ca_utils
+from quast_libs import qconfig, qutils
+from quast_libs.ca_utils.misc import ref_labels_by_chromosomes
 from quast_libs.fastaparser import create_fai_file, get_chr_lengths_from_fastafile
 from quast_libs.ra_utils import compile_reads_analyzer_tools, config_manta_fpath, sambamba_fpath, \
     bwa_fpath, bedtools_fpath, paired_reads_names_are_equal
-from .qutils import is_non_empty_file, add_suffix, get_chr_len_fpath, correct_name, is_python_2
+from .qutils import is_non_empty_file, add_suffix, get_chr_len_fpath, correct_name, is_python2
 
 from quast_libs.log import get_logger
 
@@ -154,7 +155,7 @@ def search_sv_with_manta(main_ref_fpath, meta_ref_fpaths, output_dirpath, err_pa
         return final_bed_fpath
 
     if meta_ref_fpaths:
-        if is_python_2():
+        if is_python2():
             from joblib import Parallel, delayed
         else:
             from joblib3 import Parallel, delayed
@@ -237,7 +238,8 @@ def run_processing_reads(main_ref_fpath, meta_ref_fpaths, ref_labels, reads_fpat
 
         if not qconfig.no_check:
             if not paired_reads_names_are_equal(reads_fpaths, logger):
-                logger.info('  Read names are discordant, skipping reads analysis!')
+                logger.error('  Read names are discordant, skipping reads analysis!')
+                logger.info('  Failed searching structural variations.')
                 return None, None, None
 
         prev_dir = os.getcwd()
@@ -267,12 +269,13 @@ def run_processing_reads(main_ref_fpath, meta_ref_fpaths, ref_labels, reads_fpat
         clean_read_names(sam_fpath, correct_sam_fpath)
         bam_fpath = os.path.join(output_dirpath, ref_name + '.bam')
         bam_sorted_fpath = add_suffix(bam_fpath, 'sorted')
-        qutils.call_subprocess([sambamba_fpath('sambamba'), 'view', '-t', str(qconfig.max_threads), '-h', '-f', 'bam', '-S', correct_sam_fpath],
-                               stdout=open(bam_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
+        qutils.call_subprocess([sambamba_fpath('sambamba'), 'view', '-t', str(qconfig.max_threads), '-h', '-f', 'bam',
+                                '-F', 'not unmapped',  '-S', correct_sam_fpath],
+                                stdout=open(bam_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
         qutils.call_subprocess([sambamba_fpath('sambamba'), 'sort', '-t', str(qconfig.max_threads), '-o', bam_sorted_fpath,
                                 bam_fpath], stderr=open(err_path, 'a'), logger=logger)
         qutils.call_subprocess([sambamba_fpath('sambamba'), 'view', '-t', str(qconfig.max_threads), '-h', bam_sorted_fpath],
-                               stdout=open(sam_sorted_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
+                                stdout=open(sam_sorted_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
 
     if qconfig.create_icarus_html and (not is_non_empty_file(cov_fpath) or not is_non_empty_file(physical_cov_fpath)):
         cov_fpath, physical_cov_fpath = get_coverage(output_dirpath, main_ref_fpath, ref_name, bam_fpath, bam_sorted_fpath,
@@ -302,7 +305,8 @@ def run_processing_reads(main_ref_fpath, meta_ref_fpaths, ref_labels, reads_fpat
                     ref_files[ref] = None
                 else:
                     new_ref_sam_file = open(new_ref_sam_fpath, 'w')
-                    new_ref_sam_file.write(headers[0] + '\n')
+                    if not headers[0].startswith('@SQ'):
+                        new_ref_sam_file.write(headers[0] + '\n')
                     chrs = []
                     for h in (h for h in headers if h.startswith('@SQ') and 'SN:' in h):
                         seq_name = h.split('\tSN:')[1].split('\t')[0]
@@ -326,6 +330,8 @@ def run_processing_reads(main_ref_fpath, meta_ref_fpaths, ref_labels, reads_fpat
                 for line in sam_file:
                     mapping = Mapping.parse(line)
                     if mapping:
+                        if mapping.ref == '*':
+                            continue
                         # common case: continue current deletion (potential) on the same reference
                         if cur_deletion and cur_deletion.ref == mapping.ref:
                             if cur_deletion.next_bad is None:  # previous mapping was in region BEFORE 0-covered fragment
@@ -405,7 +411,7 @@ def run_processing_reads(main_ref_fpath, meta_ref_fpaths, ref_labels, reads_fpat
     if is_non_empty_file(cov_fpath):
         logger.main_info('  Coverage distribution along the reference genome is in ' + cov_fpath)
     else:
-        if not qconfig.space_efficient:
+        if not qconfig.create_icarus_html:
             logger.main_info('  Failed to calculate coverage distribution')
         cov_fpath = None
     return bed_fpath, cov_fpath, physical_cov_fpath
@@ -422,14 +428,14 @@ def get_physical_coverage(output_dirpath, ref_fpath, ref_name, bam_fpath, log_pa
         bam_filtered_fpath = os.path.join(output_dirpath, ref_name + '.filtered.bam')
         qutils.call_subprocess([sambamba_fpath('sambamba'), 'view', '-t', str(qconfig.max_threads), '-h', '-f', 'bam',
                                 '-F', 'proper_pair and not supplementary and not duplicate', bam_fpath],
-                                stdout=open(bam_filtered_fpath, 'w'), stderr=open(err_path, 'a'))
+                                stdout=open(bam_filtered_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
         ## sort by read names
         bam_filtered_sorted_fpath = os.path.join(output_dirpath, ref_name + '.filtered.sorted.bam')
-        qutils.call_subprocess([sambamba_fpath('sambamba'), 'sort', '-t', str(qconfig.max_threads), '-n',
-                                '-o', bam_filtered_sorted_fpath, bam_filtered_fpath], stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+        qutils.call_subprocess([sambamba_fpath('sambamba'), 'sort', '-t', str(qconfig.max_threads), '-o', bam_filtered_sorted_fpath,
+                                '-n', bam_filtered_fpath], stdout=open(log_path, 'a'), stderr=open(err_path, 'a'), logger=logger)
         bedpe_fpath = os.path.join(output_dirpath, ref_name + '.bedpe')
         qutils.call_subprocess([bedtools_fpath('bamToBed'), '-i', bam_filtered_sorted_fpath, '-bedpe'], stdout=open(bedpe_fpath, 'w'),
-                               stderr=open(err_path, 'a'))
+                               stderr=open(err_path, 'a'), logger=logger)
         raw_bed_fpath = os.path.join(output_dirpath, ref_name + '.bed')
         with open(bedpe_fpath, 'r') as bedpe:
             with open(raw_bed_fpath, 'w') as bed_file:
@@ -438,9 +444,9 @@ def get_physical_coverage(output_dirpath, ref_fpath, ref_name, bam_fpath, log_pa
                     bed_file.write('\t'.join([fs[0], fs[1], fs[5] + '\n']))
         sorted_bed_fpath = os.path.join(output_dirpath, ref_name + '.sorted.bed')
         qutils.call_subprocess([bedtools_fpath('bedtools'), 'sort', '-i', raw_bed_fpath],
-                               stdout=open(sorted_bed_fpath, 'w'), stderr=open(err_path, 'a'))
+                               stdout=open(sorted_bed_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
         qutils.call_subprocess([bedtools_fpath('bedtools'), 'genomecov', '-bga', '-i', sorted_bed_fpath, '-g', chr_len_fpath],
-                               stdout=open(raw_cov_fpath, 'w'), stderr=open(err_path, 'a'))
+                               stdout=open(raw_cov_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
     return raw_cov_fpath
 
 
@@ -452,9 +458,9 @@ def get_coverage(output_dirpath, ref_fpath, ref_name, bam_fpath, bam_sorted_fpat
         if not is_non_empty_file(raw_cov_fpath):
             if not is_non_empty_file(bam_sorted_fpath):
                 qutils.call_subprocess([sambamba_fpath('sambamba'), 'sort', '-t', str(qconfig.max_threads), '-o', bam_sorted_fpath,
-                                        bam_fpath], stdout=open(log_path, 'a'), stderr=open(err_path, 'a'))
+                                        bam_fpath], stdout=open(log_path, 'a'), stderr=open(err_path, 'a'), logger=logger)
             qutils.call_subprocess([bedtools_fpath('bedtools'), 'genomecov', '-bga', '-ibam', bam_sorted_fpath, '-g', chr_len_fpath],
-                                   stdout=open(raw_cov_fpath, 'w'), stderr=open(err_path, 'a'))
+                                   stdout=open(raw_cov_fpath, 'w'), stderr=open(err_path, 'a'), logger=logger)
             qutils.assert_file_exists(raw_cov_fpath, 'coverage file')
         proceed_cov_file(raw_cov_fpath, cov_fpath, correct_chr_names)
     if not is_non_empty_file(physical_cov_fpath):
@@ -511,19 +517,27 @@ def get_correct_names_for_chroms(output_dirpath, ref_fpath, sam_fpath, err_path,
                 chr_len = re.findall(chr_len_pattern, l)[0]
                 sam_chr_lengths[chr_name] = int(chr_len)
 
-    for ref_chr, sam_chr in zip(ref_chr_lengths.keys(), sam_chr_lengths.keys()):
-        if correct_name(sam_chr) == ref_chr[:len(sam_chr)] and sam_chr_lengths[sam_chr] == ref_chr_lengths[ref_chr]:
-            correct_chr_names[sam_chr] = ref_chr
-        elif sam_chr_lengths[sam_chr] != ref_chr_lengths[ref_chr]:
-            logger.error('Chromosome lengths in reference and SAM file do not match. ' +
-                         'QUAST will try to realign reads to the reference genome. ' if reads_fpaths else
-                         'Use SAM file obtained by aligning reads to the reference genome.')
-            return None
+    inconsistency = ''
+    if len(ref_chr_lengths) != len(sam_chr_lengths):
+        inconsistency = 'Number of chromosomes'
+    else:
+        for ref_chr, sam_chr in zip(ref_chr_lengths.keys(), sam_chr_lengths.keys()):
+            if correct_name(sam_chr) == ref_chr[:len(sam_chr)] and sam_chr_lengths[sam_chr] == ref_chr_lengths[ref_chr]:
+                correct_chr_names[sam_chr] = ref_chr
+            elif sam_chr_lengths[sam_chr] != ref_chr_lengths[ref_chr]:
+                inconsistency = 'Chromosome lengths'
+                break
+            else:
+                inconsistency = 'Chromosome names'
+                break
+    if inconsistency:
+        if reads_fpaths:
+            logger.warning(inconsistency + ' in reference and SAM file do not match. ' +
+                           'QUAST will try to realign reads to the reference genome.')
         else:
-            logger.error('Chromosome names in reference and SAM file do not match. ' +
-                         'QUAST will try to realign reads to the reference genome.' if reads_fpaths else
+            logger.error(inconsistency + ' in reference and SAM file do not match. ' +
                          'Use SAM file obtained by aligning reads to the reference genome.')
-            return None
+        return None
     return correct_chr_names
 
 
@@ -592,7 +606,7 @@ def do(ref_fpath, contigs_fpaths, reads_fpaths, meta_ref_fpaths, output_dir, ext
     open(err_path, 'w').close()
     logger.info('  ' + 'Logging to files %s and %s...' % (log_path, err_path))
     try:
-        bed_fpath, cov_fpath, physical_cov_fpath = run_processing_reads(ref_fpath, meta_ref_fpaths, ca_utils.misc.ref_labels_by_chromosomes,
+        bed_fpath, cov_fpath, physical_cov_fpath = run_processing_reads(ref_fpath, meta_ref_fpaths, ref_labels_by_chromosomes,
                                                                         reads_fpaths, temp_output_dir, output_dir, log_path, err_path,
                                                                         bed_fpath=bed_fpath, sam_fpath=sam_fpath, bam_fpath=bam_fpath)
     except:

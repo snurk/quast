@@ -95,7 +95,7 @@
     for guidelines on how to complete the licensing process.
     <br>
     <br>
-    Version 4.4 of QUAST was released under GPL v2 on XX October 2016. Note that some of build-in third-party tools are not under GPL v2. See <a href="LICENSE.txt">LICENSE</a> for details.
+    Version 4.4 of QUAST was released under GPL v2 on XX December 2016. Note that some of build-in third-party tools are not under GPL v2. See <a href="LICENSE.txt">LICENSE</a> for details.
 </p>
 
 <h2>Contents</h2>
@@ -154,7 +154,7 @@
     <li>Boost (tested with v1.56.0) for E-MEM</li>
 </ul>
 All those tools are usually pre installed on Linux.<br>
-Mac OS X, however, initially misses <code>make</code>, <code>g++</code> and <code>ar</code>, so you will have to install 
+Mac OS X, however, initially misses <code>make</code>, <code>gcc</code> and <code>ar</code>, so you will have to install
 <a href='https://developer.apple.com/xcode/'>Xcode</a> (or only
 <a href='https://developer.apple.com/downloads/index.action?name=Command%20Line%20Tools'>Command Line Tools for Xcode</a>) to make them available.
 <br>
@@ -184,12 +184,15 @@ Basic installation (about 40 MB):
 </p>
 or
 <p>
-Full installation (about 800 MB, includes (1) tools for SV detection based on read pairs, which is used for more precise misassembly detection, (2) and tools/data for reference genome detection in metagenomic datasets):
+Full installation (about 800 MB, additionally includes (1) tools for SV detection based on read pairs, which is used for more precise misassembly detection, and (2) tools/data for reference genome detection in metagenomic datasets):
 <pre class="code">
     ./setup.py install_full
 </pre>
 </p>
-The default installation location is <code>/usr/local/bin/</code> for the executable scripts, and <code>/usr/local/lib/</code> for the python modules and auxiliary files. If you are getting a permission error during the installation, consider creating a virtual python environment and <a href="http://docs.python-guide.org/en/latest/dev/virtualenvs/">install into it</a>. Alternatively, you may use old-style installation scripts (<code>./install.sh</code> or <code>./install_full.sh</code>), which build QUAST package inplace.
+The default installation location is <code>/usr/local/bin/</code> for the executable scripts, and <code>/usr/local/lib/</code> for the python modules and auxiliary files.
+If you are getting a permission error during the installation, consider running <code>setup.py</code> with <code>sudo</code>,
+or creating a virtual python environment and <a href="http://docs.python-guide.org/en/latest/dev/virtualenvs/">install into it</a>.
+Alternatively, you may use old-style installation scripts (<code>./install.sh</code> or <code>./install_full.sh</code>), which build QUAST package inplace.
 </p>
 
 <a name="sec2"></a>
@@ -305,7 +308,7 @@ Lower threshold for a contig length (in bp). Shorter contigs won't be taken into
 Advanced options:
 <div class='options'>
 <div class='option'>
-<code><b>--threads</b></code> (or <code>-t</code>) <code>&lt;int&gt;</code>
+<a name='threads_opt'></a><code><b>--threads</b></code> (or <code>-t</code>) <code>&lt;int&gt;</code>
 </div>
 Maximum number of threads. The default value is 25% of all available CPUs but not less than 1. If QUAST fails to determine the number of CPUs, maximum threads number is set to 4.
 
@@ -469,10 +472,10 @@ Also note that scaffold gap size misassemblies are counted for <b>scaffold assem
 if your assemblies are scaffolds rather than contigs).
 
 <div class='option'>
-    <a name='significant_part_size'></a><code><b>--significant-part-size</b></code> <code>&lt;int&gt;</code>
+    <a name='unaligned_part_size'></a><code><b>--unaligned-part-size</b></code> <code>&lt;int&gt;</code>
 </div>
-Lower threshold for detecting partially unaligned contigs with both significant aligned and unaligned parts,
-see <a href="#sec3.1.3">section 3.1.3</a> for details. The default value is 500 bp.
+Lower threshold for detecting partially unaligned contigs, see <a href="#sec3.1.3">section 3.1.3</a> for details.
+The default value is 500 bp.
 
 <div class='option'>
     <a name='fragmented'></a><code><b>--fragmented</b></code>
@@ -482,15 +485,31 @@ mark them fake (will be excluded from <a href="#misassemblies"><code>#&nbsp;misa
 Note: QUAST will not detect misassemblies caused by the linear representation of circular genome.
 
 <div class='option'>
+    <a name='fragmented_indent'></a><code><b>--fragmented-max-indent</b></code>  <code>&lt;int&gt;</code>
+</div>
+Mark translocation as fake if both alignments are located no further than N bases from the ends of the reference fragments.
+The value should be less than extensive misassembly size
+(see <a href='#extensive_mis_size'><code>--extensive-mis-size</code></a>, its default value is 1000 bp). Default value is 85.
+Note: requires <a href='#fragmented'><code>--fragmented</code></a> option.
+
+<div class='option'>
 <code><b>--plots-format</b></code>  <code>&lt;format&gt;</code>
 </div>
 File format for plots. Supported formats: emf, eps, pdf, png, ps, raw, rgba, svg, svgz.
 The default format is PDF.
 
 <div class='option'>
-<code><b>--memory-efficient</b></code>
+    <a name='memory_eff'></a><code><b>--memory-efficient</b></code>
 </div>
 Use one thread, separately per each assembly and each chromosome. This may significantly reduce memory consumption for large genomes. Note: this option will significantly slow down the processing as well. 
+
+<div class='option'>
+    <a name='space_eff'></a><code><b>--space-efficient</b></code>
+</div>
+Create only primary output items (reports, plots, quast.log, etc). All auxiliary files (.stdout, .stderr, etc) will not be created.
+This may significantly reduce disk space usage on large assemblies (more than 100k contigs).
+Note: Icarus viewers also will not be built because they became enormously large and slow in case of
+zillions of contigs, thus not applicable.
 
 <div class='option'>
 <code><b>--silent</b></code>
@@ -578,7 +597,7 @@ Do not build HTML reports and <a href="#sec3.4">Icarus viewers</a>.
 Do not build <a href="#sec3.4">Icarus viewers</a>.
 
 <div class='option'>
-<code><b>--no-snps</b></code>
+ <a name='no_snps'></a><code><b>--no-snps</b></code>
 </div>
 Do not report SNPs statistics. This may significantly reduce memory consumption on large genomes and speed up computation. However, all SNP-related metrics will not be reported (e.g. <code># mismatches per 100 kbp</code>).
 
@@ -599,7 +618,7 @@ Do not compress large output files (files containing SNP information and predict
     This may speed up computation, but more disk space is required.
 
 <div class='option'>
-<code><b>--fast</b></code>
+    <a name='fast'></a><code><b>--fast</b></code>
 </div>
 A shortcut for using all of speedup options except --no-check.
 </div>
@@ -625,7 +644,9 @@ Run MetaQUAST on a data from the <code>test_data</code> folder, but without refe
 <div class='option'>
     <a href='blast_db'></a><code><b>--blast-db</b></code> <code>&lt;path&gt;</code>
 </div>
-Use custom BLAST database instead of embedded SILVA 16S rRNA database. See FAQ section, <a href="#faq_q12">question Q12</a> for details.
+Use custom BLAST database instead of embedded SILVA 16S rRNA database. The path should point either to directory
+containing .nsq file or to .nsq file itself.
+See FAQ section, <a href="#faq_q12">question Q12</a> for details about creating custom BLAST databases.
 
 <div class='option'>
     <a href='max_ref_num'></a><code><b>--max-ref-num</b></code> <code>&lt;int&gt;</code>
@@ -889,13 +910,15 @@ changed by <a href='#extensive_mis_size'><code>--extensive-mis-size</code></a>.<
 <p><span class='metric-name'>Inversion</span> is a misassembly event (breakpoint) where the flanking sequences align on
 opposite strands of the same chromosome. </p>
 
-<p><span class='metric-name'>Scaffold gap size misassemblies</span> is a misassembly event (breakpoint) where the flanking sequences combined in scaffold on the wrong distance (<a href='#scaffolds'><code>--scaffolds</code></a> only). These misassemblies are not included in the total number of misassemblies. </p>
+<p><a name='scaffold_misassembly'><span class='metric-name'>Scaffold gap size misassemblies</span> is a misassembly event (breakpoint) where the flanking sequences combined in scaffold on the wrong distance (<a href='#scaffolds'><code>--scaffolds</code></a> only). These misassemblies are not included in the total number of misassemblies. </p>
 
 <p><span class='metric-name'># misassembled contigs</span> and <span class='metric-name'>misassembled contigs length</span> are the same as the metrics from
     <a href="#sec3.1.1">section 3.1.1</a> and are counted among all contigs with any type of a misassembly event
     (relocation, translocation, interspecies translocation or inversion). </p>
 
 <p><span class='metric-name'># possibly misassembled contigs</span> is the number of contigs that contain large unaligned fragment and thus could possibly contain interspecies translocation with unknown reference (MetaQUAST only). </p>
+
+<p><span class='metric-name'># possible misassemblies</span> is the number of putative interspecies translocations in possibly misassembled contigs if each large unaligned fragment is supposed to be a fragment of unknown reference (MetaQUAST only). </p>
 
 <p><span class='metric-name'># local misassemblies</span> is the same as <span class='metric-ref'># local misassemblies</span> from
 <a href="#sec3.1.1">section 3.1.1</a>.
@@ -925,14 +948,11 @@ opposite strands of the same chromosome. </p>
 
 <p><span class='metric-name'>Fully unaligned length</span> is the total number of bases in all unaligned contigs.</p>
 
-<p><span class='metric-name'># partially unaligned contigs</span> is the number of contigs that are not fully unaligned, but have fragments
-    longer than the value of <a href='#significant_part_size'><code>--significant-part-size</code></a> with no alignment to the reference sequence.</p>
+<p><span class='metric-name'># partially unaligned contigs</span> is the number of contigs that are not fully unaligned (i.e. have at least one alignment), but have at least one unaligned fragment
+    &ge; the threshold defined by <a href='#unaligned_part_size'><code>--unaligned-part-size</code></a> (default value is 500 bp).</p>
 
-<p><span class='metric-name'># with misassembly</span> is the number of partially unaligned contigs that have a misassembly event in their aligned fragment.
+<p><span class='metric-name'># half-unaligned with misassembly</span> is the number of contigs that have the number of unaligned bases more than 50% of contig length and a misassembly event in their aligned fragment.
     Note that such misassembly events are not counted in <span class='metric_ref'># misassemblies</span> and other <span class='metric_ref'>misassemblies</span> statistics.</p>
-
-<p><span class='metric-name'># both parts are significant</span> is the number of partially unaligned contigs that have both aligned and unaligned fragments
-    longer than the value of <a href='#significant_part_size'><code>--significant-part-size</code></a>.
 
 <p><span class='metric-name'>Partially unaligned length</span> is the total number of unaligned bases in all partially unaligned contigs.</p>
 
@@ -1139,7 +1159,9 @@ Q3. Is it possible to find which misassembly corresponds to each contig and whic
 Yes, it is possible. QUAST produces report with detailed info about each contig alignments and the short version with only extensive misassemblies records.
 <br>
 <br>
-Let's start with <i>the short one</i>. It is saved to <code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.mis_contigs.info</code>. E.g. if your assembly is "contigs.fasta" then the file is "contigs_report_contigs.mis_contigs.info", if your assembly is "ecoli_assembly_1.fasta" then the file is "contigs_report_ecoli_assembly_1.stdout".
+Let's start with <i>the short one</i>. It is saved to <code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.mis_contigs.info</code>.
+E.g. if your assembly is "contigs.fasta" then the file is "contigs_report_contigs.mis_contigs.info",
+if your assembly is "ecoli_assembly_1.fasta" then the file is "contigs_report_ecoli_assembly_1.mis_contigs.info".
 <br>
 The content of this file looks like this:
 <br>
@@ -1275,16 +1297,18 @@ where the columns are: reference genome name, contig name, position on the refer
 
 <br>
 <p><b><i>
-Q6. What does "broken" version of an assembly refer to while assessing scaffolds' quality (--scaffolds option)?
+Q6. What does "broken" version of an assembly refer to while assessing scaffolds' quality (<a href='#scaffolds'><code>--scaffolds</code></a> option)?
 </b></i></p>
 <p>
 Actually, the difference between "broken" and original assembly (scaffolds) is very simple. QUAST splits input fasta by continuous fragments of N's of length &ge; 10 and call this a "_broken" assembly. By doing this we try to reconstruct "contigs" which were used for construction of the scaffolds. After that, user can compare results for real scaffolds and "reconstructed contigs" and find out whether scaffolding step was useful or not.
 <br>
 <br>
-If you have both contigs.fasta and scaffolds.fasta it is better to specify both files to QUAST and don't set "--scaffolds" option. The comparison of real contigs vs real scaffolds is more honest and informative than scaffolds vs scaffolds_broken. 
+If you have both contigs.fasta and scaffolds.fasta it is better to specify both files to QUAST and don't set <code>--scaffolds</code> option.
+The comparison of real contigs vs real scaffolds is more honest and informative than scaffolds vs scaffolds_broken.
 <br>
 <br>
-To sum up, you should use "--scaffolds" option if you don't have original file with contigs but want to compare your scaffolds with it.
+To sum up, you should use <code>--scaffolds</code> option if you don't have original file with contigs but want to compare your scaffolds with it.
+Also note, that <code>--scaffolds</code> option implies QUAST to search for <a href='#scaffold_misassembly'>scaffold gap size misassemblies</a>.
 <br>
 </p>
 
@@ -1363,7 +1387,7 @@ Q11. Sometimes the "<span class='metric-ref'># contigs</span>" and the "<span cl
 </b></i></p>
 <p>
     <span class='metric-ref'># contigs</span> reports number of contigs above specified threshold.
-    Default threshold is 500 bp and it can be changed with <code>--min-contig</code> option.
+    Default threshold is 500 bp and it can be changed with <a href='#min_contig'><code>--min-contig</code></a> option.
     Most of the other statistics are also based on all contigs larger than this threshold
     (we actually remove all shorts contigs in the beginning of the pipeline). For example, <span class='metric-ref'># misassemblies</span> is essentially
     <span class='metric-ref'># misassemblies in contigs <b>&ge; min-contig threshold</b></span>.
@@ -1377,11 +1401,9 @@ Q11. Sometimes the "<span class='metric-ref'># contigs</span>" and the "<span cl
     To sum up, by default, <span class='metric-ref'># contigs</span> is the same to <span class='metric-ref'># contigs >= 500 bp</span>,
     so there will be difference between <span class='metric-ref'># contigs</span> and <span class='metric-ref'># contigs &ge; 0 bp</span>
     if your assembly has contigs shorter than 500 bp.
-<br>
 </p>
 
 <a name="faq_q12"></a>
-<br>
 <p><b><i>
 Q12. Can I use custom BLAST database instead of SILVA 16S rRNA for reference searching?
 </b></i></p>
@@ -1402,7 +1424,55 @@ Q12. Can I use custom BLAST database instead of SILVA 16S rRNA for reference sea
         >Escherichia_coli, complete genome
         >NZ_CP015308.1|Lactobacillus_plantarum_strain_LY-78, complete genome
     </pre></code>
-<br>
+</p>
+
+<a name="faq_q13"></a>
+<p><b><i>
+Q13. Where can I find details about unaligned fragments of my assembly?
+</b></i></p>
+<p>
+    Starting from v.4.4 we added detailed reports with this information. These reports are generated for all assemblies and saved to
+    <code>&lt;quast_output_dir&gt;/contigs_reports/contigs_report_&lt;assembly_name>.unaligned.info</code>.
+    E.g. if your assembly is "contigs.fasta" then the file is "contigs_report_contigs.unaligned.info",
+    if your assembly is "ecoli_assembly_1.fasta" then the file is "contigs_report_ecoli_assembly_1.unaligned.info".
+<br><br>
+    The report include all fully unaligned and partially unaligned contigs, i.e. contigs that have at least one unaligned
+    fragment &ge; 500 bp. This is the default threshold and it can be changed with
+    <a href='#unaligned_part_size'><code>--unaligned-part-size</code></a> option.
+    The following values are reported for each contig:
+    <ol>
+        <li>contig name,</li>
+        <li>total length,</li>
+        <li>unaligned length (it is equal to total length for fully unaligned contigs),</li>
+        <li>type (full or partial),</li>
+        <li>list of all unaligned fragments.</li>
+    </ol>
+</p>
+
+<a name="faq_q14"></a>
+<p><b><i>
+Q14. I have very large assemblies and reference genome but my computational resources are limited.
+    Could you recommend an optimal set of QUAST options to use?
+</b></i></p>
+<p>
+    Current QUAST version is not optimised for large genomes yet. However, we have some useful suggestions.
+    You may be interested in adding the following options to your command line to reduce RAM consumption,
+    disk space usage, and running time. Note that each of them have some negative effect,
+    so you should chose what is more important for you and may be try them one by one until you find
+    the optimal set for your particular case.
+    <ul>
+        <li>for <b>less memory (RAM)</b>: <a href='#memory_eff'><code>--memory-efficient</code></a> (drawback: increased running time);
+            set lower number of threads (<code>-t</code>, drawback: increased running time),
+        <li>for <b>less disk space usage</b>: <a href='#space_eff'><code>--space-efficient</code></a>
+            (drawback: removed aux files with some details for advanced analysis),</li>
+        <li>for <b>less running time</b>: <a href='#fast'><code>--fast</code></a> (drawback: missed plots, HTML reports, some metrics);
+            set greater number of threads (<code>-t</code>, drawback: increased memory consumption) </li>
+        <li>for <b>all above</b>: <a href='#no_snps'><code>--no-snps</code></a> (drawback: missed SNP-related metrics in reports);
+            set greater minimal contig length threshold (<a href='#min_contig'><code>--min-contig</code></a>, drawback: not analysed short contigs);
+            set greater minimal alignment length and quality thresholds (<a href='#min_alignment'><code>--min-alignment</code></a> and
+            <a href='#min_identity'><code>--min-identity</code></a> respectively,
+            drawback: not analysed contigs with relatively bad alignments)</li>
+    </ul>
 </p>
 
 <br>

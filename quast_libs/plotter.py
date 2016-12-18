@@ -71,9 +71,12 @@ if qconfig.draw_plots:
             main_logger.info('')
             main_logger.warning('Can\'t draw plots: matplotlib version is old! Please use matplotlib version 1.1 or higher.')
             can_draw_plots = False
+        # additionally check other imports
+        import matplotlib.pyplot
+        import matplotlib.ticker
     except Exception:
         main_logger.info('')
-        main_logger.warning('Can\'t draw plots: please install python-matplotlib.')
+        main_logger.warning('Can\'t draw plots: python-matplotlib is missing or corrupted.')
         can_draw_plots = False
 else:
     can_draw_plots = False
@@ -673,8 +676,8 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         meta_logger.info('  Drawing ' + title + ' metaQUAST summary plot...')
         import matplotlib.pyplot
         import matplotlib.ticker
-        fig = matplotlib.pyplot.figure()
-        ax = fig.add_subplot(111)
+        figure = matplotlib.pyplot.figure()
+        ax = figure.add_subplot(111)
         matplotlib.pyplot.title(title)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
@@ -764,6 +767,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         matplotlib.pyplot.tight_layout()
         matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
         meta_logger.info('    saved to ' + plot_fpath)
+        pdf_plots_figures.append(figure)
         matplotlib.pyplot.close()
 
 
@@ -778,9 +782,10 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
     refs_num = len(ref_names)
     refs = []
     if can_draw_plots:
-        fig = matplotlib.pyplot.figure()
-        ax = fig.add_subplot(111)
-        title = title[:120] + '...'
+        figure = matplotlib.pyplot.figure()
+        ax = figure.add_subplot(111)
+        if len(title) > (120 + len('...')):
+            title = title[:120] + '...'
         matplotlib.pyplot.title(title)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
@@ -930,8 +935,6 @@ def draw_misassembl_plot(reports, plot_fpath, title='', yaxis_title=''):
     else:
         ymax = int(math.ceil(ymax * 1.1))
         matplotlib.pyplot.ylim([0, ymax])
-        yint = range(0, ymax)
-        matplotlib.pyplot.yticks(yint)
 
     try:  # for matplotlib <= 2009-12-09
         ax.legend(legend, loc='upper center', bbox_to_anchor=(0.5, -0.1), fancybox=True,

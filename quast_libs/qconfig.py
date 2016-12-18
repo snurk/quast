@@ -71,8 +71,9 @@ show_snps = True
 glimmer = False
 is_combined_ref = False
 check_for_fragmented_ref = False
-significant_part_size = 500
+unaligned_part_size = 500
 all_labels_from_dirs = False
+force_nucmer = False
 
 # print in stdout only main information
 silent = False
@@ -139,6 +140,8 @@ max_contigs_num_for_size_viewer = 1000
 min_contig_for_size_viewer = 10000
 contig_len_delta = 0.05
 min_similar_contig_size = 10000
+cov_fpath = None
+phys_cov_fpath = None
 
 # other settings (mostly constants). Can't be changed by command-line options
 
@@ -305,7 +308,7 @@ def usage(show_hidden=False, meta=False, short=True):
         if meta:
             sys.stderr.write("-f  --gene-finding                    Predict genes using MetaGeneMark\n")
         else:
-            sys.stderr.write("-f  --gene-finding                    Predict genes (with GeneMark.hmm for prokaryotes (default), GeneMark-ES\n")
+            sys.stderr.write("-f  --gene-finding                    Predict genes (with GeneMarkS for prokaryotes (default), GeneMark-ES\n")
             sys.stderr.write("                                      for eukaryotes (--eukaryote), or MetaGeneMark for metagenomes (--meta)\n")
         sys.stderr.write("    --glimmer                         Predict genes with GlimmerHMM instead of GeneMark-ES\n")
         sys.stderr.write("    --gene-thresholds <int,int,...>   Comma-separated list of threshold lengths of genes to search with Gene Finding module\n")
@@ -317,7 +320,7 @@ def usage(show_hidden=False, meta=False, short=True):
         else:
             sys.stderr.write("    --max-ref-number <int>            Maximum number of references (per each assembly) to download after looking in SILVA database\n")
             sys.stderr.write("                                      Set 0 for not looking in SILVA at all [default: %s]\n" % max_references)
-            sys.stderr.write("    --blast-db <filename>             Custom BLAST database. By default, MetaQUAST searches references in SILVA 16S RNA database\n")
+            sys.stderr.write("    --blast-db <filename>             Custom BLAST database (.nsq file). By default, MetaQUAST searches references in SILVA database\n")
         sys.stderr.write("    --gage                            Use GAGE (results are in gage_report.txt)\n")
         sys.stderr.write("    --contig-thresholds <int,int,...> Comma-separated list of contig length thresholds [default: %s]\n" % contig_thresholds)
         sys.stderr.write("-u  --use-all-alignments              Compute genome fraction, # genes, # operons in QUAST v1.* style.\n")
@@ -339,14 +342,17 @@ def usage(show_hidden=False, meta=False, short=True):
         sys.stderr.write("    --scaffold-gap-max-size  <int>    Max allowed scaffold gap length difference. All relocations with inconsistency\n")
         sys.stderr.write("                                      less than scaffold-gap-size are counted as scaffold gap misassemblies [default: %s]\n" % scaffolds_gap_threshold)
         sys.stderr.write("                                      Only scaffold assemblies are affected (use -s/--scaffolds)!\n")
-        sys.stderr.write("    --significant-part-size  <int>    Lower threshold for detecting partially unaligned contigs with both significant \n")
-        sys.stderr.write("                                      aligned and unaligned parts [default: %s]\n" % significant_part_size)
+        sys.stderr.write("    --unaligned-part-size  <int>      Lower threshold for detecting partially unaligned contigs. Such contig should have\n")
+        sys.stderr.write("                                      at least one unaligned fragment >= the threshold [default: %s]\n" % unaligned_part_size)
         sys.stderr.write("    --fragmented                      Reference genome may be fragmented into small pieces (e.g. scaffolded reference) \n")
+        sys.stderr.write("    --fragmented-max-indent  <int>    Mark translocation as fake if both alignments are located no further than N bases \n")
+        sys.stderr.write("                                      from the ends of the reference fragments [default: %s]\n" % MAX_INDEL_LENGTH)
+        sys.stderr.write("                                      Requires --fragmented option.\n")
         sys.stderr.write("    --plots-format  <str>             Save plots in specified format [default: %s]\n" % plot_extension)
         sys.stderr.write("                                      Supported formats: %s\n" % ', '.join(supported_plot_extensions))
         sys.stderr.write("    --memory-efficient                Run Nucmer using one thread, separately per each assembly and each chromosome\n")
         sys.stderr.write("                                      This may significantly reduce memory consumption on large genomes\n")
-        sys.stderr.write("    --space-efficient                 Create only reports and plots files. .stdout, .stderr, coords and other aux files will not be created\n")
+        sys.stderr.write("    --space-efficient                 Create only reports and plots files. .stdout, .stderr, .coords and other aux files will not be created\n")
         sys.stderr.write("                                      This may significantly reduce space consumption on large genomes. Icarus viewers also will not be built\n")
         sys.stderr.write("-1  --reads1  <filename>              File with forward reads (in FASTQ format, may be gzipped)\n")
         sys.stderr.write("-2  --reads2  <filename>              File with reverse reads (in FASTQ format, may be gzipped)\n")
@@ -376,10 +382,11 @@ def usage(show_hidden=False, meta=False, short=True):
             sys.stderr.write("-J  --save-json-to <path>   Save the JSON output to a particular path\n")
             if meta:
                 sys.stderr.write("--read-support                   Use read coverage specified in contig names (SPAdes/Velvet style) for calculating Avg contig read support\n")
+            sys.stderr.write("--cov  <filename>                File with read coverage (for Icarus alignment viewer)\n")
+            sys.stderr.write("--phys-cov  <filename>           File with physical coverage (for Icarus alignment viewer)\n")
             sys.stderr.write("--no-icarus                      Do not create Icarus files\n")
             sys.stderr.write("--svg                            Draw contig alignment plot (in SVG format)\n")
-            sys.stderr.write("--fragmented-max-indent   <int>  Mark translocation as fake if both alignments are located no further than N bases from the ends of the reference fragments [default: %s]\n" % MAX_INDEL_LENGTH)
-            sys.stderr.write("                                 Requires --fragmented option.\n")
+            sys.stderr.write("--force-nucmer                   Use nucmer instead of E-MEM for aligning contigs. \n")
 
         sys.stderr.write("\n")
         sys.stderr.write("Other:\n")

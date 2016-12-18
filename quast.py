@@ -16,7 +16,7 @@ from quast_libs import qconfig
 qconfig.check_python_version()
 
 from quast_libs import qutils, reads_analyzer
-from quast_libs.qutils import cleanup
+from quast_libs.qutils import cleanup, check_dirpath
 from quast_libs.options_parser import parse_options
 
 from quast_libs.log import get_logger
@@ -29,12 +29,8 @@ is_combined_ref = False
 
 
 def main(args):
-    if ' ' in qconfig.QUAST_HOME:
-        logger.error('QUAST does not support spaces in paths. \n'
-                     'You are trying to run it from ' + str(qconfig.QUAST_HOME) + '\n'
-                     'Please, put QUAST in a different directory, then try again.\n',
-                     to_stderr=True,
-                     exit_with_code=3)
+    check_dirpath(qconfig.QUAST_HOME, 'You are trying to run it from ' + str(qconfig.QUAST_HOME) + '\n.' +
+                  'Please, put QUAST in a different directory, then try again.\n', exit_code=3)
 
     if not args:
         qconfig.usage()
@@ -52,7 +48,7 @@ def main(args):
         try:
             locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
         except Exception:
-            logger.warn('Python locale settings can\'t be changed')
+            logger.warning('Python locale settings can\'t be changed')
     quast_path = [os.path.realpath(__file__)]
     quast_py_args, contigs_fpaths = parse_options(logger, quast_path + args)
     output_dirpath, ref_fpath, labels = qconfig.output_dirpath, qconfig.reference, qconfig.labels
@@ -100,8 +96,8 @@ def main(args):
     qconfig.assemblies_num = len(contigs_fpaths)
 
     reads_fpaths = []
-    cov_fpath = []
-    physical_cov_fpath = []
+    cov_fpath = qconfig.cov_fpath
+    physical_cov_fpath = qconfig.phys_cov_fpath
     if qconfig.forward_reads:
         reads_fpaths.append(qconfig.forward_reads)
     if qconfig.reverse_reads:

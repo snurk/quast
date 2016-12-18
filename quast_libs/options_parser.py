@@ -14,8 +14,7 @@ from os.path import join, abspath
 import sys
 
 from quast_libs import qconfig, qutils
-from quast_libs.qutils import assert_file_exists, set_up_output_dir
-
+from quast_libs.qutils import assert_file_exists, set_up_output_dir, check_dirpath
 
 test_data_dir = join(qconfig.QUAST_HOME, 'test_data')
 
@@ -67,12 +66,8 @@ def ensure_value(values, attr, value):
 def check_output_dir(option, opt_str, value, parser, logger):
     output_dirpath = os.path.abspath(value)
     setattr(qconfig, option.dest, output_dirpath)
-    if ' ' in output_dirpath:
-        logger.error('QUAST does not support spaces in paths. \n'
-                     'You have specified ' + str(output_dirpath) + ' as an output path.\n'
-                     'Please, use a different directory.',
-                     to_stderr=True,
-                     exit_with_code=3)
+    check_dirpath(qconfig.output_dirpath, 'You have specified ' + str(output_dirpath) + ' as an output path.\n'
+                     'Please, use a different directory.')
 
 
 def set_extensive_mis_size(option, opt_str, value, parser, logger):
@@ -261,6 +256,14 @@ def parse_options(logger, quast_args, is_metaquast=False):
              dest='bed',
              type='file')
          ),
+        (['--cov'], dict(
+             dest='cov_fpath',
+             type='file')
+         ),
+        (['--phys-cov'], dict(
+             dest='phys_cov_fpath',
+             type='file')
+         ),
         (['-l', '--labels'], dict(
              dest='labels',
              type='string')
@@ -322,8 +325,8 @@ def parse_options(logger, quast_args, is_metaquast=False):
              dest='strict_NA',
              action='store_true')
          ),
-        (['--significant-part-size'], dict(
-             dest='significant_part_size',
+        (['--unaligned-part-size'], dict(
+             dest='unaligned_part_size',
              type=int)
          ),
         (['-x', '--extensive-mis-size'], dict(
@@ -451,6 +454,10 @@ def parse_options(logger, quast_args, is_metaquast=False):
              callback_kwargs={'store_true_values': ['space_efficient'],
                               'store_false_values': ['create_icarus_html']},)
          ),
+        (['--force-nucmer'], dict(
+             dest='force_nucmer',
+             action='store_true')
+         ),
         (['--silent'], dict(
              dest='silent',
              action='store_true')
@@ -518,12 +525,13 @@ def parse_options(logger, quast_args, is_metaquast=False):
 
     if qconfig.test or qconfig.test_no_ref or qconfig.test_sv:
         qconfig.output_dirpath = abspath(qconfig.test_output_dirname)
+        check_dirpath(qconfig.output_dirpath, 'You are trying to run QUAST from ' + str(os.path.dirname(qconfig.output_dirpath)) + '.\n' +
+                  'Please, rerun QUAST from a different directory.')
         if qconfig.test or qconfig.test_sv:
             qconfig.reference = meta_test_references if is_metaquast else test_reference
             if not is_metaquast:
                 qconfig.genes = test_genes
                 qconfig.operons = test_operons
-                qconfig.with_gage = True
                 qconfig.glimmer = True
                 qconfig.gene_finding = True
                 qconfig.prokaryote = False
@@ -546,6 +554,9 @@ def parse_options(logger, quast_args, is_metaquast=False):
     if qconfig.json_output_dirpath:
         qconfig.save_json = True
 
+    if not qconfig.output_dirpath:
+        check_dirpath(os.getcwd(), 'An output path was not specified manually. You are trying to run QUAST from ' + str(os.getcwd()) + '.\n' +
+                  'Please, specify a different directory using -o option.')
     qconfig.output_dirpath, qconfig.json_output_dirpath, existing_alignments = \
         set_up_output_dir(qconfig.output_dirpath, qconfig.json_output_dirpath, not qconfig.output_dirpath,
                           qconfig.save_json if not is_metaquast else None)

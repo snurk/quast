@@ -20,7 +20,7 @@ from quast_libs.options_parser import parse_options, remove_from_quast_py_args
 
 from quast_libs import contigs_analyzer, reads_analyzer, search_references_meta
 from quast_libs import qutils
-from quast_libs.qutils import cleanup
+from quast_libs.qutils import cleanup, check_dirpath
 
 from quast_libs.log import get_logger
 logger = get_logger(qconfig.LOGGER_META_NAME)
@@ -30,9 +30,8 @@ from site import addsitedir
 addsitedir(os.path.join(qconfig.LIBS_LOCATION, 'site_packages'))
 
 
-def _start_quast_main(
-        args, assemblies, reference_fpath=None,
-        output_dirpath=None, num_notifications_tuple=None, is_first_run=None):
+def _start_quast_main(args, assemblies, reference_fpath=None, output_dirpath=None,
+                      num_notifications_tuple=None, is_first_run=None, run_regular_quast=False):
     args = args[:]
 
     args.extend([asm.fpath for asm in assemblies])
@@ -61,7 +60,8 @@ def _start_quast_main(
     except:    
         reload(quast)
     quast.logger.set_up_console_handler(indent_val=1, debug=qconfig.debug)
-    quast.logger.set_up_metaquast()
+    if not run_regular_quast:
+        quast.logger.set_up_metaquast()
     logger.info_to_file('(logging to ' +
                         os.path.join(output_dirpath,
                                      qconfig.LOGGER_DEFAULT_NAME + '.log)'))
@@ -79,12 +79,8 @@ def _start_quast_main(
 
 
 def main(args):
-    if ' ' in qconfig.QUAST_HOME:
-        logger.error('QUAST does not support spaces in paths. \n'
-                     'You are trying to run it from ' + str(qconfig.QUAST_HOME) + '\n'
-                     'Please, put QUAST in a different directory, then try again.\n',
-                     to_stderr=True,
-                     exit_with_code=3)
+    check_dirpath(qconfig.QUAST_HOME, 'You are trying to run it from ' + str(qconfig.QUAST_HOME) + '.\n' +
+                  'Please, put QUAST in a different directory, then try again.\n', exit_code=3)
 
     if not args:
         qconfig.usage(meta=True)
@@ -174,7 +170,7 @@ def main(args):
         # No references, running regular quast with MetaGenemark gene finder
         logger.main_info()
         logger.notice('No references are provided, starting regular QUAST with MetaGeneMark gene finder')
-        _start_quast_main(quast_py_args, assemblies=assemblies, output_dirpath=output_dirpath)
+        _start_quast_main(quast_py_args, assemblies=assemblies, output_dirpath=output_dirpath, run_regular_quast=True)
         exit(0)
 
     # Running combined reference
@@ -185,15 +181,23 @@ def main(args):
         reads_fpaths.append(qconfig.forward_reads)
     if qconfig.reverse_reads:
         reads_fpaths.append(qconfig.reverse_reads)
+    cov_fpath = qconfig.cov_fpath
+    physical_cov_fpath = qconfig.phys_cov_fpath
     if (reads_fpaths or qconfig.sam or qconfig.bam) and ref_fpaths:
-        bed_fpath, cov_fpath, _ = reads_analyzer.do(combined_ref_fpath, contigs_fpaths, reads_fpaths, corrected_ref_fpaths,
-                                                    os.path.join(combined_output_dirpath, qconfig.variation_dirname),
-                                                    external_logger=logger, sam_fpath=qconfig.sam, bam_fpath=qconfig.bam, bed_fpath=qconfig.bed)
+        bed_fpath, cov_fpath, physical_cov_fpath = reads_analyzer.do(combined_ref_fpath, contigs_fpaths, reads_fpaths, corrected_ref_fpaths,
+                                                   os.path.join(combined_output_dirpath, qconfig.variation_dirname),
+                                                   external_logger=logger, sam_fpath=qconfig.sam, bam_fpath=qconfig.bam, bed_fpath=qconfig.bed)
         qconfig.bed = bed_fpath
 
     if qconfig.bed:
         quast_py_args += ['--sv-bed']
         quast_py_args += [qconfig.bed]
+    if cov_fpath:
+        quast_py_args += ['--cov']
+        quast_py_args += [cov_fpath]
+    if physical_cov_fpath:
+        quast_py_args += ['--phys-cov']
+        quast_py_args += [physical_cov_fpath]
     if qconfig.sam:
         quast_py_args += ['--sam']
         quast_py_args += [qconfig.sam]

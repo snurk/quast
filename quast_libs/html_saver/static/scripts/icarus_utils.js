@@ -4,10 +4,25 @@ var minCoverage = 10;
 var expandedLanes = [];
 
 function getBlockStructure(block) {
-    if (typeof(contig_structures) !== 'undefined')
-        return contig_structures[block.assembly][block.name];
-    else
+    if (typeof(contig_structures) !== 'undefined') {
+        var structure = contig_structures[block.assembly][block.name];
+        for (var i = 0; i < structure.length; i++) {
+            if (structure[i].chr) {
+                structure[i].contig = block.name;
+                structure[i].chr = getBlockChrom(structure[i]);
+            }
+        }
+        return structure;
+    }
+    else {
         return block.structure;
+    }
+}
+
+function getBlockChrom(block) {
+    if (chrom_str = references_by_id[block.chr])
+        return chrom_str;
+    else return block.chr;
 }
 
 function getItemStart(block, minExtent) {
@@ -46,12 +61,12 @@ function getItemStrokeOpacity(block, selected_id) {
 
 function getItemOpacity(block) {
     var defOpacity = 0.65;
-    if (block.contig_type == 'small_contigs')
+    if (block.contig_type == 'short_contigs')
         return paleContigsOpacity;
     if (isContigSizePlot && (!block.contig_type || block.contig_type == 'unaligned'))
         defOpacity = 1;
     if (block.misassembledEnds) return 1;
-    if (block.fullContig && block.contig_type && block.contig_type != 'unaligned' && block.contig_type != 'small_contigs' &&
+    if (block.fullContig && block.contig_type && block.contig_type != 'unaligned' && block.contig_type != 'short_contigs' &&
         block.contig_type != 'ambiguous')
         return 0.05;
     if (!block || !block.size) return defOpacity;
@@ -116,7 +131,7 @@ function changeInfo(block) {
     if (!isContigSizePlot && typeof(contig_lengths) !== 'undefined') {
         contigInfo += ' (' + contig_lengths[block.assembly][block.name] + ' bp)';
     }
-    else if (block.size) {
+    else if (block.size && block.contig_type != 'short_contigs') {
         contigInfo += ' (' + block.size + ' bp)';
     }
     info.append('p')
@@ -152,7 +167,7 @@ function changeInfo(block) {
     }
     if (contigType)
         info.append('p')
-            .text('Type: ' + contigType);
+            .text('Type: ' + contigType.replace('_', ' '));
 
     var appendPositionElement = function(curBlock, selectedBlock, whereAppend, prevBlock, prevChr, isExpanded) {
         if (!curBlock) return;
@@ -179,6 +194,7 @@ function changeInfo(block) {
     if (currentAlignmentSet) {
         for (var i = 0; i < currentAlignmentSet.length; i++) {
             var nextBlock = currentAlignmentSet[i];
+            nextBlock.chr = getBlockChrom(nextBlock);
             if (nextBlock.contig_type != "M" && block.corr_start == nextBlock.corr_start && nextBlock.corr_end == block.corr_end) {
                 prevChr = nextBlock.chr;
                 break;
@@ -239,7 +255,7 @@ function changeInfo(block) {
         var genesText = 'Predicted genes: ' + block.genes.length;
         var genesInfo = genesMenu.append('span').text(genesText);
 
-        if (block.contig_type == 'small_contigs' || block.genes.length == 0) {
+        if (block.contig_type == 'short_contigs' || block.genes.length == 0) {
             genesMenu.attr('class', 'head main');
         }
         else {
@@ -271,6 +287,7 @@ function changeInfo(block) {
         var overlapsInfo = overlapsMenuInfo.append('p').attr('class', 'close');
         for (var i = 0; i < block.overlaps.length; i++) {
             var nextBlock = block.overlaps[i];
+            nextBlock.chr = getBlockChrom(nextBlock);
             appendPositionElement(nextBlock, nextBlock, overlapsInfo, block, prevChr, true);
         }
     }
@@ -290,6 +307,8 @@ function changeInfo(block) {
         var ambiguousInfo = ambiguousMenuInfo.append('p').attr('class', 'close');
         for (var i = 0; i < block.ambiguous_alignments.length; i++) {
             var nextBlock = block.ambiguous_alignments[i];
+            nextBlock.contig = block.name;
+            nextBlock.chr = getBlockChrom(nextBlock);
             if (nextBlock.contig_type != "M") {
                 appendPositionElement(nextBlock, nextBlock, ambiguousInfo, block, prevChr, true);
             }

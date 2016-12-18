@@ -10,7 +10,7 @@ import os
 import shutil
 from quast_libs import reporting, qconfig, qutils, ca_utils
 from quast_libs.ca_utils.misc import compile_aligner
-from .qutils import get_path_to_program, is_python_2
+from .qutils import get_path_to_program, is_python2
 from os.path import join, abspath
 
 from quast_libs.log import get_logger
@@ -27,13 +27,14 @@ def all_required_java_classes_exist(dirpath):
 
 
 def run_gage(i, contigs_fpath, gage_results_dirpath, gage_tool_path, reference, tmp_dir):
-    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
+    assembly_label = qutils.label_from_fpath(contigs_fpath)
+    corr_assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     logger.info('  ' + qutils.index_to_str(i) + assembly_label + '...')
 
     # run gage tool
-    log_out_fpath = os.path.join(gage_results_dirpath, 'gage_' + assembly_label + '.stdout')
-    log_err_fpath = os.path.join(gage_results_dirpath, 'gage_' + assembly_label + '.stderr')
+    log_out_fpath = os.path.join(gage_results_dirpath, 'gage_' + corr_assembly_label + '.stdout')
+    log_err_fpath = os.path.join(gage_results_dirpath, 'gage_' + corr_assembly_label + '.stderr')
     logger.info('  ' + qutils.index_to_str(i) + 'Logging to files ' +
                 os.path.basename(log_out_fpath) + ' and ' +
                 os.path.basename(log_err_fpath) + '...')
@@ -73,7 +74,7 @@ def compile_gage(only_clean=False):
     if javac_path is None:
         logger.error('Java compiler not found (javac)! '
                      'Please install it or compile GAGE java classes manually (' + gage_dirpath + '/*.java)!')
-        return
+        return False
 
     cur_dir = os.getcwd()
     os.chdir(gage_dirpath)
@@ -89,7 +90,8 @@ def compile_gage(only_clean=False):
         logger.error('Error occurred during compilation of java classes (' + gage_dirpath + '/*.java)! '
                      'Try to compile it manually. ' + ('You can restart Quast with the --debug flag '
                      'to see the command line.' if not qconfig.debug else ''))
-        return
+        return False
+    return True
 
 
 def do(ref_fpath, contigs_fpaths, output_dirpath):
@@ -125,13 +127,12 @@ def do(ref_fpath, contigs_fpaths, output_dirpath):
     if not os.path.exists(tmp_dirpath):
         os.makedirs(tmp_dirpath)
 
-    if not compile_aligner(logger):
+    if not compile_aligner(logger) or (not all_required_java_classes_exist(gage_dirpath) and not compile_gage()):
+        logger.error('GAGE module was not installed properly, so it is disabled and you cannot use --gage.')
         return
-    if not all_required_java_classes_exist(gage_dirpath):
-        compile_gage()
 
     n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
-    if is_python_2():
+    if is_python2():
         from joblib import Parallel, delayed
     else:
         from joblib3 import Parallel, delayed
@@ -139,19 +140,18 @@ def do(ref_fpath, contigs_fpaths, output_dirpath):
         for i, contigs_fpath in enumerate(contigs_fpaths))
 
     if 0 not in return_codes:
-        logger.warning('Error occurred while GAGE was processing assemblies.'
-                       ' See GAGE error logs for details: %s' %
-                os.path.join(gage_results_dirpath, 'gage_*.stderr'))
+        logger.error('Error occurred while GAGE was processing assemblies.'
+                     ' See GAGE error logs for details: %s' % os.path.join(gage_results_dirpath, 'gage_*.stderr'))
         return
 
     ## find metrics for total report:
     for i, contigs_fpath in enumerate(contigs_fpaths):
-        assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
+        corr_assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
         report = reporting.get(contigs_fpath)
 
         log_out_fpath = os.path.join(
-            gage_results_dirpath, 'gage_' + assembly_label + '.stdout')
+            gage_results_dirpath, 'gage_' + corr_assembly_label + '.stdout')
         logfile_out = open(log_out_fpath, 'r')
         cur_metric_id = 0
         for line in logfile_out:

@@ -17,7 +17,7 @@ from quast_libs.fastaparser import write_fasta
 from quast_libs.genes_parser import Gene
 
 from quast_libs.log import get_logger
-from quast_libs.qutils import is_python_2
+from quast_libs.qutils import is_python2
 
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
@@ -226,11 +226,12 @@ def gm_es(tool_dirpath, fasta_fpath, err_fpath, index, tmp_dirpath, num_threads)
 
 def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath, tmp_dirpath, gmhmm_p_function,
                   prokaryote, num_threads):
-    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
+    assembly_label = qutils.label_from_fpath(contigs_fpath)
+    corr_assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
 
     logger.info('  ' + qutils.index_to_str(index) + assembly_label)
 
-    err_fpath = os.path.join(out_dirpath, assembly_label + '_genemark.stderr')
+    err_fpath = os.path.join(out_dirpath, corr_assembly_label + '_genemark.stderr')
 
     genes = gmhmm_p_function(tool_dirpath, contigs_fpath, err_fpath, index, tmp_dirpath, num_threads)
 
@@ -239,10 +240,10 @@ def predict_genes(index, contigs_fpath, gene_lengths, out_dirpath, tool_dirpath,
         count = None  # [None] * len(gene_lengths)
     else:
         tool_name = "genemark"
-        out_gff_fpath = os.path.join(out_dirpath, assembly_label + '_' + tool_name + '_genes.gff' + ('.gz' if not qconfig.no_gzip else ''))
+        out_gff_fpath = os.path.join(out_dirpath, corr_assembly_label + '_' + tool_name + '_genes.gff' + ('.gz' if not qconfig.no_gzip else ''))
         add_genes_to_gff(genes, out_gff_fpath, prokaryote)
         if OUTPUT_FASTA:
-            out_fasta_fpath = os.path.join(out_dirpath, assembly_label + '_' + tool_name + '_genes.fasta')
+            out_fasta_fpath = os.path.join(out_dirpath, corr_assembly_label + '_' + tool_name + '_genes.fasta')
             add_genes_to_fasta(genes, out_fasta_fpath)
 
         count = [sum([gene.end - gene.start > x for gene in genes]) for x in gene_lengths]
@@ -293,7 +294,7 @@ def do(fasta_fpaths, gene_lengths, out_dirpath, prokaryote, meta):
 
         n_jobs = min(len(fasta_fpaths), qconfig.max_threads)
         num_threads = max(1, qconfig.max_threads // n_jobs)
-        if is_python_2():
+        if is_python2():
             from joblib import Parallel, delayed
         else:
             from joblib3 import Parallel, delayed

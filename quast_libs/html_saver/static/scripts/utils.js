@@ -141,30 +141,29 @@ function getBpTickFormatter(maxY, additionalText) {
 
     return function(val, axis) {
         var res;
-
         if (val == 0) {
             res = 0;
 
-        } else if (val >= 1000000) {
+        } else if (axis.max >= 1000000) {
             res = val / 1000000;
 
-            if (val > axis.max + 1 || val + axis.tickSize >= 1000000000) {
+            if (val > axis.max - 1 || val + axis.tickSize >= 1000000000) {
                 res = additionalText + toPrettyString(res, 'Mbp');
             } else {
                 res = toPrettyString(res);
             }
-        } else if (val >= 1000) {
+        } else if (axis.max >= 1000) {
             res = val / 1000;
 
-            if (val > axis.max + 1 || val + axis.tickSize >= 1000000) {
+            if (val > axis.max - 1 || val + axis.tickSize >= 1000000) {
                 res = additionalText + toPrettyString(res, 'kbp');
             } else {
                 res = toPrettyString(res);
             }
-        } else if (val >= 1) {
+        } else if (axis.max >= 1) {
             res = val;
 
-            if (val > axis.max + 1 || val + axis.tickSize >= 1000) {
+            if (val > axis.max - 1 || val + axis.tickSize >= 1000) {
                 res = additionalText + toPrettyString(res, 'bp');
             } else {
                 res = toPrettyString(res);
@@ -207,10 +206,10 @@ function getJustNumberTickFormatter(maxY, additionalText) {
     return function (val, axis) {
         additionalText = additionalText || '';
         if (val > axis.max + 1) {
-                res = additionalText + toPrettyString(val);
-            } else {
-                res = toPrettyString(val);
-            }
+            res = additionalText + toPrettyString(val);
+        } else {
+            res = toPrettyString(val);
+        }
         return res;
     }
 }
@@ -218,11 +217,11 @@ function getJustNumberTickFormatter(maxY, additionalText) {
 function getPercentTickFormatter(maxY, additionalText) {
     return function (val, axis) {
         additionalText = additionalText || '';
-            if (val > maxY + 1 || val + axis.tickSize >= 100) {
-                res = additionalText + toPrettyString(val, '%');
-            } else {
-                res = toPrettyString(val);
-            }
+        if (val > maxY + 1 || val == 100) {
+            res = additionalText + toPrettyString(val, '%');
+        } else {
+            res = toPrettyString(val);
+        }
         return res;
     }
 }
@@ -381,6 +380,13 @@ function findNearestPoint(points, x) {
     return points[points.length-1][1]
 }
 
+function getSelectedAssemblies() {
+    var selectedAssemblies = [];
+    $('#legend-placeholder input:checked').each(function() {
+        selectedAssemblies.push($(this).attr('name'));
+    });
+    return selectedAssemblies;
+}
 
 // Cookie functions based on http://www.quirksmode.org/js/cookies.html
 // Cookies won't work for local files.

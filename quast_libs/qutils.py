@@ -184,7 +184,7 @@ def correct_contigs(contigs_fpaths, corrected_dirpath, labels, reporting):
         qconfig.max_threads = 1
 
     n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
-    if is_python_2():
+    if is_python2():
         from joblib import Parallel, delayed
     else:
         from joblib3 import Parallel, delayed
@@ -217,6 +217,25 @@ def correct_contigs(contigs_fpaths, corrected_dirpath, labels, reporting):
     return corrected_contigs_fpaths, old_contigs_fpaths
 
 
+def convert_to_unicode(value):
+    if is_python2():
+        return unicode(value)
+    else:
+        return str(value)
+
+
+def slugify(value):
+    """
+    Prepare string to use in file names: normalizes string,
+    removes non-alpha characters, and converts spaces to hyphens.
+    """
+    import unicodedata
+    value = unicodedata.normalize('NFKD', convert_to_unicode(value)).encode('ascii', 'ignore').decode('utf-8')
+    value = convert_to_unicode(re.sub('[^\w\s-]', '-', value).strip())
+    value = convert_to_unicode(re.sub('[-\s]+', '-', value))
+    return str(value)
+
+
 def parallel_correct_contigs(file_counter, contigs_fpath, corrected_dirpath, labels):
     contigs_fname = os.path.basename(contigs_fpath)
     fname, fasta_ext = splitext_for_fasta_file(contigs_fname)
@@ -227,7 +246,7 @@ def parallel_correct_contigs(file_counter, contigs_fpath, corrected_dirpath, lab
     old_contigs_fpaths = []
     broken_scaffold_fpaths = []
 
-    corr_fpath = unique_corrected_fpath(os.path.join(corrected_dirpath, label + fasta_ext))
+    corr_fpath = unique_corrected_fpath(os.path.join(corrected_dirpath, slugify(label) + fasta_ext))
     lengths = get_lengths_from_fasta(contigs_fpath, label)
     if not lengths:
         corr_fpath = None
@@ -257,7 +276,7 @@ def broke_scaffolds(file_counter, labels, contigs_fpath, corrected_dirpath, logs
     contigs_fname = os.path.basename(contigs_fpath)
     fname, fasta_ext = splitext_for_fasta_file(contigs_fname)
     label = labels[file_counter]
-    corr_fpath = unique_corrected_fpath(os.path.join(corrected_dirpath, label + fasta_ext))
+    corr_fpath = unique_corrected_fpath(os.path.join(corrected_dirpath, slugify(label) + fasta_ext))
     corr_fpath_wo_ext = os.path.join(corrected_dirpath, name_from_fpath(corr_fpath))
     broken_scaffolds_fpath = corr_fpath_wo_ext + '_broken' + fasta_ext
     broken_scaffolds_fasta = []
@@ -381,15 +400,9 @@ def get_label_from_par_dir_and_fname(contigs_fpath):
 
 def get_duplicated(labels):
     # check duplicates
-    occurences = {}
-    for label in labels:
-        if label in occurences:
-            occurences[label] += 1
-        else:
-            occurences[label] = 1
-
-    dupls = [dup_label for dup_label, occurs_num in occurences.items() if occurs_num > 1]
-    return dupls
+    lowercase_labels = [label.lower() for label in labels]
+    dup_labels = [label for label in labels if lowercase_labels.count(label.lower()) > 1]
+    return dup_labels
 
 
 def get_labels_from_par_dirs(contigs_fpaths):
@@ -422,10 +435,10 @@ def process_labels(contigs_fpaths, labels, all_labels_from_dirs):
         # labels from fname
         labels = [rm_extentions_for_fasta_file(os.path.basename(fpath)) for fpath in contigs_fpaths]
 
-        for duplicated_label in get_duplicated(labels):
-            for i, (label, fpath) in enumerate(zip(labels, contigs_fpaths)):
-                if label == duplicated_label:
-                    labels[i] = get_label_from_par_dir_and_fname(contigs_fpaths[i])
+        duplicated_labels = set(get_duplicated(labels))
+        for i, (label, fpath) in enumerate(zip(labels, contigs_fpaths)):
+            if label in duplicated_labels:
+                labels[i] = get_label_from_par_dir_and_fname(contigs_fpaths[i])
 
     # fixing remaining duplicates by adding index
     for duplicated_label in get_duplicated(labels):
@@ -593,7 +606,7 @@ def label_from_fpath(fpath):
 
 
 def label_from_fpath_for_fname(fpath):
-    return re.sub('[/= ]', '_', qconfig.assembly_labels_by_fpath[fpath])
+    return slugify(qconfig.assembly_labels_by_fpath[fpath])
 
 
 def call_subprocess(args, stdin=None, stdout=None, stderr=None,
@@ -747,11 +760,11 @@ def safe_rm(fpath):
             pass
 
 
-def is_python_2():
+def is_python2():
     return sys.version_info[0] < 3
 
 
-def compile_tool(name, dirpath, requirements, just_notice=False, logger=logger, only_clean=False):
+def compile_tool(name, dirpath, requirements, just_notice=False, logger=logger, only_clean=False, make_cmd=None):
     make_logs_basepath = join(dirpath, 'make')
     failed_compilation_flag = make_logs_basepath + '.failed'
     succeeded_compilation_flag = make_logs_basepath + '.succeeded'
@@ -770,7 +783,7 @@ def compile_tool(name, dirpath, requirements, just_notice=False, logger=logger, 
         # making
         logger.main_info('Compiling ' + name + ' (details are in ' + make_logs_basepath +
                          '.log and make.err)')
-        return_code = call_subprocess(['make', '-C', dirpath],
+        return_code = call_subprocess((['make', make_cmd] if make_cmd else ['make']) + ['-C', dirpath],
                                       stdout=open(make_logs_basepath + '.log', 'w'),
                                       stderr=open(make_logs_basepath + '.err', 'w'), logger=logger)
 
@@ -787,3 +800,23 @@ def compile_tool(name, dirpath, requirements, just_notice=False, logger=logger, 
         with open(succeeded_compilation_flag, 'w') as out_f:
             out_f.write(abspath(realpath(dirpath)))
     return True
+
+
+def check_dirpath(path, message="", exit_code=3):
+    if not is_ascii_string(path):
+        logger.error('QUAST does not support non-ASCII characters in path.\n' + message, to_stderr=True, exit_with_code=exit_code)
+    if ' ' in path:
+        logger.error('QUAST does not support spaces in paths.\n' + message, to_stderr=True, exit_with_code=exit_code)
+    return True
+
+
+# based on http://stackoverflow.com/questions/196345/how-to-check-if-a-string-in-python-is-in-ascii
+def is_ascii_string(line):
+    try:
+        line.encode('ascii')
+    except UnicodeDecodeError:  # python2
+        return False
+    except UnicodeEncodeError:  # python3
+        return False
+    else:
+        return True

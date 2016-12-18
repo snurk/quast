@@ -171,14 +171,15 @@ def js_data_gen(assemblies, contigs_fpaths, chromosomes_length, output_dirpath, 
     aligned_bases = genome_analyzer.get_ref_aligned_lengths()
     nx_marks = [reporting.Fields.N50, reporting.Fields.N75, reporting.Fields.NG50, reporting.Fields.NG75]
 
-    assemblies_data, assemblies_contig_size_data, assemblies_n50 = get_assemblies_data(contigs_fpaths, stdout_pattern, nx_marks)
+    assemblies_data, assemblies_contig_size_data, assemblies_n50 = get_assemblies_data(contigs_fpaths, output_all_files_dir_path, stdout_pattern, nx_marks)
 
     ref_contigs_dict = {}
     chr_lengths_dict = {}
 
     ref_data = 'var references_by_id = {};\n'
-    for i, chr in enumerate(chr_names):
-        ref_data += 'references_by_id[' + str(i) + '] = "' + str(chr) + '";\n'
+    chr_names_by_id = dict((chrom, str(i)) for i, chrom in enumerate(chr_names))
+    for chrom, i in chr_names_by_id.items():
+        ref_data += 'references_by_id["' + str(i) + '"] = "' + chrom + '";\n'
     for i, chr in enumerate(chr_full_names):
         if contig_names_by_refs:
             ref_contigs = [contig for contig in chr_names if contig_names_by_refs[contig] == chr]
@@ -205,14 +206,14 @@ def js_data_gen(assemblies, contigs_fpaths, chromosomes_length, output_dirpath, 
             data_str.append('chromosomes_len["' + ref_contig + '"] = ' + str(l) + ';')
             aligned_bases_by_chr[chr].extend(aligned_bases[ref_contig])
 
-        cov_data = format_cov_data(cov_data, max_depth, chr, 'coverage_data', 'reads_max_depth') if cov_data else None
-        physical_cov_data = format_cov_data(physical_cov_data, physical_max_depth, chr, 'physical_coverage_data', 'physical_max_depth') \
+        cov_data_str = format_cov_data(cov_data, max_depth, chr, 'coverage_data', 'reads_max_depth') if cov_data else None
+        physical_cov_data_str = format_cov_data(physical_cov_data, physical_max_depth, chr, 'physical_coverage_data', 'physical_max_depth') \
             if physical_cov_data else None
 
         alignment_viewer_fpath, ref_data_str, contigs_structure_str, additional_assemblies_data, ms_selectors, num_misassemblies[chr], aligned_assemblies[chr] = \
-            prepare_alignment_data_for_one_ref(chr, chr_full_names, ref_contigs, data_str, chr_to_aligned_blocks, structures_by_labels,
+            prepare_alignment_data_for_one_ref(chr, chr_full_names, chr_names_by_id, ref_contigs, data_str, chr_to_aligned_blocks, structures_by_labels,
                                                contigs_by_assemblies, ambiguity_alignments_by_labels=ambiguity_alignments_by_labels,
-                                               cov_data_str=cov_data, physical_cov_data_str=physical_cov_data,
+                                               cov_data_str=cov_data_str, physical_cov_data_str=physical_cov_data_str,
                                                contig_names_by_refs=contig_names_by_refs, output_dir_path=output_all_files_dir_path)
         ref_name = qutils.name_from_fpath(ref_fpath)
         save_alignment_data_for_one_ref(chr, ref_contigs, ref_name, json_output_dir, alignment_viewer_fpath, ref_data_str, ms_selectors,

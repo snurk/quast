@@ -35,19 +35,25 @@ def is_emem_aligner():
     return contig_aligner == 'E-MEM'
 
 
-def compile_aligner(logger, only_clean=False):
+def get_installed_emem():
+    return qutils.get_path_to_program('e-mem')
+
+
+def compile_aligner(logger, only_clean=False, compile_all_aligners=False):
     global contig_aligner
     global contig_aligner_dirpath
 
-    if contig_aligner_dirpath is not None and not check_prev_compilation_failed(contig_aligner, join(contig_aligner_dirpath, 'make.failed'),
-                                                                                just_notice=True, logger=logger):
-        return True
+    if not compile_all_aligners:
+        if contig_aligner_dirpath is not None and not \
+                check_prev_compilation_failed(contig_aligner, join(contig_aligner_dirpath, 'make.failed'), just_notice=True, logger=logger):
+            return True
 
-    if not contig_aligner_dirpath and qconfig.platform_name == 'macosx' and not \
-            check_prev_compilation_failed('E-MEM', e_mem_failed_compilation_flag, just_notice=True, logger=logger):
-        contig_aligner = 'E-MEM'
-        contig_aligner_dirpath = join(qconfig.LIBS_LOCATION, 'E-MEM-osx')
-        return True
+        if not qconfig.force_nucmer and not contig_aligner_dirpath and qconfig.platform_name == 'macosx':
+            if get_installed_emem() or \
+                    not check_prev_compilation_failed('E-MEM', e_mem_failed_compilation_flag, just_notice=True, logger=logger):
+                contig_aligner = 'E-MEM'
+                contig_aligner_dirpath = join(qconfig.LIBS_LOCATION, 'E-MEM-osx')
+                return True
 
     default_requirements = ['nucmer', 'delta-filter', 'show-coords', 'show-snps', 'mummer', 'mgaps']
 
@@ -55,17 +61,29 @@ def compile_aligner(logger, only_clean=False):
         aligners_to_try = [
             ('MUMmer', join(qconfig.LIBS_LOCATION, 'MUMmer3.23-osx'), default_requirements)]
     else:
-        aligners_to_try = [
-            ('E-MEM', join(qconfig.LIBS_LOCATION, 'E-MEM-linux'), default_requirements + ['e-mem']),
-            ('MUMmer', join(qconfig.LIBS_LOCATION, 'MUMmer3.23-linux'), default_requirements)]
+        if not qconfig.force_nucmer:
+            if get_installed_emem():
+                emem_requirements = default_requirements
+            else:
+                emem_requirements = default_requirements + ['e-mem']
+            aligners_to_try = [
+                ('E-MEM', join(qconfig.LIBS_LOCATION, 'E-MEM-linux'), emem_requirements),
+                ('MUMmer', join(qconfig.LIBS_LOCATION, 'MUMmer3.23-linux'), default_requirements)]
+        else:
+            aligners_to_try = [
+                ('MUMmer', join(qconfig.LIBS_LOCATION, 'MUMmer3.23-linux'), default_requirements)]
 
     for i, (name, dirpath, requirements) in enumerate(aligners_to_try):
         success_compilation = compile_tool(name, dirpath, requirements, just_notice=(i < len(aligners_to_try) - 1),
-                                           logger=logger, only_clean=only_clean)
+                                           logger=logger, only_clean=only_clean, make_cmd='no-emem' if 'E-MEM' in name and get_installed_emem() else None)
         if not success_compilation:
             continue
         contig_aligner = name
         contig_aligner_dirpath = dirpath  # successfully compiled
+        if not compile_all_aligners:
+            return True
+
+    if compile_all_aligners and contig_aligner and contig_aligner_dirpath:
         return True
     logger.error("Compilation of contig aligner software was unsuccessful! QUAST functionality will be limited.")
     return False
@@ -111,6 +129,12 @@ def clean_tmp_files(nucmer_fpath):
     for ext in ['.delta', '.coords_tmp', '.coords.headless']:
         if os.path.isfile(nucmer_fpath + ext):
             os.remove(nucmer_fpath + ext)
+
+
+def close_handlers(ca_output):
+    for handler in vars(ca_output).values():  # assume that ca_output does not have methods (fields only)
+        if handler:
+            handler.close()
 
 
 def compress_nucmer_output(logger, nucmer_fpath):

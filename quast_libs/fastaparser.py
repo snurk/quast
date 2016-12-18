@@ -12,10 +12,11 @@ import gzip
 import zipfile
 try:
     import bz2
-except:
+except ImportError:
     from quast_libs.site_packages import bz2
+if sys.version_info[0] == 3:
+    import io
 from quast_libs import qconfig
-import itertools
 # There is a pyfasta package -- http://pypi.python.org/pypi/pyfasta/
 # Use it!
 
@@ -32,24 +33,26 @@ def _get_fasta_file_handler(fpath):
         fasta_file = gzip.open(fpath, mode="rt")
 
     elif ext in ['.bz2', '.bzip2']:
-        fasta_file = bz2.BZ2File(fpath, mode="rt")
+        fasta_file = bz2.BZ2File(fpath, mode="r")
+        fasta_file = _read_compressed_file(fasta_file)
 
     elif ext in ['.zip']:
         try:
-            zfile = zipfile.ZipFile(fpath, mode="rt")
+            zfile = zipfile.ZipFile(fpath, mode="r")
         except Exception:
             exc_type, exc_value, _ = sys.exc_info()
-            logger.error('Can\'t open zip file: ' + str(exc_value))
+            logger.error('Can\'t open zip file: ' + str(exc_value), exit_with_code=1)
         else:
             names = zfile.namelist()
             if len(names) == 0:
-                logger.error('Reading %s: zip archive is empty' % fpath)
+                logger.error('Reading %s: zip archive is empty' % fpath, exit_with_code=1)
 
             if len(names) > 1:
                 logger.warning('Zip archive must contain exactly one file. Using %s' % names[0])
 
             try:
                 fasta_file = zfile.open(names[0])
+                fasta_file = _read_compressed_file(fasta_file)
             except AttributeError:
                 logger.error('Use python 2.6 or newer to work with contigs directly in zip.', exit_with_code=20)
     else:
@@ -57,9 +60,15 @@ def _get_fasta_file_handler(fpath):
             fasta_file = open(fpath)
         except IOError:
             exc_type, exc_value, _ = sys.exc_info()
-            logger.exception(exc_value)
+            logger.exception(exc_value, exit_with_code=1)
 
     return fasta_file
+
+
+def _read_compressed_file(compressed_file):
+    if sys.version_info[0] == 3:
+        return io.TextIOWrapper(io.BytesIO(compressed_file.read()))  # return string instead of binary data
+    return compressed_file
 
 
 def get_chr_lengths_from_fastafile(fpath):

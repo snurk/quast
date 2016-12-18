@@ -28,13 +28,13 @@ from quast_libs.ca_utils.analyze_contigs import analyze_contigs
 from quast_libs.ca_utils.analyze_coverage import analyze_coverage
 from quast_libs.ca_utils.analyze_misassemblies import Mapping
 from quast_libs.ca_utils.misc import print_file, ref_labels_by_chromosomes, clean_tmp_files, compile_aligner, \
-    create_nucmer_output_dir, open_gzipsafe, compress_nucmer_output, is_emem_aligner
+    create_nucmer_output_dir, open_gzipsafe, compress_nucmer_output, is_emem_aligner, close_handlers
 from quast_libs.ca_utils.align_contigs import align_contigs, get_nucmer_aux_out_fpaths, NucmerStatus, check_emem_functionality
 from quast_libs.ca_utils.save_results import print_results, save_result, save_result_for_unaligned, \
     save_combined_ref_stats
 
 from quast_libs.log import get_logger
-from quast_libs.qutils import is_python_2
+from quast_libs.qutils import is_python2
 
 logger = get_logger(qconfig.LOGGER_DEFAULT_NAME)
 
@@ -61,17 +61,18 @@ class SNP():
 def align_and_analyze(is_cyclic, index, contigs_fpath, output_dirpath, ref_fpath,
                       old_contigs_fpath, bed_fpath, parallel_by_chr=False, threads=1):
     nucmer_output_dirpath = create_nucmer_output_dir(output_dirpath)
-    assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
-    nucmer_fpath = join(nucmer_output_dirpath, assembly_label)
+    assembly_label = qutils.label_from_fpath(contigs_fpath)
+    corr_assembly_label = qutils.label_from_fpath_for_fname(contigs_fpath)
+    nucmer_fpath = join(nucmer_output_dirpath, corr_assembly_label)
 
     logger.info('  ' + qutils.index_to_str(index) + assembly_label)
 
     if not qconfig.space_efficient:
-        log_out_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % assembly_label + '.stdout')
-        log_err_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % assembly_label + '.stderr')
-        icarus_out_fpath = join(output_dirpath, qconfig.icarus_report_fname_pattern % assembly_label)
-        misassembly_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % assembly_label + '.mis_contigs.info')
-        unaligned_info_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % assembly_label + '.unaligned.info')
+        log_out_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % corr_assembly_label + '.stdout')
+        log_err_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % corr_assembly_label + '.stderr')
+        icarus_out_fpath = join(output_dirpath, qconfig.icarus_report_fname_pattern % corr_assembly_label)
+        misassembly_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % corr_assembly_label + '.mis_contigs.info')
+        unaligned_info_fpath = join(output_dirpath, qconfig.contig_report_fname_pattern % corr_assembly_label + '.unaligned.info')
     else:
         log_out_fpath = '/dev/null'
         log_err_fpath = '/dev/null'
@@ -200,42 +201,37 @@ def align_and_analyze(is_cyclic, index, contigs_fpath, output_dirpath, ref_fpath
                  if name in misassembled_contigs.keys()]
         fastaparser.write_fasta(join(output_dirpath, qutils.name_from_fpath(contigs_fpath) + '.mis_contigs.fa'), fasta)
 
-    alignment_tsv_fpath = join(output_dirpath, "alignments_" + assembly_label + '.tsv')
-    logger.debug('  ' + qutils.index_to_str(index) + 'Alignments: ' + qutils.relpath(alignment_tsv_fpath))
-    alignment_tsv_f = open(alignment_tsv_fpath, 'w')
-
     if qconfig.is_combined_ref:
-        unique_contigs_fpath = join(output_dirpath, qconfig.unique_contigs_fname_pattern % assembly_label)
-        unique_contigs_f = open(unique_contigs_fpath, 'w')
+        alignment_tsv_fpath = join(output_dirpath, "alignments_" + corr_assembly_label + '.tsv')
+        unique_contigs_fpath = join(output_dirpath, qconfig.unique_contigs_fname_pattern % corr_assembly_label)
+        logger.debug('  ' + qutils.index_to_str(index) + 'Alignments: ' + qutils.relpath(alignment_tsv_fpath))
         used_contigs = set()
+        with open(unique_contigs_fpath, 'w') as unique_contigs_f:
+            with open(alignment_tsv_fpath, 'w') as alignment_tsv_f:
+                for chr_name, aligns in ref_aligns.items():
+                    alignment_tsv_f.write(chr_name)
+                    contigs = set([align.contig for align in aligns])
+                    for contig in contigs:
+                        alignment_tsv_f.write('\t' + contig)
 
-    for chr_name, aligns in ref_aligns.items():
-        alignment_tsv_f.write(chr_name)
-        contigs = set([align.contig for align in aligns])
-        for contig in contigs:
-            alignment_tsv_f.write('\t' + contig)
+                    if qconfig.is_combined_ref:
+                        ref_name = ref_labels_by_chromosomes[chr_name]
+                        align_by_contigs = defaultdict(int)
+                        for align in aligns:
+                            align_by_contigs[align.contig] += align.len2
+                        for contig, aligned_len in align_by_contigs.items():
+                            if contig in used_contigs:
+                                continue
+                            used_contigs.add(contig)
+                            len_cov_pattern = re.compile(r'_length_([\d\.]+)_cov_([\d\.]+)')
+                            if len_cov_pattern.findall(contig):
+                                contig_len = len_cov_pattern.findall(contig)[0][0]
+                                contig_cov = len_cov_pattern.findall(contig)[0][1]
+                                if aligned_len / float(contig_len) > 0.9:
+                                    unique_contigs_f.write(ref_name + '\t' + str(aligned_len) + '\t' + contig_cov + '\n')
+                    alignment_tsv_f.write('\n')
 
-        if qconfig.is_combined_ref:
-            ref_name = ref_labels_by_chromosomes[chr_name]
-            align_by_contigs = defaultdict(int)
-            for align in aligns:
-                align_by_contigs[align.contig] += align.len2
-            for contig, aligned_len in align_by_contigs.items():
-                if contig in used_contigs:
-                    continue
-                used_contigs.add(contig)
-                len_cov_pattern = re.compile(r'_length_([\d\.]+)_cov_([\d\.]+)')
-                if len_cov_pattern.findall(contig):
-                    contig_len, contig_cov = len_cov_pattern.findall(contig)[0][0], len_cov_pattern.findall(contig)[0][1]
-                    if aligned_len / float(contig_len) > 0.9:
-                        unique_contigs_f.write(ref_name + '\t' + str(aligned_len) + '\t' + contig_cov + '\n')
-
-        alignment_tsv_f.write('\n')
-    alignment_tsv_f.close()
-
-    log_out_f.close()
-    if qconfig.show_snps:
-        used_snps_file.close()
+    close_handlers(ca_output)
     logger.info('  ' + qutils.index_to_str(index) + 'Analysis is finished.')
     logger.debug('')
     clean_tmp_files(nucmer_fpath)
@@ -267,7 +263,7 @@ def do(reference, contigs_fpaths, is_cyclic, output_dir, old_contigs_fpaths, bed
         threads = 1
     else:
         threads = max(1, qconfig.max_threads // n_jobs)
-    if is_python_2():
+    if is_python2():
         from joblib import Parallel, delayed
     else:
         from joblib3 import Parallel, delayed
@@ -293,8 +289,6 @@ def do(reference, contigs_fpaths, is_cyclic, output_dir, old_contigs_fpaths, bed
                                          [x[2] for x in statuses_results_lengths_tuples]
     reports = []
 
-    if qconfig.is_combined_ref:
-        save_combined_ref_stats(results, contigs_fpaths, ref_labels_by_chromosomes, output_dir, logger)
     for index, fname in enumerate(contigs_fpaths):
         report = reporting.get(fname)
         if statuses[index] == NucmerStatus.OK:
@@ -308,9 +302,11 @@ def do(reference, contigs_fpaths, is_cyclic, output_dir, old_contigs_fpaths, bed
     if NucmerStatus.OK in nucmer_statuses.values():
         reporting.save_misassemblies(output_dir)
         reporting.save_unaligned(output_dir)
-    if qconfig.draw_plots:
-        from . import plotter
-        plotter.draw_misassembl_plot(reports, join(output_dir, 'misassemblies_plot'), 'Misassemblies')
+        if qconfig.draw_plots:
+            from . import plotter
+            plotter.draw_misassembl_plot(reports, join(output_dir, 'misassemblies_plot'), 'Misassemblies')
+        if qconfig.is_combined_ref:
+            save_combined_ref_stats(results, contigs_fpaths, ref_labels_by_chromosomes, output_dir, logger)
 
     oks = list(nucmer_statuses.values()).count(NucmerStatus.OK)
     not_aligned = list(nucmer_statuses.values()).count(NucmerStatus.NOT_ALIGNED)

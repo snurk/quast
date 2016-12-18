@@ -85,13 +85,15 @@ var summary = {
                     placeholder, legendPlaceholder, glossary, order, scalePlaceholder) {
         var sortBtnClass = getSortRefsRule();
 
+        var selectedAssemblies = getSelectedAssemblies();
         $('#legend-placeholder').empty();
 
         filenames.forEach(function(filename, i) {
         var id = 'label_' + i + '_id';
+        var isChecked = (selectedAssemblies.length > 0 && selectedAssemblies.indexOf(i.toString())) != -1 ? 'checked="checked"' : "";
         $('#legend-placeholder').append('<div>' +
             '<label for="' + id + '" style="color: ' + colors[i] + '">' +
-            '<input type="checkbox" name="' + i + '" checked="checked" id="' + id + '">&nbsp;' + filename + '</label>' +
+            '<input type="checkbox" name="' + i + '" ' + isChecked + '" id="' + id + '">&nbsp;' + filename + '</label>' +
             '</div>');
         });
 
@@ -166,7 +168,7 @@ var summary = {
                         },
                         yaxis: {
                             min: 0,
-//                        max: info.maxY,
+                            max: name == 'genome' ? Math.min(100, info.maxY + 10) : null,
                             labelWidth: 125,
                             reserveSpace: true,
                             lineWidth: 0.5,
@@ -176,7 +178,7 @@ var summary = {
                         },
                         xaxis: {
                             min: 0,
-                            max: refNames.length+1,
+                            max: refNames.length + 1,
                             lineWidth: 1,
                             rotateTicks: 90,
                             color: '#000',
@@ -189,11 +191,8 @@ var summary = {
 
                 var firstLabel = $('.yAxis .tickLabel').last();
                 firstLabel.prepend(title + '<span class="rhs">&nbsp;</span>=<span class="rhs">&nbsp;</span>');
-                if (name == 'genome')
-                    firstLabel.append('%');
 
                 bindTip(placeholder, series, plot, refToPrettyString, 1, refNames, 'top right', true);
-
             };
 
             info.isInitialized = true;
