@@ -313,12 +313,13 @@ def save_combined_ref_stats(results, contigs_fpaths, ref_labels_by_chromosomes, 
                         row['values'].append(None)
                     else:
                         row['values'].append(istranslocations_by_ref[ref][second_ref])
-                possible_misassemblies = 0
+                #possible_misassemblies = 0
                 misassemblies_by_ref = misassemblies_by_asm[i]
-                if misassemblies_by_ref:
-                    possible_misassemblies = misassemblies_by_ref[ref].count(Misassembly.POSSIBLE_MISASSEMBLIES)
+                #if misassemblies_by_ref:
+                #    possible_misassemblies = misassemblies_by_ref[ref].count(Misassembly.POSSIBLE_MISASSEMBLIES)
                 istranslocations = max(0, sum([r for r in row['values'] if r]))
-                misassemblies_by_refs_rows[-1]['values'].append(istranslocations + possible_misassemblies)
+                #misassemblies_by_refs_rows[-1]['values'].append(istranslocations + possible_misassemblies)
+                misassemblies_by_refs_rows[-1]['values'].append(istranslocations)
                 all_rows.append(row)
             misassembly_by_ref_fpath = os.path.join(output_dir, 'interspecies_translocations_by_refs_%s.info' % assembly_name)
             with open(misassembly_by_ref_fpath, 'w') as misassembly_by_ref_file:
