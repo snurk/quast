@@ -342,14 +342,22 @@ def save_combined_ref_stats(results, contigs_fpaths, ref_labels_by_chromosomes, 
                 aligned_contigs_labels.append(row['metricName'])
             else:
                 misassemblies_by_refs_rows.remove(row)
+
+        ref_names_for_plot = ['58009','57753','61589','58935','57717','57647','59065','57807','58857','58813','57727','57873','58129','59127','58787','43333','57743','58119','57713','57583']
+        filtered_ref_names = [r for r in all_refs if r in ref_names_for_plot]
         for i in range(len(all_refs)):
+            if all_refs[i] not in filtered_ref_names:
+                continue
             cur_results = []
             for row in misassemblies_by_refs_rows[1:]:
                 if row['values']:
                     cur_results.append(row['values'][i])
             misassemblies.append(cur_results)
+        for row in misassemblies_by_refs_rows:
+            if row['values']:
+                row['values'] = [v for i, v in enumerate(row['values']) if all_refs[i] in filtered_ref_names]
         is_translocations_plot_fpath = os.path.join(output_dir, 'intergenomic_misassemblies.' + qconfig.plot_extension)
-        plotter.draw_meta_summary_plot('', output_dir, aligned_contigs_labels, all_refs, misassemblies_by_refs_rows,
+        plotter.draw_meta_summary_plot('', output_dir, aligned_contigs_labels, filtered_ref_names, misassemblies_by_refs_rows,
                                        misassemblies,
                                        is_translocations_plot_fpath, title='# intergenomic misassemblies', reverse=False,
                                        yaxis_title=None, print_all_refs=True)
