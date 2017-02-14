@@ -742,16 +742,10 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             matplotlib.pyplot.ylim([0, 5])
         else:
             matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.05)])
-        was_none = False
-        if not yaxis_title:
-            yaxis_title = "    "
-            was_none = True
 
         if yaxis_title:
             ylabel = yaxis_title
             ylabel, mkfunc = y_formatter(ylabel, ymax)
-
-
             matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
             mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
             ax.yaxis.set_major_formatter(mkformatter)
