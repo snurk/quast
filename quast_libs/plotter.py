@@ -728,10 +728,16 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             matplotlib.pyplot.ylim([0, 5])
         else:
             matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.05)])
+        was_none = False
+        if not yaxis_title:
+            yaxis_title = "    "
+            was_none = True
 
         if yaxis_title:
             ylabel = yaxis_title
             ylabel, mkfunc = y_formatter(ylabel, ymax)
+
+
             matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
             mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
             ax.yaxis.set_major_formatter(mkformatter)
@@ -747,8 +753,8 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             #ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
         except Exception:
             pass
-        matplotlib.pyplot.tight_layout()
-        matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+#        matplotlib.pyplot.tight_layout()
+        matplotlib.pyplot.savefig(plot_fpath)
         meta_logger.info('    saved to ' + plot_fpath)
         pdf_plots_figures.append(figure)
         matplotlib.pyplot.close()
@@ -828,8 +834,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
         ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
 
         plot_fpath += '.' + qconfig.plot_extension
-        matplotlib.pyplot.tight_layout()
-        matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+        matplotlib.pyplot.savefig(plot_fpath)
         meta_logger.info('    saved to ' + plot_fpath)
         matplotlib.pyplot.close()
     return json_points_x, json_points_y
