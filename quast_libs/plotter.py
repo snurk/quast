@@ -32,7 +32,7 @@ secondary_line_style = 'dashed' # used only if --scaffolds option is set
 n_columns = 4  # number of columns
 with_grid = True
 with_title = True
-axes_fontsize = 'xx-large' # fontsize of axes labels and ticks
+axes_fontsize = 'medium' # fontsize of axes labels and ticks
 
 # Special case: reference line params
 reference_color = '#000000'
@@ -174,8 +174,6 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
         matplotlib.pyplot.plot(x_vals, y_vals,
                                color=reference_color, lw=line_width, ls=reference_ls)
 
-    if with_title:
-        matplotlib.pyplot.title(title)
     matplotlib.pyplot.grid(with_grid)
     ax = matplotlib.pyplot.gca()
     # Shink current axis's height by 20% on the bottom
@@ -187,10 +185,12 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
         legend_list += ['Reference']
 
 
-    ylabel = 'Cumulative scaffold length '
-    ylabel, mkfunc = y_formatter(ylabel, max_y)
-    matplotlib.pyplot.xlabel('Scaffold index', fontsize=axes_fontsize)
-    matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
+    #ylabel = 'Cumulative scaffold length '
+    title, mkfunc = y_formatter(title + ' ', max_y)
+    #matplotlib.pyplot.xlabel('Scaffold index', fontsize=axes_fontsize)
+    #matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
+    if with_title:
+        matplotlib.pyplot.title(title)
 
     mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
     ax.yaxis.set_major_formatter(mkformatter)
@@ -287,8 +287,6 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
 
     if not can_draw_plots:
         return
-    if with_title:
-        matplotlib.pyplot.title(title)
     matplotlib.pyplot.grid(with_grid)
     ax = matplotlib.pyplot.gca()
     # Shink current axis's height by 20% on the bottom
@@ -298,10 +296,12 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     legend_list = [qutils.label_from_fpath(fpath) for fpath in contigs_fpaths]
 
 
-    ylabel = 'Scaffold length  '
-    ylabel, mkfunc = y_formatter(ylabel, max_y)
-    matplotlib.pyplot.xlabel('', fontsize=axes_fontsize)
-    matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
+    #ylabel = 'Scaffold length  '
+    title, mkfunc = y_formatter(title + ' ', max_y)
+    if with_title:
+        matplotlib.pyplot.title(title)
+    #matplotlib.pyplot.xlabel('', fontsize=axes_fontsize)
+    #matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
 
     mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
     ax.yaxis.set_major_formatter(mkformatter)
@@ -661,7 +661,6 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         meta_logger.info('  Drawing ' + title + ' metaQUAST summary plot...')
         figure = matplotlib.pyplot.figure()
         ax = figure.add_subplot(111)
-        matplotlib.pyplot.title(title)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.9, box.height * 1.0])
         ax.yaxis.grid(with_grid)
@@ -701,7 +700,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
     #sorted_values = sorted(zip(values, refs, arr_y_by_refs), reverse=reverse, key=lambda x: x[0])
     #values, refs, arr_y_by_refs = [[x[i] for x in sorted_values] for i in range(3)]
     if can_draw_plots:
-        matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
+        matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='medium', rotation='vertical')
     json_points_x = []
     json_points_y = []
     for j in range(contigs_num):
@@ -730,11 +729,14 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             matplotlib.pyplot.ylim([0, math.ceil(ymax * 1.05)])
 
         if yaxis_title:
-            ylabel = yaxis_title
-            ylabel, mkfunc = y_formatter(ylabel, ymax)
-            matplotlib.pyplot.ylabel(ylabel, fontsize=axes_fontsize)
+            #ignoring y-axis label
+            #ylabel = yaxis_title
+            title, mkfunc = y_formatter(title + ' ', ymax)
+            matplotlib.pyplot.ylabel('', fontsize=axes_fontsize)
             mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
             ax.yaxis.set_major_formatter(mkformatter)
+
+        matplotlib.pyplot.title(title)
 
         if ymax == 0:
             matplotlib.pyplot.ylim([0, 5])
@@ -749,7 +751,8 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
             pass
 #        matplotlib.pyplot.tight_layout()
         matplotlib.pyplot.gcf().subplots_adjust(bottom=0.15)
-        matplotlib.pyplot.savefig(plot_fpath)
+        #matplotlib.pyplot.savefig(plot_fpath)
+        matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
         meta_logger.info('    saved to ' + plot_fpath)
         pdf_plots_figures.append(figure)
         matplotlib.pyplot.close()
@@ -813,7 +816,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
                 json_points_x.append(arr_x[j])
                 json_points_y.append(0)
     if can_draw_plots:
-        matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='small', rotation='vertical')
+        matplotlib.pyplot.xticks(range(1, len(refs) + 1), refs, size='medium', rotation='vertical')
         legend_n = set(legend_n)
         legend = []
         for i in sorted(legend_n):
@@ -829,7 +832,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
         ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
 
         plot_fpath += '.' + qconfig.plot_extension
-        matplotlib.pyplot.savefig(plot_fpath)
+        matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
         meta_logger.info('    saved to ' + plot_fpath)
         matplotlib.pyplot.close()
     return json_points_x, json_points_y

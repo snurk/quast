@@ -318,7 +318,7 @@ def do(ref_fpath, contigs_fpaths, output_dirpath, results_dir):
     if qconfig.draw_plots:
         ########################################################################import plotter
         # Drawing cumulative plot...
-        plotter.cumulative_plot(ref_fpath, contigs_fpaths, lists_of_lengths, output_dirpath + '/cumulative_plot', 'Cumulative length')
+        plotter.cumulative_plot(ref_fpath, contigs_fpaths, lists_of_lengths, output_dirpath + '/cumulative_plot', 'Cumulative scaffold length')
         if not qconfig.is_combined_ref and not qconfig.no_gc:
             ########################################################################
             # Drawing GC content plot...
