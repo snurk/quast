@@ -748,6 +748,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
         except Exception:
             pass
 #        matplotlib.pyplot.tight_layout()
+        matplotlib.pyplot.gcf().subplots_adjust(bottom=0.15)
         matplotlib.pyplot.savefig(plot_fpath)
         meta_logger.info('    saved to ' + plot_fpath)
         pdf_plots_figures.append(figure)
