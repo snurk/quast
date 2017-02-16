@@ -103,15 +103,9 @@ def do(html_fpath, output_dirpath, combined_output_dirpath, output_dirpath_per_r
                     y_label = 'Contig length '
                 elif metric == reporting.Fields.LARGALIGN:
                     y_label = 'Alignment length '
-                ref_names_for_plot = ['58009','57753','61589','58935','57717','57647','59065','57807','58857','58813','57727','57873','58129','59127','58787','43333','57743','58119','57713','57583']
-                filtered_ref_names = [r for r in cur_ref_names if r in ref_names_for_plot]
-                # filtered_ref_names = all_refs[:10]
-                results = [r for i, r in enumerate(results) if cur_ref_names[i] in filtered_ref_names]
-                for row in all_rows:
-                    if row['values']:
-                        row['values'] = [v for i, v in enumerate(row['values']) if cur_ref_names[i] in filtered_ref_names]
-                plotter.draw_meta_summary_plot(html_fpath, output_dirpath, labels, filtered_ref_names, all_rows, results,
-                                                   summary_png_fpath, title=metric, reverse=reverse, yaxis_title=y_label, print_all_refs=True)
+                plotter.draw_meta_summary_plot(html_fpath, output_dirpath, labels, cur_ref_names, all_rows, results,
+                                               summary_png_fpath, title=metric, reverse=reverse, yaxis_title=y_label,
+                                               print_all_refs=True)
                 if metric == reporting.Fields.MISASSEMBL:
                     mis_results = []
                     report_fname = os.path.join('contigs_reports', qconfig.transposed_report_prefix + '_misassemblies' + '.tsv')
