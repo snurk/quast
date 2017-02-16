@@ -15,25 +15,29 @@ logger = get_logger(qconfig.LOGGER_META_NAME)
 
 def get_results_for_metric(ref_names, metric, contigs_num, labels, output_dirpath, report_fname):
     all_rows = []
-    cur_ref_names = []
-    row = {'metricName': 'References', 'values': cur_ref_names}
+    row = {'metricName': 'References', 'values': ref_names}
     all_rows.append(row)
     results = []
     for i in range(contigs_num):
         row = {'metricName': labels[i], 'values': []}
         all_rows.append(row)
     for i, ref_name in enumerate(ref_names):
+        results.append([])
         results_fpath = os.path.join(output_dirpath, ref_name, report_fname)
         if not os.path.exists(results_fpath):
-            all_rows[0]['values'] = cur_ref_names
+            cur_results = [None] * len(labels)
+            for j in range(contigs_num):
+                all_rows[j + 1]['values'].append(cur_results[j])
+                results[-1].append(cur_results[j])
             continue
         results_file = open(results_fpath, 'r')
         columns = [s.strip() for s in results_file.readline().split('\t')]
         if metric not in columns:
-            all_rows[0]['values'] = cur_ref_names
+            cur_results = [None] * len(labels)
+            for j in range(contigs_num):
+                all_rows[j + 1]['values'].append(cur_results[j])
+                results[-1].append(cur_results[j])
             continue
-        results.append([])
-        cur_ref_names.append(ref_name)
         next_values = [s.strip() for s in results_file.readline().split('\t')]
         cur_results = [None] * len(labels)
         for j in range(contigs_num):
@@ -46,9 +50,7 @@ def get_results_for_metric(ref_names, metric, contigs_num, labels, output_dirpat
         for j in range(contigs_num):
             all_rows[j + 1]['values'].append(cur_results[j])
             results[-1].append(cur_results[j])
-    if not cur_ref_names:
-        cur_ref_names = ref_names
-    return results, all_rows, cur_ref_names
+    return results, all_rows, ref_names
 
 
 def get_labels(combined_output_dirpath, report_fname):
@@ -102,7 +104,8 @@ def do(html_fpath, output_dirpath, combined_output_dirpath, output_dirpath_per_r
                 elif metric == reporting.Fields.LARGALIGN:
                     y_label = 'Alignment length '
                 plotter.draw_meta_summary_plot(html_fpath, output_dirpath, labels, cur_ref_names, all_rows, results,
-                                                   summary_png_fpath, title=metric, reverse=reverse, yaxis_title=y_label)
+                                               summary_png_fpath, title=metric, reverse=reverse, yaxis_title=y_label,
+                                               print_all_refs=True)
                 if metric == reporting.Fields.MISASSEMBL:
                     mis_results = []
                     report_fname = os.path.join('contigs_reports', qconfig.transposed_report_prefix + '_misassemblies' + '.tsv')

@@ -401,10 +401,7 @@ def main(args):
         metrics_for_plots = reporting.Fields.main_metrics
         misassembl_metrics = [reporting.Fields.MIS_RELOCATION, reporting.Fields.MIS_TRANSLOCATION, reporting.Fields.MIS_INVERTION,
                            reporting.Fields.MIS_ISTRANSLOCATIONS]
-        if no_unaligned_contigs:
-            full_ref_names = ref_names
-        else:
-            full_ref_names = ref_names + [qconfig.not_aligned_name]
+        full_ref_names = [qutils.name_from_fpath(ref_fpath) for ref_fpath in corrected_ref_fpaths]
         create_meta_summary.do(html_summary_report_fpath, summary_output_dirpath, combined_output_dirpath,
                                output_dirpath_per_ref, metrics_for_plots, misassembl_metrics, full_ref_names)
         if html_report and json_texts:
