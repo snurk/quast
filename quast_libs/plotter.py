@@ -88,7 +88,8 @@ pdf_tables_figures = []
 dict_color_and_ls = {}
 ####################################################################################
 
-preset_colors = {'metaSPAdes':'#E31A1C', 'IDBA-UD':'#1F78B4', 'MEGAHIT':'#33A02C', 'Ray-Meta':'#6A3D9A', 'GOLD_ASSEMBLY':'#FF7F00'}
+preset_colors = {'metaSPAdes':'#E31A1C', 'IDBA-UD':'#1F78B4', 'MEGAHIT':'#33A02C', 'Ray-Meta':'#6A3D9A', 'GOLD_ASSEMBLY':'#FF7F00', 
+'metaSPAdes-c':'#1F78B4', 'metaSPAdes-c-b':'#33A02C', 'SPAdes_SC_FIX_copy':'#6A3D9A', 'IDBA-UD_copy':'#FF7F00'}
 
 
 def save_colors_and_ls(fpaths, labels=None):
@@ -194,7 +195,8 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
 
     mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
     ax.yaxis.set_major_formatter(mkformatter)
-
+    ax.set_ylim(ymin=0)
+    ax.set_xlim(xmin=0)
 
     xLocator, yLocator = get_locators()
     ax.yaxis.set_major_locator(yLocator)
@@ -306,6 +308,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
     mkformatter = matplotlib.ticker.FuncFormatter(mkfunc)
     ax.yaxis.set_major_formatter(mkformatter)
     matplotlib.pyplot.xlim([0, 100])
+    ax.set_ylim(ymin=0)
 
     #ax.invert_xaxis()
     #matplotlib.pyplot.ylim(matplotlib.pyplot.ylim()[::-1])
