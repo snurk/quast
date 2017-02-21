@@ -208,7 +208,7 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
 
     plot_fpath1 = plot_fpath + '.' + qconfig.plot_extension
     plot_fpath2 = plot_fpath + '.legend.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath1)
 
     # Put a legend below current axis
     try: # for matplotlib <= 2009-12-09
@@ -218,7 +218,7 @@ def cumulative_plot(reference, contigs_fpaths, lists_of_lengths, plot_fpath, tit
         pass
 
 
-    matplotlib.pyplot.savefig(plot_fpath2, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath2)
     logger.info('    saved to ' + plot_fpath2)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
@@ -316,7 +316,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
 
     plot_fpath1 = plot_fpath + '.' + qconfig.plot_extension
     plot_fpath2 = plot_fpath + '.legend.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath1, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath1)
 
     # Put a legend below current axis
     try: # for matplotlib <= 2009-12-09
@@ -326,7 +326,7 @@ def Nx_plot(results_dir, reduce_points, contigs_fpaths, lists_of_lengths, plot_f
         pass
 
 
-    matplotlib.pyplot.savefig(plot_fpath2, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath2)
     logger.info('    saved to ' + plot_fpath2)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
@@ -403,7 +403,7 @@ def GC_content_plot(ref_fpath, contigs_fpaths, list_of_GC_distributions, plot_fp
     #matplotlib.pyplot.ylim(matplotlib.pyplot.ylim()[::-1])
 
     plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath)
     logger.info('    saved to ' + plot_fpath)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
@@ -475,7 +475,7 @@ def genes_operons_plot(reference_value, contigs_fpaths, files_feature_in_contigs
     #matplotlib.pyplot.ylim([0, int(float(max_y) * 1.1)])
 
     plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath)
     logger.info('    saved to ' + plot_fpath)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
@@ -552,7 +552,7 @@ def histogram(contigs_fpaths, values, plot_fpath, title='', yaxis_title='', bott
     ax.yaxis.set_major_locator(yLocator)
 
     plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath)
     logger.info('    saved to ' + plot_fpath)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
@@ -647,7 +647,7 @@ def coverage_histogram(contigs_fpaths, values, plot_fpath, title='', bin_size=No
     ax.yaxis.set_major_formatter(mkformatter)
 
     plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    matplotlib.pyplot.savefig(plot_fpath)
     logger.info('    saved to ' + plot_fpath)
     pdf_plots_figures.append(figure)
     matplotlib.pyplot.close()
@@ -752,7 +752,7 @@ def draw_meta_summary_plot(html_fpath, output_dirpath, labels, ref_names, all_ro
 #        matplotlib.pyplot.tight_layout()
         matplotlib.pyplot.gcf().subplots_adjust(bottom=0.15)
         #matplotlib.pyplot.savefig(plot_fpath)
-        matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+        matplotlib.pyplot.savefig(plot_fpath)
         meta_logger.info('    saved to ' + plot_fpath)
         pdf_plots_figures.append(figure)
         matplotlib.pyplot.close()
@@ -832,7 +832,7 @@ def draw_meta_summary_misassembl_plot(results, ref_names, contig_num, plot_fpath
         ax.legend(legend, loc='center left', bbox_to_anchor=(1.0, 0.5), numpoints=1)
 
         plot_fpath += '.' + qconfig.plot_extension
-        matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+        matplotlib.pyplot.savefig(plot_fpath)
         meta_logger.info('    saved to ' + plot_fpath)
         matplotlib.pyplot.close()
     return json_points_x, json_points_y
@@ -925,8 +925,8 @@ def draw_misassembl_plot(reports, plot_fpath, title='', yaxis_title=''):
         pass
 
     plot_fpath += '.' + qconfig.plot_extension
-    matplotlib.pyplot.tight_layout()
-    matplotlib.pyplot.savefig(plot_fpath, bbox_inches='tight')
+    #matplotlib.pyplot.tight_layout()
+    matplotlib.pyplot.savefig(plot_fpath)
     logger.info('    saved to ' + plot_fpath)
     ax.set_position([box.x0, box.y0 + box.height * 0.2, box.width, box.height * 0.8])
     pdf_plots_figures.append(figure)
@@ -970,7 +970,7 @@ def draw_report_table(report_name, extra_info, table_to_draw, column_widths):
     matplotlib.pyplot.table(cellText=restValues, rowLabels=rowLabels, colLabels=colLabels,
         colWidths=[float(column_width) / sum(column_widths) for column_width in column_widths[1:]],
         rowLoc='left', colLoc='center', cellLoc='right', loc='center')
-    #matplotlib.pyplot.savefig(all_pdf, format='pdf', bbox_inches='tight')
+    #matplotlib.pyplot.savefig(all_pdf, format='pdf')
     pdf_tables_figures.append(figure)
     matplotlib.pyplot.close()
 
@@ -986,7 +986,7 @@ def fill_all_pdf_file(all_pdf):
         pdf_tables_figures = [pdf_tables_figures[-1]] + pdf_tables_figures[:-1]
 
     for figure in pdf_tables_figures:
-        all_pdf.savefig(figure, bbox_inches='tight')
+        all_pdf.savefig(figure)
     for figure in pdf_plots_figures:
         all_pdf.savefig(figure)
 
