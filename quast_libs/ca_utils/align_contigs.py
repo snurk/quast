@@ -63,20 +63,25 @@ def run_minimap(out_fpath, ref_fpath, contigs_fpath, log_err_fpath, index, max_t
     if qconfig.is_agb_mode:
         return run_minimap_agb(out_fpath, ref_fpath, contigs_fpath, log_err_fpath, index, max_threads)
 
-    if qconfig.min_IDY < 90:
-        preset = 'asm20'
-    elif qconfig.min_IDY < 95:
-        preset = 'asm10'
-    else:
-        preset = 'asm5'
+    #preset = 'asm20'
+    #if qconfig.min_IDY < 90:
+    #    preset = 'asm20'
+    #elif qconfig.min_IDY < 95:
+    #    preset = 'asm10'
+    #else:
+    #    preset = 'asm5'
     # -s -- min CIGAR score, -z -- affects how often to stop alignment extension, -B -- mismatch penalty
     # -O -- gap penalty, -r -- max gap size
-    mask_level = '1' if qconfig.is_combined_ref else '0.9'
-    num_alignments = '100' if qconfig.is_combined_ref else '50'
-    additional_options = ['-B5', '-O4,16', '--no-long-join', '-r', str(qconfig.MAX_INDEL_LENGTH),
-                          '-N', num_alignments, '-s', str(qconfig.min_alignment), '-z', '200']
-    cmdline = [minimap_fpath(), '-c', '-x', preset] + (additional_options if not qconfig.large_genome else []) + \
-              ['--mask-level', mask_level, '--min-occ', '200', '-g', '2500', '--score-N', '2', '--cs', '-t', str(max_threads), ref_fpath, contigs_fpath]
+    #mask_level = '1' if qconfig.is_combined_ref else '0.9'
+    #num_alignments = '100' if qconfig.is_combined_ref else '50'
+    #additional_options = ['-B5', '-O4,16', '--no-long-join', '-r', str(qconfig.MAX_INDEL_LENGTH),
+    #                      '-N', num_alignments, '-s', str(qconfig.min_alignment), '-z', '200']
+    #(additional_options if not qconfig.large_genome else []) + \
+
+    #cmdline = [minimap_fpath(), '-c', '-x', preset] + \
+    #          ['--mask-level', mask_level, '--min-occ', '200', '-g', '2500', '--score-N', '2', '--cs', '-t', str(max_threads), ref_fpath, contigs_fpath]
+
+    cmdline = ['minimap2', '-c', '-x', 'asm20', '-r', '1000', '-z', '1000', '-g', '10000', '--score-N', '2', '--cs', '-t', str(max_threads), ref_fpath, contigs_fpath]
     return_code = qutils.call_subprocess(cmdline, stdout=open(out_fpath, 'w'), stderr=open(log_err_fpath, 'a'),
                                          indent='  ' + qutils.index_to_str(index))
 
@@ -103,6 +108,7 @@ def parse_minimap_output(raw_coords_fpath, coords_fpath):
                 contig, align_start, align_end, strand, ref_name, ref_start = \
                     fs[0], fs[2], fs[3], fs[4], fs[5], fs[7]
                 align_start, align_end, ref_start = map(int, (align_start, align_end, ref_start))
+                #logger.info("Processing alignment %s %d %d " % (contig, align_start, align_end))
                 align_start += 1
                 ref_start += 1
                 if fs[-1].startswith('cs'):
@@ -139,13 +145,15 @@ def parse_minimap_output(raw_coords_fpath, coords_fpath):
 
                 idy = '%.2f' % (matched_bases * 100.0 / bases_in_mapping)
                 if ref_name != "*":
+                    #logger.info("IDY %s" % idy)
                     if float(idy) >= qconfig.min_IDY:
                         align = Mapping(s1=ref_start, e1=ref_end, s2=align_start, e2=align_end, len1=ref_len,
                                         len2=align_len, idy=idy, ref=ref_name, contig=contig, cigar=cs)
                         coords_file.write(align.coords_str() + '\n')
                     else:
+                        logger.info("Planned to split alignment %s %d %d, IDY %s, threshold %f" % (contig, align_start, align_end, idy, qconfig.min_IDY))
+                        #logger.info("Planned to split, IDY %s, threshold %f" % (idy, qconfig.min_IDY))
                         split_align(coords_file, align_start, strand_direction, ref_start, ref_name, contig, cs)
-
 
 def split_align(coords_file, align_start, strand_direction, ref_start, ref_name, contig, cs):
     def _write_align():
