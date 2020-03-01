@@ -628,6 +628,9 @@ def call_subprocess(args, stdin=None, stdout=None, stderr=None,
 
     return_code = subprocess.call(args, stdin=stdin, stdout=stdout, stderr=stderr, env=env)
 
+    logger.info('Args: ' + ' '.join(args))
+    print('Args: ' + ' '.join(args))
+
     if return_code != 0:
         logger.debug(' ' * len(indent) + 'The tool returned non-zero.' +
                      (' See ' + relpath(stderr.name) + ' for stderr.' if stderr else ''))

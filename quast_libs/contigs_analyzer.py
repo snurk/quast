@@ -149,6 +149,7 @@ def align_and_analyze(is_cyclic, index, contigs_fpath, output_dirpath, ref_fpath
                          'Failed aligning contigs ' + qutils.label_from_fpath(contigs_fpath) +
                          ' to the reference (non-zero exit code). ' +
                          ('Run with the --debug flag to see additional information.' if not qconfig.debug else ''))
+                sys.exit(239)
             elif status == AlignerStatus.FAILED:
                 log_err_f.write(qutils.index_to_str(index) + 'Alignment failed for ' + contigs_fpath + ':' + coords_fpath + 'doesn\'t exist.\n')
                 logger.info('  ' + qutils.index_to_str(index) + 'Alignment failed for ' + '\'' + assembly_label + '\'.')
