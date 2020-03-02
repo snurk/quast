@@ -261,8 +261,8 @@ def do(reference, contigs_fpaths, is_cyclic, output_dir, old_contigs_fpaths, bed
 
     num_nf_errors = logger._num_nf_errors
     create_minimap_output_dir(output_dir)
-    n_jobs = min(len(contigs_fpaths), qconfig.max_threads)
-    threads = max(1, qconfig.max_threads // n_jobs)
+    n_jobs = 1#min(len(contigs_fpaths), qconfig.max_threads)
+    threads = qconfig.max_threads #max(1, qconfig.max_threads // n_jobs)
 
     genome_size, reference_chromosomes, ns_by_chromosomes = get_genome_stats(reference, skip_ns=True)
     threads = qconfig.max_threads if qconfig.memory_efficient else threads
