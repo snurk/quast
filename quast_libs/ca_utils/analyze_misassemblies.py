@@ -8,6 +8,8 @@
 from __future__ import with_statement
 from __future__ import division
 
+import copy
+
 from quast_libs import qconfig
 from quast_libs.ca_utils.misc import is_same_reference, get_ref_by_chromosome, parse_cs_tag
 
@@ -79,6 +81,24 @@ class Mapping(object):
 
     def icarus_report_str(self, ambiguity='', is_best='True'):
         return '\t'.join(str(x) for x in [self.s1, self.e1, self.s2, self.e2, self.ref, self.contig, self.idy, ambiguity, is_best])
+
+    def icarus_merge_with(self, other):
+        # some asserts required by design
+        assert self.ref == other.ref, "Assert! ref IDs are not equal for icarus_merge"
+        assert self.contig == other.contig, "Assert! contig IDs are not equal for icarus_merge"
+        assert self.pos_strand() == other.pos_strand(), "Assert! strands are not equal for icarus_merge"
+
+        self_matched_bases = self.idy * (self.end() - self.start() + 1)
+        other_matched_bases = other.idy * (other.end() - other.start() + 1)
+
+        self.s1 = min(self.s1, other.s1)
+        self.e1 = max(self.e1, other.e1)
+        if self.pos_strand():
+            self.e2 = other.e2
+        else:
+            self.s2 = other.s2
+
+        self.idy = float('%.2f' % ((self_matched_bases + other_matched_bases) / (self.end() - self.start() + 1)))
 
     def clone(self):
         return Mapping(self.s1, self.e1, self.s2, self.e2, self.len1, self.len2, self.idy, self.ref, self.contig, self.cigar)
@@ -482,6 +502,7 @@ def process_misassembled_contig(sorted_aligns, is_cyclic, aligned_lengths, regio
         is_potential_mge = detect_potential_mge(misassemblies)
 
     prev_align = sorted_aligns[0]
+    prev_align_for_icarus = prev_align
     for i in range(len(sorted_aligns) - 1):
         next_align = sorted_aligns[i + 1]
         internal_overlap, overlap_msg, is_extensive_misassembly, aux_data, misassembly_type = misassembly_info[i]
@@ -493,7 +514,8 @@ def process_misassembled_contig(sorted_aligns, is_cyclic, aligned_lengths, regio
         distance_on_contig = aux_data["distance_on_contig"]
         misassembly_internal_overlap += aux_data["misassembly_internal_overlap"]
         cyclic_moment = aux_data["cyclic_moment"]
-        ca_output.icarus_out_f.write(prev_align.icarus_report_str() + '\n')
+        icarus_msg = ''
+        icarus_merge_needed = False
         ca_output.stdout_f.write('\t\t\tReal Alignment %d: %s\n' % (i+1, str(prev_align)))
 
         ref_aligns.setdefault(prev_align.ref, []).append(prev_align)
@@ -501,25 +523,25 @@ def process_misassembled_contig(sorted_aligns, is_cyclic, aligned_lengths, regio
         prev_ref, next_ref = get_ref_by_chromosome(prev_align.ref), get_ref_by_chromosome(next_align.ref)
         if aux_data["is_sv"]:
             ca_output.stdout_f.write('\t\t\t  Not a misassembly (structural variation of the genome) between these two alignments\n')
-            ca_output.icarus_out_f.write('fake: not a misassembly (structural variation of the genome)\n')
+            icarus_msg += 'fake: not a misassembly (structural variation of the genome)\n'
             region_misassemblies.append(Misassembly.MATCHED_SV)
         elif aux_data["is_scaffold_gap"]:
             if abs(inconsistency) > qconfig.extensive_misassembly_threshold:
                 scaff_gap_type = ' (extensive)'
                 region_misassemblies.append(Misassembly.SCAFFOLD_GAP)
                 misassemblies_by_ref[prev_ref].append(Misassembly.SCAFFOLD_GAP)
-                ca_output.icarus_out_f.write('fake: scaffold gap size wrong estimation' + scaff_gap_type + '\n')
+                icarus_msg += 'fake: scaffold gap size wrong estimation' + scaff_gap_type + '\n'
             else:
                 scaff_gap_type = ' (local)'
                 region_misassemblies.append(Misassembly.LOCAL_SCAFFOLD_GAP)
                 misassemblies_by_ref[prev_ref].append(Misassembly.LOCAL_SCAFFOLD_GAP)
-                ca_output.icarus_out_f.write('fake: scaffold gap size wrong estimation' + scaff_gap_type + '\n')
+                icarus_msg += 'fake: scaffold gap size wrong estimation' + scaff_gap_type + '\n'
             ca_output.stdout_f.write('\t\t\t  Incorrectly estimated size of scaffold gap between these two alignments: ')
             ca_output.stdout_f.write('gap length difference = ' + str(inconsistency) + scaff_gap_type + '\n')
         elif is_extensive_misassembly and is_potential_mge and is_potential_mge[i]:
             ca_output.stdout_f.write(
                 '\t\t\t  Not a misassembly (possible transposable element) between these two alignments\n')
-            ca_output.icarus_out_f.write('fake: not a misassembly (possible transposable element)\n')
+            icarus_msg += 'fake: not a misassembly (possible transposable element)\n'
             region_misassemblies.append(Misassembly.POTENTIAL_MGE)
         elif is_extensive_misassembly:
             is_misassembled = True
@@ -554,10 +576,10 @@ def process_misassembled_contig(sorted_aligns, is_cyclic, aligned_lengths, regio
                 region_misassemblies.append(misassembly_id + (Misassembly.SCF_INVERSION - Misassembly.INVERSION))
             ca_output.stdout_f.write(misassembly_type + msg)
             ca_output.misassembly_f.write(misassembly_type + msg)
-            ca_output.icarus_out_f.write(misassembly_type + msg)
+            icarus_msg += misassembly_type + msg
             ca_output.stdout_f.write(') between these two alignments\n')
             ca_output.misassembly_f.write(') between %s %s and %s %s' % (prev_align.s2, prev_align.e2, next_align.s2, next_align.e2) + '\n')
-            ca_output.icarus_out_f.write('\n')
+            icarus_msg += '\n'
             ref_features.setdefault(prev_align.ref, {})[prev_align.e1] = 'M'
             ref_features.setdefault(next_align.ref, {})[next_align.e1] = 'M'
         else:
@@ -565,21 +587,22 @@ def process_misassembled_contig(sorted_aligns, is_cyclic, aligned_lengths, regio
                          (" [fragmentation of reference genome]" if prev_align.ref != next_align.ref else "")
             if inconsistency == 0 and cyclic_moment:
                 ca_output.stdout_f.write('\t\t\t  Not a misassembly' + reason_msg + ' between these two alignments\n')
-                ca_output.icarus_out_f.write('fake: not a misassembly' + reason_msg + '\n')
+                icarus_msg += 'fake: not a misassembly' + reason_msg + '\n'
             elif inconsistency == 0 and prev_align.ref != next_align.ref:  # is_fragmented_ref_fake_translocation is True, because is_extensive_misassembly is False
                 ca_output.stdout_f.write('\t\t\t  Not a misassembly' + reason_msg + ' between these two alignments\n')
                 region_misassemblies.append(Misassembly.FRAGMENTED)
                 misassemblies_by_ref[prev_ref].append(Misassembly.FRAGMENTED)
-                ca_output.icarus_out_f.write('fake: not a misassembly' + reason_msg + '\n')
+                icarus_msg += 'fake: not a misassembly' + reason_msg + '\n'
             elif abs(inconsistency) <= qconfig.MAX_INDEL_LENGTH and \
                             count_ns_and_not_ns_between_aligns(contig_seq, prev_align, next_align)[1] <= max(qconfig.min_alignment, qconfig.MAX_INDEL_LENGTH):
                 ns_number, not_ns_number = count_ns_and_not_ns_between_aligns(contig_seq, prev_align, next_align)
 
+                icarus_merge_needed = True
                 if inconsistency == 0:
                     ca_output.stdout_f.write(('\t\t\t  Stretch of %d mismatches between these two alignments (number of Ns: %d)' %
                                               (not_ns_number, ns_number)) + reason_msg + '\n')
                     indels_info.mismatches += not_ns_number
-                    ca_output.icarus_out_f.write('indel: stretch of mismatches' + reason_msg + '\n')
+                    icarus_msg += 'indel: stretch of mismatches' + reason_msg + '\n'
                 else:
                     indel_length = abs(inconsistency)
                     indel_class = 'Indel (<= 5bp)' if indel_length <= qconfig.SHORT_INDEL_THRESHOLD else 'Indel (> 5bp)'
@@ -593,7 +616,7 @@ def process_misassembled_contig(sorted_aligns, is_cyclic, aligned_lengths, regio
                     else:
                         indels_info.deletions += indel_length
                     indels_info.mismatches += mismatches
-                    ca_output.icarus_out_f.write('indel: ' + indel_class.lower() + reason_msg + '\n')
+                    icarus_msg += 'indel: ' + indel_class.lower() + reason_msg + '\n'
             else:
                 if qconfig.strict_NA:
                     aligned_lengths.append(cur_aligned_length)
@@ -611,19 +634,27 @@ def process_misassembled_contig(sorted_aligns, is_cyclic, aligned_lengths, regio
                 else:
                     ca_output.stdout_f.write('\t\t\t  Gap between these two alignments (local misassembly).')
                 ca_output.stdout_f.write(' Inconsistency = ' + str(inconsistency) + reason_msg + '\n')
-                ca_output.icarus_out_f.write('local misassembly' + reason_msg + '\n')
+                icarus_msg += 'local misassembly' + reason_msg + '\n'
                 region_misassemblies.append(Misassembly.LOCAL)
                 misassemblies_by_ref[prev_ref].append(Misassembly.LOCAL)
+
+        if icarus_merge_needed:
+            prev_align_for_icarus = copy.deepcopy(prev_align_for_icarus)
+            prev_align_for_icarus.icarus_merge_with(next_align)
+        else:
+            ca_output.icarus_out_f.write(prev_align_for_icarus.icarus_report_str() + '\n')
+            ca_output.icarus_out_f.write(icarus_msg)
+            prev_align_for_icarus = next_align
 
         prev_align = next_align
         cur_aligned_length += prev_align.len2 - (-distance_on_contig if distance_on_contig < 0 else 0)
 
-    #Record the very last alignment
+    #Record the very last alignment, note that prev_align == next_align after the for loop
     i = len(sorted_aligns) - 1
-    ca_output.stdout_f.write('\t\t\tReal Alignment %d: %s' % (i + 1, str(next_align)) + '\n')
-    ca_output.icarus_out_f.write(next_align.icarus_report_str() + '\n')
-    ref_aligns.setdefault(next_align.ref, []).append(next_align)
-    ca_output.coords_filtered_f.write(next_align.coords_str() + '\n')
+    ca_output.stdout_f.write('\t\t\tReal Alignment %d: %s' % (i + 1, str(prev_align)) + '\n')
+    ca_output.icarus_out_f.write(prev_align_for_icarus.icarus_report_str() + '\n')
+    ref_aligns.setdefault(prev_align.ref, []).append(prev_align)
+    ca_output.coords_filtered_f.write(prev_align.coords_str() + '\n')
     aligned_lengths.append(cur_aligned_length)
     contig_aligned_length += cur_aligned_length
 
